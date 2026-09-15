@@ -128,6 +128,16 @@ export default function HomePage() {
   const activeHeroImg = heroContent.heroImage || heroImg;
   const popularSearches = heroContent.popularSearches || ['React', 'Python', 'Java', 'Data Science', 'Figma', 'Fintech', 'Freshers', 'Remote'];
 
+  // Hero carousel state
+  const heroImages = [activeHeroImg, '/hero2.jpg', '/hero3.jpg'];
+  const [heroCarouselIdx, setHeroCarouselIdx] = useState(0);
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setHeroCarouselIdx(prev => (prev + 1) % heroImages.length);
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [heroImages.length]);
+
   return (
     <div className="home-page" style={{ minHeight: '100vh' }}>
       {/* ── 1. Hero Section ── */}
@@ -135,36 +145,88 @@ export default function HomePage() {
         background: 'linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #312e81 100%)',
         position: 'relative',
       }}>
-        {/* Background decorations container */}
-        <div style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
-          {/* Glow ambient decorations */}
-        <div style={{
-          position: 'absolute', top: -100, right: -100, width: 480, height: 480,
-          borderRadius: '50%', background: 'radial-gradient(circle, rgba(99,102,241,0.25) 0%, transparent 70%)',
-          pointerEvents: 'none', filter: 'blur(30px)'
-        }} />
-        <div style={{
-          position: 'absolute', bottom: -150, left: -100, width: 420, height: 420,
-          borderRadius: '50%', background: 'radial-gradient(circle, rgba(217,70,239,0.2) 0%, transparent 70%)',
-          pointerEvents: 'none', filter: 'blur(30px)'
-        }} />
+        {/* ── Full-bleed hero background carousel ── */}
+        <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', zIndex: 0 }}>
+          {/* Glow ambient decorations — desktop only */}
           <div style={{
-            position: 'absolute', top: 0, right: 0, height: '100%', width: '55%',
-            display: 'flex', justifyContent: 'flex-end', alignItems: 'center',
-            pointerEvents: 'none', zIndex: 0, opacity: 0.8
-          }} className="hero-img-wrapper hide-mobile">
-          <img
-            src={activeHeroImg}
-            alt="Hero Background"
-            style={{
-              maxWidth: '100%',
-              height: '100%',
-              objectFit: 'cover',
-              WebkitMaskImage: 'radial-gradient(ellipse 80% 70% at center, black 20%, transparent 75%)',
-              maskImage: 'radial-gradient(ellipse 80% 70% at center, black 20%, transparent 75%)'
-            }}
-          />
+            position: 'absolute', top: -100, right: -100, width: 480, height: 480,
+            borderRadius: '50%', background: 'radial-gradient(circle, rgba(99,102,241,0.25) 0%, transparent 70%)',
+            pointerEvents: 'none', filter: 'blur(30px)'
+          }} />
+          <div style={{
+            position: 'absolute', bottom: -150, left: -100, width: 420, height: 420,
+            borderRadius: '50%', background: 'radial-gradient(circle, rgba(217,70,239,0.2) 0%, transparent 70%)',
+            pointerEvents: 'none', filter: 'blur(30px)'
+          }} />
+
+          {/* ── Desktop: right-side 55% masked panel ── */}
+          <div className="hero-carousel-desktop">
+            {heroImages.map((src, idx) => (
+              <img
+                key={idx}
+                src={src}
+                alt={`Hero slide ${idx + 1}`}
+                style={{
+                  position: 'absolute', top: 0, left: 0,
+                  width: '100%', height: '100%',
+                  objectFit: 'cover',
+                  opacity: idx === heroCarouselIdx ? 1 : 0,
+                  transition: 'opacity 0.9s ease-in-out',
+                  WebkitMaskImage: 'radial-gradient(ellipse 80% 70% at center, black 20%, transparent 75%)',
+                  maskImage: 'radial-gradient(ellipse 80% 70% at center, black 20%, transparent 75%)',
+                  pointerEvents: 'none',
+                }}
+              />
+            ))}
           </div>
+
+          {/* ── Mobile: full-bleed background carousel ── */}
+          <div className="hero-carousel-mobile">
+            {heroImages.map((src, idx) => (
+              <img
+                key={idx}
+                src={src}
+                alt={`Hero slide ${idx + 1}`}
+                style={{
+                  position: 'absolute', top: 0, left: 0,
+                  width: '100%', height: '100%',
+                  objectFit: 'cover',
+                  opacity: idx === heroCarouselIdx ? 1 : 0,
+                  transition: 'opacity 0.9s ease-in-out',
+                  pointerEvents: 'none',
+                }}
+              />
+            ))}
+            {/* Dark overlay so text stays legible on mobile */}
+            <div style={{
+              position: 'absolute', inset: 0,
+              background: 'linear-gradient(to bottom, rgba(15,23,42,0.72) 0%, rgba(30,27,75,0.65) 60%, rgba(49,46,129,0.55) 100%)',
+              pointerEvents: 'none',
+            }} />
+          </div>
+        </div>
+
+        {/* ── Carousel dot indicators (shared, visible both layouts) ── */}
+        <div style={{
+          position: 'absolute', bottom: 18, left: '50%',
+          transform: 'translateX(-50%)',
+          display: 'flex', gap: 8,
+          zIndex: 10, pointerEvents: 'auto',
+        }}>
+          {heroImages.map((_, idx) => (
+            <button
+              key={idx}
+              onClick={() => setHeroCarouselIdx(idx)}
+              aria-label={`Go to slide ${idx + 1}`}
+              style={{
+                width: idx === heroCarouselIdx ? 22 : 8,
+                height: 8, borderRadius: 4,
+                border: 'none', cursor: 'pointer', padding: 0,
+                background: idx === heroCarouselIdx ? '#a5b4fc' : 'rgba(255,255,255,0.4)',
+                transition: 'all 0.4s ease',
+              }}
+            />
+          ))}
         </div>
 
         <div className="container" style={{ position: 'relative', zIndex: 1, maxWidth: '1300px', padding: 'var(--space-20) var(--space-6)' }}>
@@ -368,7 +430,7 @@ export default function HomePage() {
       {/* ── 2. Statistics Section ── */}
       <section style={{ background: 'var(--color-surface)', padding: 'var(--space-10) 0', borderBottom: '1px solid var(--color-border)' }}>
         <div className="container">
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 'var(--space-6)' }}>
+          <div className="home-stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 'var(--space-6)' }}>
             {statsList.map((stat) => (
               <div key={stat.label} style={{
                 textAlign: 'center',
@@ -514,7 +576,7 @@ export default function HomePage() {
               </Button>
             </Link>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 'var(--space-6)' }}>
+          <div className="home-featured-jobs-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 'var(--space-6)' }}>
             {featuredJobs.map((job) => (
               <JobCard key={job.id} job={job} />
             ))}
@@ -541,7 +603,7 @@ export default function HomePage() {
               </Button>
             </Link>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 'var(--space-6)' }}>
+          <div className="home-latest-jobs-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 'var(--space-6)' }}>
             {latestJobs.map((job) => (
               <JobCard key={job.id} job={job} />
             ))}
@@ -568,7 +630,7 @@ export default function HomePage() {
               </Button>
             </Link>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 'var(--space-6)' }}>
+          <div className="home-companies-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 'var(--space-6)' }}>
             {topCompanies.map((company) => (
               <CompanyCard key={company.id} company={company} />
             ))}
@@ -595,7 +657,7 @@ export default function HomePage() {
               </Button>
             </Link>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 'var(--space-6)' }}>
+          <div className="home-internships-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 'var(--space-6)' }}>
             {featuredInternships.map((internship) => (
               <InternshipCard key={internship.id} internship={internship} />
             ))}
@@ -646,7 +708,7 @@ export default function HomePage() {
             </p>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 'var(--space-6)' }}>
+          <div className="home-why-choose-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 'var(--space-6)' }}>
             {WHY_CHOOSE_US.map((item) => (
               <div
                 key={item.title}
@@ -714,7 +776,7 @@ export default function HomePage() {
           }}>
             Join over 2,80,000+ candidates who found opportunities with top employers through NTR VIKASA Job Portal.
           </p>
-          <div style={{ display: 'flex', gap: 'var(--space-4)', justifyContent: 'center', flexWrap: 'wrap' }}>
+          <div className="home-cta-buttons" style={{ display: 'flex', gap: 'var(--space-4)', justifyContent: 'center', flexWrap: 'wrap' }}>
             <Link to="/register/candidate">
               <Button variant="primary" size="lg" style={{ background: '#ffffff', color: '#312e81', fontWeight: 700 }}>
                 Register as Job Seeker (Free)

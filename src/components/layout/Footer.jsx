@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
-import { Briefcase, Globe, ExternalLink } from 'lucide-react';
+import { ChevronDown, ArrowUp, Phone, Mail, ShieldCheck } from 'lucide-react';
 
 const FOOTER_LINKS = {
   'For Job Seekers': [
@@ -61,6 +62,19 @@ const SOCIAL_LINKS = [
 
 export default function Footer() {
   const year = new Date().getFullYear();
+  // On mobile, allow expanding/collapsing link sections interactively
+  const [openSections, setOpenSections] = useState({ 'For Job Seekers': true });
+
+  const toggleSection = (col) => {
+    setOpenSections(prev => ({
+      ...prev,
+      [col]: !prev[col]
+    }));
+  };
+
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   return (
     <footer className="footer">
@@ -73,21 +87,75 @@ export default function Footer() {
           <p className="footer-desc" style={{ marginTop: 'var(--space-3)' }}>
             NTR Vikasa — Society for Employment Generation. Empowering youth with employment opportunities, skill development programs, and Mega Job Melas.
           </p>
+
+          {/* Interactive Helpdesk & Support Badge */}
+          <div className="footer-support-pills" style={{ marginTop: 'var(--space-4)', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <RouterLink to="/contact" className="footer-support-btn" style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '6px 12px',
+              background: 'rgba(255, 255, 255, 0.06)',
+              border: '1px solid rgba(255, 255, 255, 0.12)',
+              borderRadius: 'var(--radius-full)',
+              color: '#94a3b8',
+              fontSize: '12px',
+              textDecoration: 'none',
+              transition: 'all 150ms ease'
+            }}>
+              <Phone size={13} style={{ color: 'var(--color-primary-400)' }} />
+              <span>Contact Support</span>
+            </RouterLink>
+            <RouterLink to="/about" className="footer-support-btn" style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '6px 12px',
+              background: 'rgba(255, 255, 255, 0.06)',
+              border: '1px solid rgba(255, 255, 255, 0.12)',
+              borderRadius: 'var(--radius-full)',
+              color: '#94a3b8',
+              fontSize: '12px',
+              textDecoration: 'none',
+              transition: 'all 150ms ease'
+            }}>
+              <ShieldCheck size={13} style={{ color: 'var(--color-success-500)' }} />
+              <span>Govt. Recognized</span>
+            </RouterLink>
+          </div>
         </div>
 
-        {/* Link columns */}
-        {Object.entries(FOOTER_LINKS).map(([col, links]) => (
-          <div key={col}>
-            <h3 className="footer-col-title">{col}</h3>
-            <ul className="footer-links">
-              {links.map((link) => (
-                <li key={link.href + link.label}>
-                  <RouterLink to={link.href} className="footer-link">{link.label}</RouterLink>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ))}
+        {/* Link columns with mobile interactive accordion */}
+        {Object.entries(FOOTER_LINKS).map(([col, links]) => {
+          const isOpen = !!openSections[col];
+          return (
+            <div key={col} className={`footer-col ${isOpen ? 'is-open' : ''}`}>
+              <button
+                type="button"
+                className="footer-col-header"
+                onClick={() => toggleSection(col)}
+                aria-expanded={isOpen}
+              >
+                <h3 className="footer-col-title">{col}</h3>
+                <ChevronDown
+                  size={16}
+                  className="footer-col-chevron"
+                  style={{
+                    transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                    transition: 'transform 200ms ease'
+                  }}
+                />
+              </button>
+              <ul className={`footer-links ${isOpen ? 'show' : ''}`}>
+                {links.map((link) => (
+                  <li key={link.href + link.label}>
+                    <RouterLink to={link.href} className="footer-link">{link.label}</RouterLink>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          );
+        })}
       </div>
 
       {/* Bottom bar */}
@@ -96,15 +164,29 @@ export default function Footer() {
           <p className="footer-bottom-text">
             © {year} NTR VIKASA Job Portal. All rights reserved.
           </p>
-          <div className="footer-social">
-            {SOCIAL_LINKS.map((s) => (
-              <a key={s.label} href={s.href} className="footer-social-link" aria-label={s.label} target="_blank" rel="noopener noreferrer">
-                {s.icon}
-              </a>
-            ))}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)', flexWrap: 'wrap', justifyContent: 'center' }}>
+            <div className="footer-social">
+              {SOCIAL_LINKS.map((s) => (
+                <a key={s.label} href={s.href} className="footer-social-link" aria-label={s.label} target="_blank" rel="noopener noreferrer">
+                  {s.icon}
+                </a>
+              ))}
+            </div>
+            {/* Interactive Back to Top */}
+            <button
+              type="button"
+              onClick={scrollToTop}
+              className="footer-back-to-top"
+              aria-label="Back to top"
+              title="Back to top"
+            >
+              <ArrowUp size={14} />
+              <span className="footer-back-to-top-label">Top</span>
+            </button>
           </div>
         </div>
       </div>
     </footer>
   );
 }
+

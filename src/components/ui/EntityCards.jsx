@@ -24,7 +24,7 @@ export function JobCard({ job, saved = false, onSave, loading = false, showStatu
 
   return (
     <div
-      className="card card-hoverable"
+      className="card card-hoverable entity-job-card"
       style={{
         borderRadius: 'var(--radius-2xl)',
         padding: 'var(--space-6)',
@@ -36,8 +36,8 @@ export function JobCard({ job, saved = false, onSave, loading = false, showStatu
     >
       <div>
         {/* Header: Logo + Badges + Bookmark */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 'var(--space-3)' }}>
-          <div style={{
+        <div className="entity-job-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 'var(--space-3)' }}>
+          <div className="entity-job-card-logo" style={{
             width: 56,
             height: 56,
             borderRadius: 'var(--radius-xl)',
@@ -51,10 +51,10 @@ export function JobCard({ job, saved = false, onSave, loading = false, showStatu
             boxShadow: 'var(--shadow-sm)',
             flexShrink: 0
           }}>
-            {companyLogo ? <img src={companyLogo} alt={company} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'var(--radius-xl)' }} /> : (company?.[0] || 'J')}
+            {companyLogo ? <img src={companyLogo} alt={company} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }} /> : (company?.[0] || 'J')}
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+          <div className="entity-job-card-badges" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
             {isFeatured && <Badge variant="primary">Featured</Badge>}
             {isNew && <Badge variant="success">New</Badge>}
             {onSave && (
@@ -72,7 +72,7 @@ export function JobCard({ job, saved = false, onSave, loading = false, showStatu
 
         {/* Title */}
         <Link to={`/jobs/${id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-          <h3 style={{
+          <h3 className="entity-job-card-title" style={{
             fontSize: 'var(--text-base)',
             fontWeight: 700,
             marginBottom: 4,
@@ -88,13 +88,13 @@ export function JobCard({ job, saved = false, onSave, loading = false, showStatu
 
         {/* Company */}
         <Link to={`/companies/${job.companyId || id}`} style={{ textDecoration: 'none' }}>
-          <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-primary-600)', fontWeight: 600, marginBottom: 'var(--space-3)' }}>
+          <p className="entity-job-card-company" style={{ fontSize: 'var(--text-xs)', color: 'var(--color-primary-600)', fontWeight: 600, marginBottom: 'var(--space-3)' }}>
             {company}
           </p>
         </Link>
 
         {/* Meta Info */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)', fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>
+        <div className="entity-job-card-meta" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)', fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>
           {location && (
             <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <MapPin size={13} style={{ flexShrink: 0 }} /> {location}
@@ -114,7 +114,7 @@ export function JobCard({ job, saved = false, onSave, loading = false, showStatu
         </div>
 
         {tags.length > 0 && (
-          <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginTop: 'var(--space-3)' }}>
+          <div className="entity-job-card-tags" style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginTop: 'var(--space-3)' }}>
             {tags.slice(0, 3).map((tag) => (
               <Badge key={tag} variant="gray">{tag}</Badge>
             ))}
@@ -124,7 +124,7 @@ export function JobCard({ job, saved = false, onSave, loading = false, showStatu
       </div>
 
       {/* Footer */}
-      <div style={{
+      <div className="entity-job-card-footer" style={{
         paddingTop: 'var(--space-4)',
         borderTop: '1px solid var(--color-gray-100)',
         display: 'flex',
@@ -132,7 +132,7 @@ export function JobCard({ job, saved = false, onSave, loading = false, showStatu
         alignItems: 'center',
         gap: 'var(--space-2)'
       }}>
-        <div>
+        <div className="entity-job-card-time">
           {showStatus && status && <StatusBadge status={status} />}
           {timeLeft && !showStatus && (
             <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -140,8 +140,8 @@ export function JobCard({ job, saved = false, onSave, loading = false, showStatu
             </span>
           )}
         </div>
-        <Link to={`/jobs/${id}`}>
-          <Button size="sm" variant="outline">View Job</Button>
+        <Link to={`/jobs/${id}`} className="entity-job-card-link" style={{ textDecoration: 'none' }}>
+          <Button size="sm" variant="outline" className="entity-job-card-btn">View Job</Button>
         </Link>
       </div>
     </div>
@@ -211,7 +211,7 @@ export function InternshipCard({ internship, saved = false, onSave, loading = fa
 
   return (
     <div
-      className="card card-hoverable"
+      className="card card-hoverable entity-internship-card"
       style={{
         borderRadius: 'var(--radius-2xl)',
         padding: 'var(--space-6)',
@@ -223,8 +223,8 @@ export function InternshipCard({ internship, saved = false, onSave, loading = fa
     >
       <div>
         {/* Header: Company Logo & Stipend Badge */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 'var(--space-3)' }}>
-          <div style={{
+        <div className="entity-internship-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 'var(--space-3)' }}>
+          <div className="entity-internship-card-logo" style={{
             width: 56,
             height: 56,
             borderRadius: 'var(--radius-xl)',
@@ -238,11 +238,11 @@ export function InternshipCard({ internship, saved = false, onSave, loading = fa
             boxShadow: 'var(--shadow-sm)',
             flexShrink: 0
           }}>
-            {companyLogo ? <img src={companyLogo} alt={company} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'var(--radius-xl)' }} /> : (company?.[0] || 'I')}
+            {companyLogo ? <img src={companyLogo} alt={company} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }} /> : (company?.[0] || 'I')}
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
-            <span style={{
+          <div className="entity-internship-card-badge-wrap" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+            <span className="entity-internship-card-badge" style={{
               fontSize: 'var(--text-xs)',
               fontWeight: 700,
               color: 'var(--color-success-700)',
@@ -267,7 +267,7 @@ export function InternshipCard({ internship, saved = false, onSave, loading = fa
 
         {/* Title */}
         <Link to={`/internships/${id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-          <h3 style={{
+          <h3 className="entity-internship-card-title" style={{
             fontSize: 'var(--text-base)',
             fontWeight: 700,
             marginBottom: 4,
@@ -282,12 +282,12 @@ export function InternshipCard({ internship, saved = false, onSave, loading = fa
         </Link>
 
         {/* Company */}
-        <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-primary-600)', fontWeight: 600, marginBottom: 'var(--space-3)' }}>
+        <p className="entity-internship-card-company" style={{ fontSize: 'var(--text-xs)', color: 'var(--color-primary-600)', fontWeight: 600, marginBottom: 'var(--space-3)' }}>
           {company}
         </p>
 
         {/* Meta Info: Location, Work Mode, Duration */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)', fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginBottom: displaySkills.length > 0 ? 'var(--space-3)' : 0 }}>
+        <div className="entity-internship-card-meta" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)', fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginBottom: displaySkills.length > 0 ? 'var(--space-3)' : 0 }}>
           <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <MapPin size={13} style={{ flexShrink: 0 }} /> {location}
           </span>
@@ -298,7 +298,7 @@ export function InternshipCard({ internship, saved = false, onSave, loading = fa
 
         {/* Skills/Tags if any */}
         {displaySkills && displaySkills.length > 0 && (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+          <div className="entity-internship-card-tags" style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
             {displaySkills.slice(0, 3).map((tag) => (
               <span
                 key={tag}
@@ -324,7 +324,7 @@ export function InternshipCard({ internship, saved = false, onSave, loading = fa
       </div>
 
       {/* Footer: Apply by deadline & View Details CTA */}
-      <div style={{
+      <div className="entity-internship-card-footer" style={{
         paddingTop: 'var(--space-4)',
         borderTop: '1px solid var(--color-gray-100)',
         display: 'flex',
@@ -332,11 +332,11 @@ export function InternshipCard({ internship, saved = false, onSave, loading = fa
         alignItems: 'center',
         gap: 'var(--space-2)'
       }}>
-        <span style={{ fontSize: '11px', color: 'var(--color-text-muted)' }}>
+        <span className="entity-internship-card-time" style={{ fontSize: '11px', color: 'var(--color-text-muted)' }}>
           {deadline ? `Apply by ${new Date(deadline).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}` : 'Actively Hiring'}
         </span>
-        <Link to={`/internships/${id}`}>
-          <Button size="sm" variant="outline">
+        <Link to={`/internships/${id}`} className="entity-internship-card-link" style={{ textDecoration: 'none' }}>
+          <Button size="sm" variant="outline" className="entity-internship-card-btn">
             View Details
           </Button>
         </Link>
