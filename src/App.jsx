@@ -38,6 +38,7 @@ import RegisterRecruiterPage  from './pages/public/RegisterRecruiterPage';
 import RecruiterApprovalPage  from './pages/public/RecruiterApprovalPage';
 import ForgotPasswordPage     from './pages/public/ForgotPasswordPage';
 import AcceptInvitationPage   from './pages/public/AcceptInvitationPage';
+import MobileBottomNav        from './components/layout/MobileBottomNav';
 
 // ── Error Pages ───────────────────────────────────────────────────────────────
 import NotFoundPage           from './pages/errors/NotFoundPage';
@@ -234,6 +235,9 @@ export default function App() {
                     {/* ── 404 Fallback ── */}
                     <Route path="*" element={<NotFoundPage />} />
                   </Routes>
+
+                  {/* ── Global Animated Curved Mobile Bottom Navigation Bar (Mobile Only) ── */}
+                  <MobileBottomNav />
                 </BrowserRouter>
               </AdminProvider>
             </RecruiterProvider>

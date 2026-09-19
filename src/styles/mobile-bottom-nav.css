@@ -1,0 +1,296 @@
+/* ============================================================
+   ANIMATED CURVED NOTCH MOBILE BOTTOM NAVIGATION BAR
+   Inspired by premium mobile app navigation with organic wave notch,
+   elevated circular badge, spring glide physics, and role-based tabs.
+   ============================================================ */
+
+/* Mobile Bottom Navigation - Outer wrapper fixed to viewport bottom */
+.mobile-bottom-nav-root {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: var(--z-sticky, 100);
+  pointer-events: none; /* children enable pointer events */
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  /* Filter drop-shadow follows the combined alpha silhouette of wave + bar */
+  filter: drop-shadow(0 -6px 20px rgba(15, 23, 42, 0.08))
+          drop-shadow(0 -2px 6px rgba(79, 70, 229, 0.06));
+}
+
+/* Hide on desktop screens (above 768px) */
+@media (min-width: 769px) {
+  .mobile-bottom-nav-root {
+    display: none !important;
+  }
+}
+
+/* Inner navigation container - strictly clipped horizontally to avoid any protrusion */
+.mobile-bottom-nav-container {
+  pointer-events: auto;
+  position: relative;
+  width: 100%;
+  max-width: 480px; /* comfortable max-width for tablets / phablets */
+  margin: 0 auto;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  clip-path: polygon(0% -120px, 100% -120px, 100% 200%, 0% 200%);
+}
+
+/* White background body with edge-conforming corner transitions */
+.mobile-bottom-nav-bg {
+  position: absolute;
+  inset: 0;
+  background: #ffffff;
+  border-top-left-radius: 26px;
+  border-top-right-radius: 26px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  z-index: 1;
+  transition: border-radius 280ms ease;
+}
+
+.mobile-bottom-nav-bg.is-first {
+  border-top-left-radius: 4px;
+  border-top-right-radius: 26px;
+}
+
+.mobile-bottom-nav-bg.is-last {
+  border-top-left-radius: 26px;
+  border-top-right-radius: 4px;
+}
+
+.mobile-bottom-nav-bg.is-middle {
+  border-top-left-radius: 26px;
+  border-top-right-radius: 26px;
+}
+
+/* Sliding active indicator that moves horizontally across tabs */
+.mobile-bottom-nav-slider {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 20%; /* Exactly 1/5 for 5 nav items */
+  height: 100%;
+  z-index: 2;
+  pointer-events: none;
+  /* Premium spring glide curve with overshoot */
+  transition: transform 380ms cubic-bezier(0.34, 1.4, 0.64, 1);
+  will-change: transform;
+}
+
+/* The smooth organic wave / hump protruding above the navbar top edge */
+.mobile-bottom-nav-wave {
+  position: absolute;
+  top: -21px;
+  width: 76px;
+  height: 22px;
+  pointer-events: none;
+  transition: left 240ms ease, right 240ms ease, transform 240ms ease;
+}
+
+.mobile-bottom-nav-wave.is-middle {
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.mobile-bottom-nav-wave.is-first {
+  left: 0;
+  transform: none;
+}
+
+.mobile-bottom-nav-wave.is-last {
+  left: auto;
+  right: 0;
+  transform: none;
+}
+
+.mobile-bottom-nav-wave svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* Elevated circular badge floating in the center of the active wave */
+.mobile-bottom-nav-badge {
+  position: absolute;
+  top: -27px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: #ede9fe; /* Soft primary light background */
+  border: 3.5px solid var(--color-primary-600, #4f46e5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-primary-600, #4f46e5);
+  box-shadow: 0 8px 22px -3px rgba(79, 70, 229, 0.38),
+              0 2px 6px -1px rgba(79, 70, 229, 0.2);
+  pointer-events: auto;
+  cursor: pointer;
+  z-index: 4;
+}
+
+/* Micro-animation when active item changes */
+.mobile-bottom-nav-badge-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: navBadgePop 300ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+@keyframes navBadgePop {
+  0% {
+    transform: scale(0.65);
+    opacity: 0.5;
+  }
+  70% {
+    transform: scale(1.12);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Interactive nav items row */
+.mobile-bottom-nav-items {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  align-items: flex-end;
+  height: 66px;
+  padding: 0 4px;
+}
+
+/* Individual tab button */
+.mobile-bottom-nav-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  height: 100%;
+  padding-bottom: 8px;
+  background: none;
+  border: none;
+  outline: none;
+  cursor: pointer;
+  position: relative;
+  transition: all var(--transition-fast, 150ms ease);
+}
+
+.mobile-bottom-nav-btn:active {
+  transform: scale(0.94);
+}
+
+/* Static icon slot inside button */
+.mobile-bottom-nav-icon-slot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 26px;
+  margin-bottom: 4px;
+  color: var(--color-gray-400, #94a3b8);
+  transition: opacity 180ms ease, transform 180ms ease, color 180ms ease;
+}
+
+/* When tab is active, hide the static icon because elevated circular badge is floating above */
+.mobile-bottom-nav-btn.is-active .mobile-bottom-nav-icon-slot {
+  opacity: 0;
+  transform: translateY(-8px) scale(0.7);
+  pointer-events: none;
+}
+
+/* Inactive icon styling */
+.mobile-bottom-nav-btn:not(.is-active):hover .mobile-bottom-nav-icon-slot {
+  color: var(--color-gray-700, #334155);
+}
+
+/* Text label below icon */
+.mobile-bottom-nav-label {
+  font-family: var(--font-sans, system-ui, sans-serif);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--color-gray-400, #94a3b8);
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 0 2px;
+  transition: color 220ms ease, font-weight 220ms ease, transform 220ms ease;
+}
+
+/* Active label is bold, dark, and emphasized */
+.mobile-bottom-nav-btn.is-active .mobile-bottom-nav-label {
+  font-weight: 700;
+  color: var(--color-gray-900, #0f172a);
+  transform: translateY(-1px);
+}
+
+/* Badge count pill for notifications */
+.mobile-bottom-nav-badge-count {
+  position: absolute;
+  top: 6px;
+  right: calc(50% - 18px);
+  background: var(--color-danger-500, #ef4444);
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 700;
+  min-width: 16px;
+  height: 16px;
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  border: 1.5px solid #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+/* iOS-style home indicator pill at bottom */
+.mobile-bottom-nav-safe-area {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding-bottom: max(6px, env(safe-area-inset-bottom, 6px));
+}
+
+.mobile-bottom-nav-home-pill {
+  width: 128px;
+  height: 4px;
+  background: var(--color-gray-500, #64748b);
+  opacity: 0.55;
+  border-radius: 9999px;
+  margin: 2px 0 3px;
+}
+
+/* Compact layout for very small phone screens (< 360px) */
+@media (max-width: 360px) {
+  .mobile-bottom-nav-badge {
+    width: 50px;
+    height: 50px;
+    top: -24px;
+    border-width: 3px;
+  }
+  .mobile-bottom-nav-wave {
+    width: 86px;
+    height: 20px;
+    top: -19px;
+  }
+  .mobile-bottom-nav-label {
+    font-size: 10px;
+  }
+  .mobile-bottom-nav-items {
+    height: 62px;
+  }
+}

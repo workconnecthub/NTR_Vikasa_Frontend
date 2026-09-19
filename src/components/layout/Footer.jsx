@@ -1,6 +1,16 @@
 import { useState } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
-import { ChevronDown, ArrowUp, Phone, Mail, ShieldCheck } from 'lucide-react';
+import {
+  ChevronDown,
+  ChevronRight,
+  ArrowUp,
+  Phone,
+  Mail,
+  ShieldCheck,
+  Sparkles,
+  MapPin,
+  ExternalLink,
+} from 'lucide-react';
 
 const FOOTER_LINKS = {
   'For Job Seekers': [
@@ -12,17 +22,17 @@ const FOOTER_LINKS = {
     { label: 'Register as Candidate', href: '/register/candidate' },
   ],
   'For Recruiters': [
-    { label: 'Post a Job',        href: '/register/recruiter' },
-    { label: 'Post Internship',   href: '/register/recruiter' },
-    { label: 'Recruiter Login',   href: '/login' },
-    { label: 'Recruiter Registration', href: '/register/recruiter' },
+    { label: 'Post a Job',            href: '/register/recruiter' },
+    { label: 'Post Internship',       href: '/register/recruiter' },
+    { label: 'Recruiter Login',       href: '/login' },
+    { label: 'Recruiter Registration',href: '/register/recruiter' },
   ],
-  'Company': [
-    { label: 'About Us',          href: '/about' },
-    { label: 'Skill Development', href: '/skill-development' },
-    { label: 'Contact & Helpdesk',href: '/contact' },
-    { label: 'Privacy Policy',    href: '/privacy' },
-    { label: 'Terms of Service',  href: '/terms' },
+  'Company & Helpdesk': [
+    { label: 'About Us',              href: '/about' },
+    { label: 'Skill Development',     href: '/skill-development' },
+    { label: 'Contact & Helpdesk',    href: '/contact' },
+    { label: 'Privacy Policy',        href: '/privacy' },
+    { label: 'Terms of Service',      href: '/terms' },
   ],
 };
 
@@ -54,21 +64,26 @@ const YoutubeIcon = ({ size = 16 }) => (
 );
 
 const SOCIAL_LINKS = [
-  { icon: <FacebookIcon size={16} />,  href: 'https://www.facebook.com/ntrvikasajobs', label: 'Facebook' },
-  { icon: <TwitterIcon size={16} />,   href: 'https://x.com/NTRVikasa', label: 'Twitter' },
-  { icon: <InstagramIcon size={16} />, href: 'https://www.instagram.com/ntrvikasa/', label: 'Instagram' },
-  { icon: <YoutubeIcon size={16} />,   href: 'https://www.youtube.com/@NTRVIKASA', label: 'YouTube' },
+  { icon: <FacebookIcon size={16} />,  href: 'https://www.facebook.com/ntrvikasajobs', label: 'Facebook', color: '#1877f2' },
+  { icon: <TwitterIcon size={16} />,   href: 'https://x.com/NTRVikasa', label: 'Twitter', color: '#38bdf8' },
+  { icon: <InstagramIcon size={16} />, href: 'https://www.instagram.com/ntrvikasa/', label: 'Instagram', color: '#e1306c' },
+  { icon: <YoutubeIcon size={16} />,   href: 'https://www.youtube.com/@NTRVIKASA', label: 'YouTube', color: '#ff0000' },
 ];
 
 export default function Footer() {
   const year = new Date().getFullYear();
-  // On mobile, allow expanding/collapsing link sections interactively
-  const [openSections, setOpenSections] = useState({ 'For Job Seekers': true });
+  
+  // Interactive accordion state for mobile devices
+  const [openSections, setOpenSections] = useState({
+    'For Job Seekers': true,
+    'For Recruiters': false,
+    'Company & Helpdesk': false,
+  });
 
   const toggleSection = (col) => {
     setOpenSections(prev => ({
       ...prev,
-      [col]: !prev[col]
+      [col]: !prev[col],
     }));
   };
 
@@ -77,55 +92,46 @@ export default function Footer() {
   };
 
   return (
-    <footer className="footer">
+    <footer className="footer" role="contentinfo">
       <div className="footer-grid">
-        {/* Brand */}
+        {/* Brand & Overview Column */}
         <div className="footer-brand">
-          <RouterLink to="/" className="logo" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center' }}>
-            <img src="/logo_image.png" alt="NTR Vikasa Logo" style={{ height: '48px', objectFit: 'contain' }} />
+          <RouterLink
+            to="/"
+            className="footer-logo-link"
+            aria-label="NTR Vikasa Homepage"
+          >
+            <img
+              src="/logo_image.png"
+              alt="NTR Vikasa Logo"
+              className="footer-logo-img"
+            />
           </RouterLink>
-          <p className="footer-desc" style={{ marginTop: 'var(--space-3)' }}>
-            NTR Vikasa — Society for Employment Generation. Empowering youth with employment opportunities, skill development programs, and Mega Job Melas.
+
+          <p className="footer-desc">
+            NTR Vikasa — Society for Employment Generation. Empowering youth with verified jobs, vocational skill development, and Statewide Career Summits.
           </p>
 
-          {/* Interactive Helpdesk & Support Badge */}
-          <div className="footer-support-pills" style={{ marginTop: 'var(--space-4)', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-            <RouterLink to="/contact" className="footer-support-btn" style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '6px 12px',
-              background: 'rgba(255, 255, 255, 0.06)',
-              border: '1px solid rgba(255, 255, 255, 0.12)',
-              borderRadius: 'var(--radius-full)',
-              color: '#94a3b8',
-              fontSize: '12px',
-              textDecoration: 'none',
-              transition: 'all 150ms ease'
-            }}>
-              <Phone size={13} style={{ color: 'var(--color-primary-400)' }} />
-              <span>Contact Support</span>
+          {/* Interactive Badges & Quick Links */}
+          <div className="footer-support-pills">
+            <RouterLink to="/contact" className="footer-pill-btn">
+              <Phone size={13} className="footer-pill-icon primary" />
+              <span>Helpdesk Support</span>
             </RouterLink>
-            <RouterLink to="/about" className="footer-support-btn" style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '6px 12px',
-              background: 'rgba(255, 255, 255, 0.06)',
-              border: '1px solid rgba(255, 255, 255, 0.12)',
-              borderRadius: 'var(--radius-full)',
-              color: '#94a3b8',
-              fontSize: '12px',
-              textDecoration: 'none',
-              transition: 'all 150ms ease'
-            }}>
-              <ShieldCheck size={13} style={{ color: 'var(--color-success-500)' }} />
-              <span>Govt. Recognized</span>
+
+            <RouterLink to="/about" className="footer-pill-btn">
+              <ShieldCheck size={13} className="footer-pill-icon success" />
+              <span>AP Govt. Initiative</span>
+            </RouterLink>
+
+            <RouterLink to="/skill-development" className="footer-pill-btn">
+              <Sparkles size={13} className="footer-pill-icon warning" />
+              <span>Skill Training</span>
             </RouterLink>
           </div>
         </div>
 
-        {/* Link columns with mobile interactive accordion */}
+        {/* Dynamic Accordion Columns */}
         {Object.entries(FOOTER_LINKS).map(([col, links]) => {
           const isOpen = !!openSections[col];
           return (
@@ -135,21 +141,26 @@ export default function Footer() {
                 className="footer-col-header"
                 onClick={() => toggleSection(col)}
                 aria-expanded={isOpen}
+                aria-controls={`footer-section-${col.replace(/\s+/g, '-').toLowerCase()}`}
               >
                 <h3 className="footer-col-title">{col}</h3>
-                <ChevronDown
-                  size={16}
-                  className="footer-col-chevron"
-                  style={{
-                    transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)',
-                    transition: 'transform 200ms ease'
-                  }}
-                />
+                <span className="footer-col-chevron-wrapper hide-desktop">
+                  <ChevronDown
+                    size={18}
+                    className={`footer-col-chevron ${isOpen ? 'rotate' : ''}`}
+                  />
+                </span>
               </button>
-              <ul className={`footer-links ${isOpen ? 'show' : ''}`}>
+
+              <ul
+                id={`footer-section-${col.replace(/\s+/g, '-').toLowerCase()}`}
+                className={`footer-links ${isOpen ? 'show' : ''}`}
+              >
                 {links.map((link) => (
-                  <li key={link.href + link.label}>
-                    <RouterLink to={link.href} className="footer-link">{link.label}</RouterLink>
+                  <li key={link.href + link.label} className="footer-link-item">
+                    <RouterLink to={link.href} className="footer-link">
+                      {link.label}
+                    </RouterLink>
                   </li>
                 ))}
               </ul>
@@ -158,30 +169,46 @@ export default function Footer() {
         })}
       </div>
 
-      {/* Bottom bar */}
-      <div style={{ maxWidth: 'var(--container-max)', margin: '0 auto' }}>
+      {/* Footer Bottom Bar */}
+      <div className="footer-bottom-wrapper">
         <div className="footer-bottom">
-          <p className="footer-bottom-text">
-            © {year} NTR VIKASA Job Portal. All rights reserved.
-          </p>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)', flexWrap: 'wrap', justifyContent: 'center' }}>
-            <div className="footer-social">
+          <div className="footer-bottom-info">
+            <p className="footer-bottom-text">
+              © {year} NTR VIKASA Job Portal. All rights reserved.
+            </p>
+            <p className="footer-bottom-subtext">
+              Government of Andhra Pradesh • Employment & Training Initiative
+            </p>
+          </div>
+
+          <div className="footer-bottom-actions">
+            {/* Social Media Links */}
+            <div className="footer-social" aria-label="Social Media Links">
               {SOCIAL_LINKS.map((s) => (
-                <a key={s.label} href={s.href} className="footer-social-link" aria-label={s.label} target="_blank" rel="noopener noreferrer">
+                <a
+                  key={s.label}
+                  href={s.href}
+                  className="footer-social-link"
+                  aria-label={s.label}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ '--hover-color': s.color }}
+                >
                   {s.icon}
                 </a>
               ))}
             </div>
-            {/* Interactive Back to Top */}
+
+            {/* Back to Top Interactive Button */}
             <button
               type="button"
               onClick={scrollToTop}
               className="footer-back-to-top"
-              aria-label="Back to top"
+              aria-label="Back to top of page"
               title="Back to top"
             >
-              <ArrowUp size={14} />
-              <span className="footer-back-to-top-label">Top</span>
+              <ArrowUp size={14} className="footer-back-to-top-icon" />
+              <span>Back to Top</span>
             </button>
           </div>
         </div>
@@ -189,4 +216,3 @@ export default function Footer() {
     </footer>
   );
 }
-
