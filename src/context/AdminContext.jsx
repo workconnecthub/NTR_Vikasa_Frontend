@@ -28,18 +28,232 @@ const SEED_ADMINS = [
   }
 ];
 
-// ─── 2. SEED PLATFORM CANDIDATES ──────────────────────────────────────────
-const SEED_CANDIDATES = [
+// ─── 1.5 PLATFORM REFERENCE ADMINS & GEOGRAPHIC MANDALS ─────────────────────
+export const REFERENCE_ADMINS = [
+  'Admin User (State Operations)',
+  'Super Admin (Directorate of Employment)',
+  'District Nodal Officer (Vijayawada)',
+  'Mandal Placement Officer (Ibrahimpatnam)',
+  'Mylavaram Field Counselor',
+  'Nandigama Skill Coordinator',
+  'Tiruvuru Employment Desk',
+  'Direct Student Self-Registration',
+];
+
+export const NTR_MANDALS = [
+  'Vijayawada Urban',
+  'Vijayawada Rural',
+  'Ibrahimpatnam',
+  'Mylavaram',
+  'Nandigama',
+  'Jaggaiahpet',
+  'Tiruvuru',
+  'Jaggayyapeta',
+  'Kanchikacherla',
+  'Chandarlapadu',
+  'Veerullapadu',
+  'G.Konduru',
+  'A.Konduru',
+  'Reddigudem',
+  'Vissannapeta',
+  'Penuganchiprolu',
+  'Vatsavai'
+];
+
+// ─── 2. SEED PLATFORM CANDIDATES / STUDENTS ────────────────────────────────
+export const SEED_CANDIDATES = [
+  // ── 10TH CLASS (SSC) STUDENTS ──
+  {
+    id: 'cand-101',
+    name: 'Sai Krishna Teja',
+    email: 'krishna.teja@example.com',
+    phone: '+91 98480 11223',
+    district: 'NTR District',
+    mandal: 'Vijayawada Rural',
+    village: 'Gollapudi',
+    location: 'Gollapudi, Vijayawada Rural, NTR District',
+    headline: 'Certified Inventory & Logistics Assistant',
+    experience: '1.0 Year',
+    skills: ['Inventory Management', 'Material Inward', 'Packaging', 'Basic Computer'],
+    qualificationLevel: '10TH',
+    education: '10th Class (SSC), Zilla Parishad High School, Gollapudi',
+    placementStatus: 'PLACED',
+    placedCompany: 'Aparna Logistics & Distribution',
+    placedRole: 'Warehouse Operations Assistant',
+    placedSalary: '₹2,10,000 / year',
+    referenceAdmin: 'Admin User (State Operations)',
+    registrationDate: '2026-08-02',
+    profileStatus: 'COMPLETE',
+    accountStatus: 'ACTIVE',
+    applicationsCount: 3,
+  },
+  {
+    id: 'cand-102',
+    name: 'Gopi Chand',
+    email: 'gopi.chand@example.com',
+    phone: '+91 97001 22334',
+    district: 'NTR District',
+    mandal: 'Vijayawada Urban',
+    village: 'Bhavanipuram',
+    location: 'Bhavanipuram, Vijayawada Urban, NTR District',
+    headline: 'Vocational Retail & Store Associate Trainee',
+    experience: 'Fresher (0-1 Year)',
+    skills: ['Customer Assistance', 'Stock Sorting', 'Billing Point-of-Sale'],
+    qualificationLevel: '10TH',
+    education: '10th Class (SSC), Govt High School, Bhavanipuram',
+    placementStatus: 'NOT_PLACED',
+    placedCompany: '',
+    placedRole: '',
+    placedSalary: '',
+    referenceAdmin: 'District Nodal Officer (Vijayawada)',
+    registrationDate: '2026-08-08',
+    profileStatus: 'COMPLETE',
+    accountStatus: 'ACTIVE',
+    applicationsCount: 4,
+  },
+  {
+    id: 'cand-103',
+    name: 'Venkata Lakshmi',
+    email: 'v.lakshmi@example.com',
+    phone: '+91 96112 33445',
+    district: 'NTR District',
+    mandal: 'Nandigama',
+    village: 'Nandigama Town',
+    location: 'Nandigama, NTR District',
+    headline: 'Frontline Customer Executive & Cashier',
+    experience: '1.5 Years',
+    skills: ['Retail Management', 'Barcode Scanning', 'Tally Basic'],
+    qualificationLevel: '10TH',
+    education: '10th Class (SSC), ZP High School, Nandigama',
+    placementStatus: 'PLACED',
+    placedCompany: 'DMart Retail AP Ltd',
+    placedRole: 'Store Operations Associate',
+    placedSalary: '₹1,95,000 / year',
+    referenceAdmin: 'Nandigama Skill Coordinator',
+    registrationDate: '2026-08-12',
+    profileStatus: 'COMPLETE',
+    accountStatus: 'ACTIVE',
+    applicationsCount: 2,
+  },
+
+  // ── INTERMEDIATE / DIPLOMA (10+2) STUDENTS ──
+  {
+    id: 'cand-201',
+    name: 'Bhavani Prasad',
+    email: 'bhavani.prasad@example.com',
+    phone: '+91 98492 44556',
+    district: 'NTR District',
+    mandal: 'Vijayawada Urban',
+    village: 'Patamata',
+    location: 'Patamata, Vijayawada Urban, NTR District',
+    headline: 'Junior Quality & Mechanical Assembly Technician',
+    experience: '1.2 Years',
+    skills: ['Quality Inspection', 'AutoCAD Drafting', 'Assembly Tolerances'],
+    qualificationLevel: 'INTER',
+    education: 'Intermediate (MPC), Sri Chaitanya Junior College, Patamata',
+    placementStatus: 'PLACED',
+    placedCompany: 'Hero MotoCorp AP Plant',
+    placedRole: 'Assembly Line Trainee',
+    placedSalary: '₹2,80,000 / year',
+    referenceAdmin: 'Admin User (State Operations)',
+    registrationDate: '2026-08-14',
+    profileStatus: 'COMPLETE',
+    accountStatus: 'ACTIVE',
+    applicationsCount: 5,
+  },
+  {
+    id: 'cand-202',
+    name: 'Manikanta Reddy',
+    email: 'manikanta.reddy@example.com',
+    phone: '+91 99512 55667',
+    district: 'NTR District',
+    mandal: 'Ibrahimpatnam',
+    village: 'Kondapalli Industrial Area',
+    location: 'Kondapalli, Ibrahimpatnam, NTR District',
+    headline: 'Polytechnic Diploma Civil & Materials Testing',
+    experience: '1.8 Years',
+    skills: ['Concrete Slump Testing', 'Site Supervision', 'Quantity Survey'],
+    qualificationLevel: 'INTER',
+    education: 'Diploma in Civil Engineering, Govt Polytechnic, Vijayawada',
+    placementStatus: 'PLACED',
+    placedCompany: 'Ultratech Cement Ltd',
+    placedRole: 'Quality Testing Supervisor',
+    placedSalary: '₹3,20,000 / year',
+    referenceAdmin: 'Mandal Placement Officer (Ibrahimpatnam)',
+    registrationDate: '2026-08-16',
+    profileStatus: 'COMPLETE',
+    accountStatus: 'ACTIVE',
+    applicationsCount: 6,
+  },
+  {
+    id: 'cand-203',
+    name: 'Swathi Priya',
+    email: 'swathi.priya@example.com',
+    phone: '+91 98663 66778',
+    district: 'NTR District',
+    mandal: 'Ibrahimpatnam',
+    village: 'Ibrahimpatnam Center',
+    location: 'Ibrahimpatnam, NTR District',
+    headline: 'Pharma Lab Assistant & BiPC Candidate',
+    experience: 'Fresher (0-1 Year)',
+    skills: ['Laboratory Safety', 'Sample Preparation', 'Chemical Titration'],
+    qualificationLevel: 'INTER',
+    education: 'Intermediate (BiPC), Nalanda Junior College, Ibrahimpatnam',
+    placementStatus: 'NOT_PLACED',
+    placedCompany: '',
+    placedRole: '',
+    placedSalary: '',
+    referenceAdmin: 'Mandal Placement Officer (Ibrahimpatnam)',
+    registrationDate: '2026-08-19',
+    profileStatus: 'COMPLETE',
+    accountStatus: 'ACTIVE',
+    applicationsCount: 7,
+  },
+  {
+    id: 'cand-204',
+    name: 'Ramesh Babu',
+    email: 'ramesh.babu@example.com',
+    phone: '+91 97014 77889',
+    district: 'NTR District',
+    mandal: 'Mylavaram',
+    village: 'Mylavaram Rural',
+    location: 'Mylavaram, NTR District',
+    headline: 'Electrical Diploma & Wiring Specialist',
+    experience: 'Fresher (0-1 Year)',
+    skills: ['Circuit Troubleshooting', 'Transformer Maintenance', 'Electrical Safety'],
+    qualificationLevel: 'INTER',
+    education: 'Diploma in Electrical (EEE), Polytechnic College, Mylavaram',
+    placementStatus: 'NOT_PLACED',
+    placedCompany: '',
+    placedRole: '',
+    placedSalary: '',
+    referenceAdmin: 'Mylavaram Field Counselor',
+    registrationDate: '2026-08-22',
+    profileStatus: 'COMPLETE',
+    accountStatus: 'ACTIVE',
+    applicationsCount: 3,
+  },
+
+  // ── UNDERGRADUATE (UG) STUDENTS ──
   {
     id: 'cand-1',
     name: 'Priya Sharma',
     email: 'priya.sharma@example.com',
     phone: '+91 98765 43210',
-    location: 'Bengaluru, Karnataka',
+    district: 'NTR District',
+    mandal: 'Vijayawada Urban',
+    village: 'Kanuru',
+    location: 'Kanuru, Vijayawada Urban, NTR District',
     headline: 'Senior React & Frontend Engineer',
     experience: '4.2 Years',
     skills: ['React.js', 'TypeScript', 'Redux', 'HTML/CSS'],
-    education: "B.Tech in Computer Science, VTU",
+    qualificationLevel: 'UG',
+    education: 'B.Tech in Computer Science, VR Siddhartha Engineering College',
+    placementStatus: 'PLACED',
+    placedCompany: 'Tata Consultancy Services',
+    placedRole: 'System Engineer (Frontend Lead)',
+    placedSalary: '₹4,80,000 / year',
+    referenceAdmin: 'Super Admin (Directorate of Employment)',
     registrationDate: '2026-08-01',
     profileStatus: 'COMPLETE',
     accountStatus: 'ACTIVE',
@@ -50,90 +264,218 @@ const SEED_CANDIDATES = [
     name: 'Rahul Kumar',
     email: 'rahul.kumar@example.com',
     phone: '+91 98123 45678',
-    location: 'Hyderabad, Telangana',
+    district: 'NTR District',
+    mandal: 'Vijayawada Urban',
+    village: 'Patamata',
+    location: 'Patamata, Vijayawada Urban, NTR District',
     headline: 'Backend & Cloud Python Engineer',
     experience: '3.5 Years',
     skills: ['Python', 'FastAPI', 'PostgreSQL', 'Docker', 'AWS'],
-    education: "B.Tech in Information Technology, JNTUH",
+    qualificationLevel: 'UG',
+    education: 'B.Tech in Information Technology, JNTU Kakinada',
+    placementStatus: 'PLACED',
+    placedCompany: 'HCL Technologies Ltd',
+    placedRole: 'Cloud Backend Developer',
+    placedSalary: '₹4,50,000 / year',
+    referenceAdmin: 'Admin User (State Operations)',
     registrationDate: '2026-08-05',
     profileStatus: 'COMPLETE',
     accountStatus: 'ACTIVE',
     applicationsCount: 8,
   },
   {
-    id: 'cand-3',
-    name: 'Vikram Sethi',
-    email: 'vikram.sethi@example.com',
-    phone: '+91 99887 66554',
-    location: 'Remote (India)',
-    headline: 'DevOps & Kubernetes SRE Specialist',
-    experience: '5.0 Years',
-    skills: ['Kubernetes', 'Terraform', 'AWS', 'CI/CD'],
-    education: "B.E. in Electronics, NIT Warangal",
-    registrationDate: '2026-08-10',
-    profileStatus: 'COMPLETE',
-    accountStatus: 'ACTIVE',
-    applicationsCount: 5,
-  },
-  {
-    id: 'cand-4',
-    name: 'Ananya Roy',
-    email: 'ananya.roy@example.com',
-    phone: '+91 97765 11223',
-    location: 'Bengaluru, Karnataka',
-    headline: 'AI / Machine Learning Engineer',
-    experience: '2.5 Years',
-    skills: ['PyTorch', 'Python', 'NLP', 'TensorFlow'],
-    education: "M.Tech in Data Science, IISc",
-    registrationDate: '2026-08-14',
-    profileStatus: 'COMPLETE',
-    accountStatus: 'ACTIVE',
-    applicationsCount: 7,
-  },
-  {
-    id: 'cand-5',
-    name: 'Sneha Kulkarni',
-    email: 'sneha.kulkarni@example.com',
-    phone: '+91 98220 12345',
-    location: 'Pune, Maharashtra',
-    headline: 'Product UI/UX & Design Systems Lead',
-    experience: '4.0 Years',
-    skills: ['Figma', 'UI/UX Design', 'Design Systems'],
-    education: "B.Des in Visual Communication, NID",
-    registrationDate: '2026-08-18',
-    profileStatus: 'COMPLETE',
-    accountStatus: 'ACTIVE',
-    applicationsCount: 14,
-  },
-  {
     id: 'cand-6',
     name: 'Karthik Varma',
     email: 'karthik.v@example.com',
     phone: '+91 98440 98765',
-    location: 'Visakhapatnam, AP',
+    district: 'NTR District',
+    mandal: 'Vijayawada Urban',
+    village: 'Gunadala',
+    location: 'Gunadala, Vijayawada Urban, NTR District',
     headline: 'Associate Full Stack Developer',
     experience: '1.2 Years',
     skills: ['React', 'Node.js', 'MongoDB', 'Express'],
-    education: "B.Tech in CS, Andhra University",
+    qualificationLevel: 'UG',
+    education: 'B.Sc in Computer Science, Andhra Loyola College, Vijayawada',
+    placementStatus: 'PLACED',
+    placedCompany: 'Wipro Technologies',
+    placedRole: 'Project Engineer',
+    placedSalary: '₹3,60,000 / year',
+    referenceAdmin: 'District Nodal Officer (Vijayawada)',
     registrationDate: '2026-08-20',
     profileStatus: 'UNDER_REVIEW',
     accountStatus: 'ACTIVE',
     applicationsCount: 4,
   },
   {
-    id: 'cand-7',
-    name: 'Bot Automated Submitter',
-    email: 'spambot99@temp-mail.org',
-    phone: '+91 90000 00000',
-    location: 'Unknown',
-    headline: 'Automated Scraping Profile',
-    experience: '0.0 Years',
-    skills: ['Spamming'],
-    education: "None",
-    registrationDate: '2026-08-22',
-    profileStatus: 'FLAGGED',
-    accountStatus: 'SUSPENDED',
-    applicationsCount: 150,
+    id: 'cand-301',
+    name: 'Anusha Devi',
+    email: 'anusha.devi@example.com',
+    phone: '+91 97788 11223',
+    district: 'NTR District',
+    mandal: 'Vijayawada Urban',
+    village: 'Bhavanipuram',
+    location: 'Bhavanipuram, Vijayawada Urban, NTR District',
+    headline: 'Banking Operations & Financial Accounting Graduate',
+    experience: '1.0 Year',
+    skills: ['Tally Prime', 'Financial Reconciliation', 'Banking Operations'],
+    qualificationLevel: 'UG',
+    education: 'B.Com Computer Applications, Maris Stella College, Vijayawada',
+    placementStatus: 'PLACED',
+    placedCompany: 'ICICI Bank Regional Operations',
+    placedRole: 'Banking Operations Officer',
+    placedSalary: '₹3,40,000 / year',
+    referenceAdmin: 'Admin User (State Operations)',
+    registrationDate: '2026-08-23',
+    profileStatus: 'COMPLETE',
+    accountStatus: 'ACTIVE',
+    applicationsCount: 6,
+  },
+  {
+    id: 'cand-302',
+    name: 'Manoj Kumar',
+    email: 'manoj.kumar@example.com',
+    phone: '+91 98877 22334',
+    district: 'NTR District',
+    mandal: 'Vijayawada Rural',
+    village: 'Enikepadu',
+    location: 'Enikepadu, Vijayawada Rural, NTR District',
+    headline: 'Graduate Mechanical Engineer — CAD & QA',
+    experience: 'Fresher (0-1 Year)',
+    skills: ['SolidWorks', 'ANSYS', 'Production Planning', 'GD&T'],
+    qualificationLevel: 'UG',
+    education: 'B.Tech in Mechanical Engineering, Dhanekula College of Engg',
+    placementStatus: 'NOT_PLACED',
+    placedCompany: '',
+    placedRole: '',
+    placedSalary: '',
+    referenceAdmin: 'Mandal Placement Officer (Ibrahimpatnam)',
+    registrationDate: '2026-08-25',
+    profileStatus: 'COMPLETE',
+    accountStatus: 'ACTIVE',
+    applicationsCount: 9,
+  },
+  {
+    id: 'cand-303',
+    name: 'Deepika Sri',
+    email: 'deepika.sri@example.com',
+    phone: '+91 99665 33445',
+    district: 'NTR District',
+    mandal: 'Vijayawada Urban',
+    village: 'Moghalrajpuram',
+    location: 'Moghalrajpuram, Vijayawada Urban, NTR District',
+    headline: 'BCA Cloud & Web Technology Aspirant',
+    experience: 'Fresher (0-1 Year)',
+    skills: ['JavaScript', 'HTML5', 'SQL Database', 'Java Basics'],
+    qualificationLevel: 'UG',
+    education: 'BCA, PB Siddhartha College of Arts & Science, Vijayawada',
+    placementStatus: 'NOT_PLACED',
+    placedCompany: '',
+    placedRole: '',
+    placedSalary: '',
+    referenceAdmin: 'Super Admin (Directorate of Employment)',
+    registrationDate: '2026-08-27',
+    profileStatus: 'COMPLETE',
+    accountStatus: 'ACTIVE',
+    applicationsCount: 5,
+  },
+
+  // ── POSTGRADUATE (PG) STUDENTS ──
+  {
+    id: 'cand-4',
+    name: 'Ananya Roy',
+    email: 'ananya.roy@example.com',
+    phone: '+91 97765 11223',
+    district: 'NTR District',
+    mandal: 'Vijayawada Urban',
+    village: 'Governorpet',
+    location: 'Governorpet, Vijayawada Urban, NTR District',
+    headline: 'AI / Machine Learning Engineer',
+    experience: '2.5 Years',
+    skills: ['PyTorch', 'Python', 'NLP', 'TensorFlow', 'LLMs'],
+    qualificationLevel: 'PG',
+    education: 'M.Tech in Data Science & Artificial Intelligence, IIIT',
+    placementStatus: 'PLACED',
+    placedCompany: 'Tech Mahindra AI Labs',
+    placedRole: 'Associate Data Scientist',
+    placedSalary: '₹7,50,000 / year',
+    referenceAdmin: 'Super Admin (Directorate of Employment)',
+    registrationDate: '2026-08-14',
+    profileStatus: 'COMPLETE',
+    accountStatus: 'ACTIVE',
+    applicationsCount: 7,
+  },
+  {
+    id: 'cand-3',
+    name: 'Vikram Sethi',
+    email: 'vikram.sethi@example.com',
+    phone: '+91 99887 66554',
+    district: 'NTR District',
+    mandal: 'Vijayawada Urban',
+    village: 'Moghalrajpuram',
+    location: 'Moghalrajpuram, Vijayawada Urban, NTR District',
+    headline: 'DevOps & Kubernetes SRE Specialist',
+    experience: '5.0 Years',
+    skills: ['Kubernetes', 'Terraform', 'AWS', 'CI/CD', 'Docker'],
+    qualificationLevel: 'PG',
+    education: 'MCA in Software Architecture, PB Siddhartha College, Vijayawada',
+    placementStatus: 'PLACED',
+    placedCompany: 'Infosys Ltd',
+    placedRole: 'Senior Associate Consultant — DevOps',
+    placedSalary: '₹6,20,000 / year',
+    referenceAdmin: 'Admin User (State Operations)',
+    registrationDate: '2026-08-10',
+    profileStatus: 'COMPLETE',
+    accountStatus: 'ACTIVE',
+    applicationsCount: 5,
+  },
+  {
+    id: 'cand-401',
+    name: 'Naveen Teja',
+    email: 'naveen.teja@example.com',
+    phone: '+91 98485 55667',
+    district: 'NTR District',
+    mandal: 'Vijayawada Urban',
+    village: 'Gandhinagar',
+    location: 'Gandhinagar, Vijayawada Urban, NTR District',
+    headline: 'MBA Human Resources & Industrial Relations',
+    experience: '2.0 Years',
+    skills: ['Talent Acquisition', 'HRIS Systems', 'Labor Compliance', 'Employee Relations'],
+    qualificationLevel: 'PG',
+    education: 'MBA in HR & General Management, Andhra University PG Center',
+    placementStatus: 'PLACED',
+    placedCompany: "Dr. Reddy's Laboratories AP",
+    placedRole: 'Assistant Manager — Talent Acquisition',
+    placedSalary: '₹5,40,000 / year',
+    referenceAdmin: 'District Nodal Officer (Vijayawada)',
+    registrationDate: '2026-08-15',
+    profileStatus: 'COMPLETE',
+    accountStatus: 'ACTIVE',
+    applicationsCount: 8,
+  },
+  {
+    id: 'cand-402',
+    name: 'Harika V',
+    email: 'harika.v@example.com',
+    phone: '+91 97003 66778',
+    district: 'NTR District',
+    mandal: 'Mylavaram',
+    village: 'Chandrala',
+    location: 'Chandrala, Mylavaram, NTR District',
+    headline: 'M.Sc Organic Chemistry Research Scholar',
+    experience: 'Fresher (0-1 Year)',
+    skills: ['HPLC Chromatography', 'Spectroscopy', 'Quality Control Lab'],
+    qualificationLevel: 'PG',
+    education: 'M.Sc in Organic Chemistry, Acharya Nagarjuna University',
+    placementStatus: 'NOT_PLACED',
+    placedCompany: '',
+    placedRole: '',
+    placedSalary: '',
+    referenceAdmin: 'Mylavaram Field Counselor',
+    registrationDate: '2026-08-28',
+    profileStatus: 'COMPLETE',
+    accountStatus: 'ACTIVE',
+    applicationsCount: 6,
   }
 ];
 
@@ -211,10 +553,15 @@ const SEED_COMPANIES = [
     name: 'ABC Technologies Pvt Ltd',
     recruiter: 'Arjun Reddy',
     industry: 'Information Technology & Cloud',
-    location: 'Bengaluru, Karnataka',
+    location: 'Vijayawada Urban, NTR District',
+    district: 'NTR District',
+    mandal: 'Vijayawada Urban',
+    village: 'Auto Nagar IT Zone',
+    eligibleMandals: ['Vijayawada Urban', 'Vijayawada Rural', 'Ibrahimpatnam', 'Mylavaram'],
+    eligibleVillages: ['All Villages & Wards'],
     size: '1000-5000 employees',
-    cin: 'U72200KA2015PTC078912',
-    gstin: '29ABCDE1234F1Z5',
+    cin: 'U72200AP2015PTC078912',
+    gstin: '37ABCDE1234F1Z5',
     verificationStatus: 'VERIFIED',
     registrationDate: '2026-08-01',
     activeJobsCount: 5,
@@ -224,52 +571,72 @@ const SEED_COMPANIES = [
     name: 'Tech Solutions Global Ltd',
     recruiter: 'Sneha Rao',
     industry: 'Fintech & Banking Systems',
-    location: 'Hyderabad, Telangana',
+    location: 'MG Road, Vijayawada Urban, NTR District',
+    district: 'NTR District',
+    mandal: 'Vijayawada Urban',
+    village: 'MG Road Commercial Hub',
+    eligibleMandals: ['All Mandals of NTR District'],
+    eligibleVillages: ['All Villages & Wards'],
     size: '500-1000 employees',
-    cin: 'U72900TG2018PTC099142',
-    gstin: '36ABCDE9876F1Z2',
+    cin: 'U72900AP2018PTC099142',
+    gstin: '37ABCDE9876F1Z2',
     verificationStatus: 'VERIFIED',
     registrationDate: '2026-08-03',
     activeJobsCount: 4,
   },
   {
     id: 'comp-3',
-    name: 'Fintech Corp India Pvt Ltd',
-    recruiter: 'Rahul Mehta',
-    industry: 'Digital Payments & Web3',
-    location: 'Mumbai, Maharashtra',
-    size: '200-500 employees',
-    cin: 'U65999MH2020PTC345678',
-    gstin: '27ABCDE5678F1Z9',
-    verificationStatus: 'PENDING',
-    registrationDate: '2026-09-01',
-    activeJobsCount: 0,
+    name: 'Hero MotoCorp AP Manufacturing',
+    recruiter: 'Akash Chouhan',
+    industry: 'Automotive & Heavy Assembly',
+    location: 'Kondapalli Industrial Area, Ibrahimpatnam',
+    district: 'NTR District',
+    mandal: 'Ibrahimpatnam',
+    village: 'Kondapalli Industrial Corridor',
+    eligibleMandals: ['Ibrahimpatnam', 'Vijayawada Rural', 'Mylavaram', 'G.Konduru'],
+    eligibleVillages: ['Kondapalli', 'Ibrahimpatnam', 'Gollapudi', 'Nunna', 'Velagaleru'],
+    size: '2000-5000 employees',
+    cin: 'U34100AP2019PTC112345',
+    gstin: '37ABCDE5678F1Z9',
+    verificationStatus: 'VERIFIED',
+    registrationDate: '2026-08-10',
+    activeJobsCount: 3,
   },
   {
     id: 'comp-4',
-    name: 'HealthPlus Systems Ltd',
-    recruiter: 'Divya Iyer',
-    industry: 'Healthcare Diagnostics & AI',
-    location: 'Bengaluru, Karnataka',
-    size: '100-250 employees',
-    cin: 'U85110KA2021PTC456789',
-    gstin: '29ABCDE4321F1Z8',
-    verificationStatus: 'PENDING',
-    registrationDate: '2026-09-02',
-    activeJobsCount: 0,
+    name: 'Ultratech Cement & Infrastructure',
+    recruiter: 'Girish Chand',
+    industry: 'Manufacturing & Civil Testing',
+    location: 'Industrial Corridor, Jaggaiahpet, NTR District',
+    district: 'NTR District',
+    mandal: 'Jaggaiahpet',
+    village: 'Cement Nagar Industrial Area',
+    eligibleMandals: ['Jaggaiahpet', 'Nandigama', 'Tiruvuru', 'Kanchikacherla'],
+    eligibleVillages: ['All Local Mandal Villages'],
+    size: '500-1500 employees',
+    cin: 'U26940AP2016PTC087654',
+    gstin: '37ABCDE4321F1Z8',
+    verificationStatus: 'VERIFIED',
+    registrationDate: '2026-08-15',
+    activeJobsCount: 2,
   },
   {
     id: 'comp-5',
-    name: 'NextGen Autonomous Robotics',
+    name: 'DMart Retail AP Operations',
     recruiter: 'Kiran Deshmukh',
-    industry: 'Robotics & Hardware',
-    location: 'Visakhapatnam, AP',
-    size: '50-100 employees',
-    cin: 'U29300AP2022PTC112233',
+    industry: 'Retail Chain & Supply Chain',
+    location: 'Bhavanipuram & Patamata, Vijayawada Urban',
+    district: 'NTR District',
+    mandal: 'Vijayawada Urban',
+    village: 'Bhavanipuram Central',
+    eligibleMandals: ['All Mandals of NTR District'],
+    eligibleVillages: ['All Villages & Wards'],
+    size: '250-500 employees',
+    cin: 'U52100AP2020PTC112233',
     gstin: '37ABCDE1122F1Z1',
-    verificationStatus: 'PENDING',
+    verificationStatus: 'VERIFIED',
     registrationDate: '2026-09-03',
-    activeJobsCount: 0,
+    activeJobsCount: 2,
   },
 ];
 
@@ -527,6 +894,9 @@ const SEED_JOB_MELAS = [
     status: 'APPROVED',
     registeredCandidatesCount: 1420,
     createdByAdmin: true,
+    banner: '/hero2.jpg',
+    posterImage: '/hero2.jpg',
+    image: '/hero2.jpg',
     participatingCompanies: [
       {
         id: 'pmc-1',
@@ -2086,6 +2456,136 @@ export const DEFAULT_HOME_CONTENT = {
     startDate: '',
     endDate: '',
   },
+  gallery: {
+    badge: 'Moments & Media Highlights',
+    heading1: 'NTR VIKASA Event &',
+    heading2: 'Media Gallery',
+    subtitle: 'Explore glimpses from our mega job fairs, candidate felicitations, skill training batches, and industry partner summits across Andhra Pradesh.',
+    images: [
+      {
+        id: 'img-1',
+        title: 'Mega Job Mela Vijayawada 2026',
+        category: 'Job Melas',
+        imageUrl: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800&auto=format&fit=crop&q=80',
+        date: '15 Sep 2026',
+        description: 'Over 120 recruiters and 4,500+ candidates attended the grand employment summit in Vijayawada.'
+      },
+      {
+        id: 'img-2',
+        title: 'Advanced Skill Training Lab',
+        category: 'Skill Training',
+        imageUrl: 'https://images.unsplash.com/photo-1531482615713-2afd69097998?w=800&auto=format&fit=crop&q=80',
+        date: '08 Sep 2026',
+        description: 'Enrolled students engaging in practical simulated software engineering and web development modules.'
+      },
+      {
+        id: 'img-3',
+        title: 'Spot Offer Letter Distribution Ceremony',
+        category: 'Placements',
+        imageUrl: 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=800&auto=format&fit=crop&q=80',
+        date: '28 Aug 2026',
+        description: 'Selected candidates receiving immediate appointment orders from attending enterprise hiring teams.'
+      },
+      {
+        id: 'img-4',
+        title: 'Corporate HR & Recruiter Summit',
+        category: 'Conferences',
+        imageUrl: 'https://images.unsplash.com/photo-1511578314322-379afb476865?w=800&auto=format&fit=crop&q=80',
+        date: '18 Aug 2026',
+        description: 'Industry leaders discussing youth employability, tech apprenticeships, and regional hiring targets.'
+      },
+      {
+        id: 'img-5',
+        title: 'Candidate Counselling & Guidance Booth',
+        category: 'Job Melas',
+        imageUrl: 'https://images.unsplash.com/photo-1577495508048-b635879837f1?w=800&auto=format&fit=crop&q=80',
+        date: '02 Aug 2026',
+        description: 'Free resume evaluation, soft-skill mock interviews, and career counseling for rural youth.'
+      },
+      {
+        id: 'img-6',
+        title: 'Women in Tech Empowerment Program',
+        category: 'Skill Training',
+        imageUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=800&auto=format&fit=crop&q=80',
+        date: '20 Jul 2026',
+        description: 'Empowering women engineers and technicians with cloud computing and AI certification courses.'
+      }
+    ],
+    videos: [
+      {
+        id: 'vid-1',
+        title: 'Mega Job Mela Vijayawada Highlights & Walk-in Drives',
+        youtubeUrl: 'https://www.youtube.com/watch?v=kYI_t91Z6oA',
+        category: 'Job Melas',
+        date: '16 Sep 2026',
+        description: 'Watch the energetic atmosphere, recruiter interviews, and joyful candidate reactions at our mega recruitment drive.'
+      },
+      {
+        id: 'vid-2',
+        title: 'Candidate Success Journey & Spot Offer Letters — NTR VIKASA',
+        youtubeUrl: 'https://www.youtube.com/watch?v=SqcY0GlETPk',
+        category: 'Placements',
+        date: '05 Sep 2026',
+        description: 'Hear from our alumni who transitioned from college freshers to placed professionals in top corporations.'
+      },
+      {
+        id: 'vid-3',
+        title: 'Skill Development Labs & Practical Industry Training Batch',
+        youtubeUrl: 'https://www.youtube.com/watch?v=tgbNymZ7vqY',
+        category: 'Skill Training',
+        date: '22 Aug 2026',
+        description: 'Hands-on training, expert mentor guidance, and real-world project development at our modern center.'
+      }
+    ]
+  },
+  newsArticles: {
+    badge: 'In The Media & Press',
+    heading1: 'Official Newspaper &',
+    heading2: 'Press Highlights',
+    subtitle: 'Read authentic press coverage, newspaper clippings, and administrative reports of NTR VIKASA Mega Job Melas across Andhra Pradesh.',
+    articles: [
+      {
+        id: 'news-1',
+        newspaper: 'Sakshi',
+        title: 'జాబ్‌మేళాలో 68 మందికి ఉద్యోగాలు',
+        date: '08 Feb 2026',
+        edition: 'Tiruvuru Edition | Page 9',
+        imageUrl: '/news/news-sakshi-job-mela.png',
+        sourceUrl: 'https://epaper.sakshi.com/',
+        summary: 'ఆంధ్రప్రదేశ్ రాష్ట్ర నైపుణ్యాభివృద్ధి సంస్థ ఆధ్వర్యంలో జిల్లాలోని నిరుద్యోగ యువతకు గుంటుపల్లిలో నిర్వహించిన జాబ్ మేళాలో 68 మందికి ఉద్యోగాలు లభించాయి. జిల్లా కలెక్టర్ జి. లక్ష్మీశ స్వయంగా నియామక పత్రాలు అందజేశారు.'
+      },
+      {
+        id: 'news-2',
+        newspaper: 'Eenadu',
+        title: '18న ప్రత్యేక ఉద్యోగ మేళా',
+        date: '14 Feb 2026',
+        edition: 'Andhra Pradesh State Edition',
+        imageUrl: '/news/news-eenadu-job-mela.png',
+        sourceUrl: 'https://epaper.eenadu.net/',
+        summary: 'కరెన్సీనగర్: రూరల్ ఇంక్యుబేషన్ స్కిల్లింగ్ అండ్ ఎంట్రప్రెన్యూర్ సెంటర్ (రైజ్), ఏపీఎస్ఎస్డీసీ, ఎన్టీఆర్ వికాస, జిల్లా ఉపాధి కల్పన శాఖ సంయుక్తంగా నిర్వహించనున్న ప్రత్యేక డ్రైవ్.'
+      },
+      {
+        id: 'news-3',
+        newspaper: 'Special Press Bulletin',
+        title: 'గుంటుపల్లిలో “రైజ్” ఆధ్వర్యంలో ఎన్టీఆర్ వికాస జాబ్ మేళా — యువత సద్వినియోగం చేసుకోవాలి',
+        date: '07 Feb 2026',
+        edition: 'Ibrahimpatnam - Udayatara',
+        imageUrl: '/news/news-rise-job-mela.png',
+        sourceUrl: 'https://naipunyam.ap.gov.in/',
+        summary: 'ఎన్టీఆర్ వికాస జాబ్ మేళా ద్వారా నిరుద్యోగ యువతకు 10కి పైగా ప్రముఖ కంపెనీలలో నెలకు రూ.12,000 నుండి రూ.35,000 వరకు వేతనంతో ఉద్యోగ అవకాశాలు.'
+      },
+      {
+        id: 'news-4',
+        newspaper: 'Suryaa',
+        title: 'ఎన్టీఆర్ వికాస జాబ్ మేళా నిర్వహణ విజయవంతం',
+        date: '08 Feb 2026',
+        edition: 'Major News | Page 2',
+        imageUrl: '/news/news-surya-job-mela.png',
+        sourceUrl: 'https://www.suryaa.com/',
+        summary: 'విజయవాడ: గుంటుపల్లిలో నిర్వహించిన జాబ్ మేళాలో 91 మంది హాజరు కాగా 68 మంది అభ్యర్థులకు ప్రైవేట్ కంపెనీలలో ఉద్యోగాలు లభించాయి, 14 మంది షార్ట్‌లిస్ట్ అయ్యారు. కలెక్టర్ డా. జి.లక్ష్మీశ ప్రశంసలు.'
+      }
+    ]
+  },
 };
 
 // ─── 14. SEED JOBS PAGE CONTENT ───────────────────────────────────────────
@@ -2355,7 +2855,12 @@ export function AdminProvider({ children }) {
   const [candidates, setCandidates] = useState(() => {
     try {
       const stored = localStorage.getItem('ntr_admin_candidates_v1');
-      if (stored) return JSON.parse(stored);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0 && parsed[0].qualificationLevel) {
+          return parsed;
+        }
+      }
     } catch (e) {
       // ignore
     }
@@ -2488,6 +2993,17 @@ export function AdminProvider({ children }) {
           welcomePopup: {
             ...DEFAULT_HOME_CONTENT.welcomePopup,
             ...(parsed.welcomePopup || {}),
+          },
+          gallery: {
+            ...DEFAULT_HOME_CONTENT.gallery,
+            ...(parsed.gallery || {}),
+            images: parsed.gallery?.images?.length ? parsed.gallery.images : DEFAULT_HOME_CONTENT.gallery.images,
+            videos: parsed.gallery?.videos?.length ? parsed.gallery.videos : DEFAULT_HOME_CONTENT.gallery.videos,
+          },
+          newsArticles: {
+            ...DEFAULT_HOME_CONTENT.newsArticles,
+            ...(parsed.newsArticles || {}),
+            articles: parsed.newsArticles?.articles?.length ? parsed.newsArticles.articles : DEFAULT_HOME_CONTENT.newsArticles.articles,
           },
         };
       }
@@ -2741,6 +3257,164 @@ export function AdminProvider({ children }) {
     addAuditLog('Candidate Activated', cand?.name || candidateId, 'CANDIDATE');
   };
 
+  const addCandidate = (candidateData) => {
+    const qual = candidateData.qualificationLevel || '10TH';
+    const qualLabel = qual === '10TH' ? '10th Class (SSC)' : qual === 'INTER' ? 'Intermediate / Diploma' : qual === 'PG' ? 'Postgraduate (PG)' : 'Undergraduate (UG)';
+    
+    // Determine profile completion percentage:
+    // If student was just added via basic KYC (name, email, phone, gender, aadhaar), mark profileStatus as 'BASIC_REGISTERED' (35%), candidate needs to log in to complete to 100%
+    const isBasicKYC = !candidateData.education && !candidateData.skills;
+    const profileCompletion = isBasicKYC ? 35 : (candidateData.profileCompletion || 100);
+    const profileStatus = isBasicKYC ? 'BASIC_REGISTERED' : (candidateData.profileStatus || 'COMPLETE');
+
+    const newCand = {
+      id: `cand-${Date.now()}`,
+      name: candidateData.name || 'New Student',
+      email: candidateData.email || '',
+      phone: candidateData.phone || '',
+      gender: candidateData.gender || 'Male',
+      aadhaarNumber: candidateData.aadhaarNumber || '',
+      district: candidateData.district || 'NTR District',
+      mandal: candidateData.mandal || 'Vijayawada Urban',
+      village: candidateData.village || 'Vijayawada',
+      location: candidateData.location || `${candidateData.village ? candidateData.village + ', ' : ''}${candidateData.mandal || 'Vijayawada Urban'}, ${candidateData.district || 'NTR District'}`,
+      qualificationLevel: qual, // '10TH' | 'INTER' | 'UG' | 'PG'
+      education: candidateData.education || (isBasicKYC ? 'Pending Candidate 100% Profile Completion' : qualLabel),
+      headline: candidateData.headline || (isBasicKYC ? 'Registered Candidate (KYC Verified - Profile Incomplete)' : `${qualLabel} Candidate`),
+      experience: candidateData.experience || 'Fresher (0-1 Year)',
+      skills: Array.isArray(candidateData.skills) ? candidateData.skills : (candidateData.skills ? candidateData.skills.split(',').map(s => s.trim()) : (isBasicKYC ? ['Basic Profile Registered'] : ['Basic Computer Skills'])),
+      placementStatus: candidateData.placementStatus || 'NOT_PLACED', // 'PLACED' | 'NOT_PLACED'
+      placedCompany: candidateData.placementStatus === 'PLACED' ? (candidateData.placedCompany || '') : '',
+      placedRole: candidateData.placementStatus === 'PLACED' ? (candidateData.placedRole || '') : '',
+      placedSalary: candidateData.placementStatus === 'PLACED' ? (candidateData.placedSalary || '') : '',
+      isCompanyInDatabase: Boolean(candidateData.isCompanyInDatabase),
+      referenceAdmin: candidateData.referenceAdmin || 'Admin User (State Operations)',
+      registrationDate: new Date().toISOString().split('T')[0],
+      profileStatus,
+      profileCompletion,
+      accountStatus: 'ACTIVE',
+      applicationsCount: 0,
+      ...candidateData
+    };
+    setCandidates(prev => [newCand, ...prev]);
+    addAuditLog('Student / Candidate Added Manually', `${newCand.name} (${newCand.aadhaarNumber ? 'Aadhaar: ' + newCand.aadhaarNumber + ' - ' : ''}Ref: ${newCand.referenceAdmin})`, 'CANDIDATE');
+    return newCand;
+  };
+
+  const addRecruiter = (recruiterData) => {
+    const newRecruiter = {
+      id: `rec-u-${Date.now()}`,
+      name: recruiterData.name || 'New Recruiter',
+      email: recruiterData.email || '',
+      phone: recruiterData.phone || '',
+      company: recruiterData.company || recruiterData.companyName || 'Registered Enterprise',
+      designation: recruiterData.designation || 'Talent Acquisition Specialist',
+      registrationDate: new Date().toISOString().split('T')[0],
+      verificationStatus: recruiterData.verificationStatus || 'VERIFIED',
+      accountStatus: recruiterData.accountStatus || 'ACTIVE',
+      postedJobsCount: 0,
+      documentsSubmitted: ['Admin Authorized Direct Onboarding', 'Official Work Email'],
+      ...recruiterData
+    };
+    setRecruiters(prev => [newRecruiter, ...prev]);
+    addAuditLog('Recruiter Onboarded Manually by Admin', `${newRecruiter.name} (${newRecruiter.company})`, 'RECRUITER');
+
+    dispatchAdminEvent({
+      eventType: ADMIN_NOTIFICATION_EVENTS.ADMIN_RECRUITER_VERIFIED,
+      adminEmail: currentAdmin.email,
+      recipientName: currentAdmin.name,
+      addNotification,
+      notification: {
+        category: 'VERIFICATION',
+        title: `Recruiter Directly Added: ${newRecruiter.name}`,
+        message: `${newRecruiter.name} (${newRecruiter.company}) was onboarded directly by Admin and marked as ${newRecruiter.verificationStatus}.`,
+        link: '/admin/recruiters',
+        meta: { recruiterId: newRecruiter.id, recruiterName: newRecruiter.name, company: newRecruiter.company }
+      },
+      meta: { recruiterId: newRecruiter.id, status: newRecruiter.verificationStatus }
+    });
+
+    return newRecruiter;
+  };
+
+  const addCompany = (companyData) => {
+    const newCompany = {
+      id: `comp-${Date.now()}`,
+      name: companyData.name || 'New Enterprise Partner',
+      recruiter: companyData.recruiter || companyData.primaryContact || 'HR Lead',
+      industry: companyData.industry || 'Information Technology & Services',
+      location: companyData.location || `${companyData.village ? companyData.village + ', ' : ''}${companyData.mandal || 'Vijayawada Urban'}, ${companyData.district || 'NTR District'}`,
+      district: companyData.district || 'NTR District',
+      mandal: companyData.mandal || 'Vijayawada Urban',
+      village: companyData.village || 'Commercial Hub',
+      eligibleMandals: companyData.eligibleMandals || ['All Mandals of NTR District'],
+      eligibleVillages: companyData.eligibleVillages || ['All Villages & Wards'],
+      size: companyData.size || '100-500 employees',
+      cin: companyData.cin || `U${Math.floor(10000 + Math.random() * 90000)}AP2026PTC${Math.floor(100000 + Math.random() * 900000)}`,
+      gstin: companyData.gstin || `37ABCDE${Math.floor(1000 + Math.random() * 9000)}F1Z5`,
+      verificationStatus: companyData.verificationStatus || 'VERIFIED',
+      accountStatus: 'ACTIVE',
+      registrationDate: new Date().toISOString().split('T')[0],
+      activeJobsCount: 0,
+      website: companyData.website || '',
+      email: companyData.email || '',
+      phone: companyData.phone || '',
+      description: companyData.description || 'Verified enterprise hiring partner onboarded by NTR District Vikasa Administration.',
+      ...companyData
+    };
+    setCompanies(prev => [newCompany, ...prev]);
+    addAuditLog('Company Added Directly by Admin', `${newCompany.name} (${newCompany.industry})`, 'COMPANY');
+
+    dispatchAdminEvent({
+      eventType: ADMIN_NOTIFICATION_EVENTS.ADMIN_COMPANY_APPROVED,
+      adminEmail: currentAdmin.email,
+      recipientName: currentAdmin.name,
+      addNotification,
+      notification: {
+        category: 'COMPANY',
+        title: `Company Directly Added: ${newCompany.name}`,
+        message: `${newCompany.name} was registered directly by Admin and granted active recruitment privileges.`,
+        link: '/admin/companies',
+        meta: { companyId: newCompany.id, companyName: newCompany.name, status: 'VERIFIED' }
+      },
+      meta: { companyId: newCompany.id, status: 'VERIFIED' }
+    });
+
+    return newCompany;
+  };
+
+  const updateCandidate = (candidateId, updatedData) => {
+    setCandidates(prev =>
+      prev.map(c => (c.id === candidateId ? { ...c, ...updatedData } : c))
+    );
+    addAuditLog('Candidate Details Updated', `Candidate #${candidateId}`, 'CANDIDATE');
+  };
+
+  const deleteCandidate = (candidateId) => {
+    const target = candidates.find(c => c.id === candidateId);
+    setCandidates(prev => prev.filter(c => c.id !== candidateId));
+    addAuditLog('Candidate Removed from Platform', target?.name || candidateId, 'CANDIDATE');
+  };
+
+  const updateCandidatePlacement = (candidateId, placementStatus, placedCompany = '', placedRole = '', placedSalary = '') => {
+    setCandidates(prev =>
+      prev.map(c => {
+        if (c.id === candidateId) {
+          return {
+            ...c,
+            placementStatus,
+            placedCompany: placementStatus === 'PLACED' ? placedCompany : '',
+            placedRole: placementStatus === 'PLACED' ? placedRole : '',
+            placedSalary: placementStatus === 'PLACED' ? placedSalary : '',
+          };
+        }
+        return c;
+      })
+    );
+    const target = candidates.find(c => c.id === candidateId);
+    addAuditLog('Candidate Placement Status Updated', `${target?.name || candidateId}: ${placementStatus}`, 'CANDIDATE');
+  };
+
   // Company actions
   const approveCompany = (companyId) => {
     setCompanies(prev =>
@@ -2908,11 +3582,18 @@ export function AdminProvider({ children }) {
 
   // Job Mela actions
   const createJobMela = (melaData) => {
+    const isClientSpecific = !!melaData.client;
+    const organizerName = isClientSpecific 
+      ? `${melaData.client} (Client Hiring Summit)` 
+      : (melaData.organizer || 'NTR Vikasa State Employment Authority (Admin)');
+
     const newMela = {
       id: `mela-${Date.now()}`,
-      event: melaData.title || melaData.event || 'Mega Job Mela Event',
-      title: melaData.title || melaData.event || 'Mega Job Mela Event',
+      event: melaData.title || melaData.event || (isClientSpecific ? `${melaData.client} Mega Recruitment Drive` : 'Mega Job Mela Event'),
+      title: melaData.title || melaData.event || (isClientSpecific ? `${melaData.client} Mega Recruitment Drive` : 'Mega Job Mela Event'),
       description: melaData.description || '',
+      client: melaData.client || '',
+      clientId: melaData.clientId || '',
       date: melaData.date || '2026-11-15',
       startTime: melaData.startTime || '09:00',
       endTime: melaData.endTime || '18:00',
@@ -2920,22 +3601,35 @@ export function AdminProvider({ children }) {
       regStartDate: melaData.regStartDate || '2026-10-01',
       regEndDate: melaData.regEndDate || '2026-11-10',
       maxCapacity: Number(melaData.maxCapacity) || 5000,
-      location: melaData.city && melaData.state ? `${melaData.city}, ${melaData.state}` : (melaData.location || 'Andhra Pradesh'),
-      venue: melaData.venue || melaData.address || 'State Convention Center',
+      location: melaData.city && melaData.state ? `${melaData.city}, ${melaData.state}` : (melaData.location || 'Vijayawada, Andhra Pradesh'),
+      venue: melaData.venue || melaData.address || 'State Convention Center, Vijayawada',
       city: melaData.city || 'Vijayawada',
       state: melaData.state || 'Andhra Pradesh',
       address: melaData.address || '',
-      organizer: 'NTR Vikasa State Employment Authority (Admin)',
+      organizer: organizerName,
       createdByAdmin: true,
-      companiesCount: (melaData.participatingCompanies || []).length,
-      vacanciesCount: Number(melaData.maxCapacity) || 1000,
-      registeredCandidatesCount: 0,
+      createdForClient: isClientSpecific,
+      companiesCount: (melaData.participatingCompanies || []).length || (isClientSpecific ? 1 : 0),
+      vacanciesCount: Number(melaData.vacanciesCount || melaData.maxCapacity) || 1000,
+      registeredCandidatesCount: Number(melaData.registeredCandidatesCount) || 0,
       status: melaData.status || 'APPROVED',
-      participatingCompanies: melaData.participatingCompanies || [],
+      eligibleMandals: melaData.eligibleMandals || ['All Mandals'],
+      eligibleVillages: melaData.eligibleVillages || ['All Villages'],
+      participatingCompanies: melaData.participatingCompanies || (isClientSpecific ? [{
+        id: `pmc-${Date.now()}`,
+        company: melaData.client,
+        companyId: melaData.clientId || '',
+        position: melaData.position || 'Open Multiple Positions',
+        vacancies: Number(melaData.vacanciesCount) || 50,
+        salary: melaData.salary || 'Best in Industry',
+        qualification: melaData.qualification || '10th / Inter / Degree / Engineering',
+        experience: '0-3 Years',
+        location: melaData.venue || 'On-site Stalls'
+      }] : []),
       ...melaData
     };
     setJobMelas(prev => [newMela, ...prev]);
-    addAuditLog('Job Mela Event Created', newMela.event, 'JOB_MELA');
+    addAuditLog('Job Mela Event Created', `${newMela.event}${isClientSpecific ? ` for ${newMela.client}` : ''}`, 'JOB_MELA');
     return newMela;
   };
 
@@ -3060,6 +3754,235 @@ export function AdminProvider({ children }) {
     });
   };
 
+  const registerForJobMela = (regData) => {
+    const matchedMela = jobMelas.find(m => String(m.id) === String(regData.melaId));
+    const newReg = {
+      id: regData.id || `REG-${regData.melaId || 'MELA'}-${Date.now().toString().slice(-4)}`,
+      melaId: regData.melaId || matchedMela?.id || '',
+      candidateId: regData.candidateId || '',
+      candidate: regData.candidateName || regData.name || regData.candidate || 'Registered Candidate',
+      candidateName: regData.candidateName || regData.name || regData.candidate || 'Registered Candidate',
+      email: regData.email || regData.candidateEmail || '',
+      candidateEmail: regData.email || regData.candidateEmail || '',
+      phone: regData.phone || '',
+      event: regData.event || regData.title || regData.eventName || matchedMela?.title || matchedMela?.event || 'Mega Job Mela',
+      eventName: regData.event || regData.title || regData.eventName || matchedMela?.title || matchedMela?.event || 'Mega Job Mela',
+      registrationDate: regData.registrationDate || new Date().toISOString().split('T')[0],
+      status: regData.status || 'CONFIRMED',
+      entryToken: regData.entryToken || `TKN-${(regData.city || matchedMela?.city || 'AP').substring(0, 3).toUpperCase()}-${Math.floor(1000 + Math.random() * 9000)}`,
+      passId: regData.passId || `PASS-AP-${Math.floor(100000 + Math.random() * 900000)}`,
+      gateNumber: regData.gateNumber || 'Gate 2 (General Fast-Track)',
+      timeSlot: regData.timeSlot || 'Morning Session (09:00 AM - 01:00 PM)',
+      ...regData
+    };
+
+    setRegistrations(prev => [newReg, ...prev.filter(r => !(r.id === newReg.id || (String(r.melaId) === String(newReg.melaId) && r.candidateEmail === newReg.candidateEmail)))]);
+
+    // Update registeredCandidatesCount on Job Mela
+    if (newReg.melaId) {
+      setJobMelas(prev => prev.map(m => {
+        if (String(m.id) === String(newReg.melaId)) {
+          return {
+            ...m,
+            registeredCandidatesCount: (Number(m.registeredCandidatesCount) || 0) + 1
+          };
+        }
+        return m;
+      }));
+    }
+
+    addAuditLog('Candidate Registered for Job Mela', `${newReg.candidate} for ${newReg.event}`, 'JOB_MELA');
+    return newReg;
+  };
+
+  const applyToJobMelaCompany = (appData) => {
+    const matchedMela = jobMelas.find(m => String(m.id) === String(appData.melaId));
+    const newApp = {
+      id: appData.id || `app-mela-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      melaId: appData.melaId || matchedMela?.id || '',
+      melaTitle: appData.melaTitle || matchedMela?.title || matchedMela?.event || 'Job Mela',
+      company: appData.company || appData.companyName || 'Participating Company',
+      companyName: appData.company || appData.companyName || 'Participating Company',
+      companyId: appData.companyId || '',
+      job: appData.role || appData.position || appData.title || 'Walk-in Role',
+      title: appData.role || appData.position || appData.title || 'Walk-in Role',
+      role: appData.role || appData.position || appData.title || 'Walk-in Role',
+      candidateId: appData.candidateId || '',
+      candidate: appData.candidate || appData.candidateName || appData.name || 'Candidate',
+      candidateName: appData.candidate || appData.candidateName || appData.name || 'Candidate',
+      candidateEmail: appData.candidateEmail || appData.email || '',
+      email: appData.candidateEmail || appData.email || '',
+      phone: appData.phone || '',
+      appNumber: appData.appNumber || appData.appId || `NTR-APP-${Date.now().toString().slice(-4)}`,
+      applicationType: 'Job Mela Application',
+      appliedDate: appData.appliedDate || new Date().toISOString().split('T')[0],
+      status: appData.status || 'APPLIED',
+      salary: appData.salary || 'Best in Industry',
+      location: appData.location || matchedMela?.venue || matchedMela?.city || '',
+      ...appData
+    };
+
+    setApplications(prev => [newApp, ...prev.filter(a => a.id !== newApp.id && a.appNumber !== newApp.appNumber)]);
+
+    // Update applications count on that specific company in the Job Mela
+    if (newApp.melaId) {
+      setJobMelas(prev => prev.map(m => {
+        if (String(m.id) === String(newApp.melaId)) {
+          const updatedCompanies = (m.participatingCompanies || []).map(c => {
+            const isMatch = (c.id && (c.id === appData.companyEntryId || c.id === appData.companyId)) ||
+              (c.companyId && c.companyId === newApp.companyId) ||
+              (c.company && newApp.company && c.company.trim().toLowerCase() === newApp.company.trim().toLowerCase());
+            if (isMatch) {
+              return {
+                ...c,
+                applications: (Number(c.applications) || 0) + 1
+              };
+            }
+            return c;
+          });
+          return {
+            ...m,
+            participatingCompanies: updatedCompanies
+          };
+        }
+        return m;
+      }));
+    }
+
+    addAuditLog('Candidate Applied to Job Mela Company', `${newApp.candidate} -> ${newApp.company} (${newApp.role})`, 'JOB_MELA');
+    return newApp;
+  };
+
+  const getMelaStats = (melaId) => {
+    if (!melaId) return null;
+    const mela = jobMelas.find(m => String(m.id) === String(melaId));
+    if (!mela) return null;
+
+    const participatingCompanies = Array.isArray(mela.participatingCompanies) ? mela.participatingCompanies : [];
+    const companiesCount = participatingCompanies.length;
+
+    // Applications submitted to any company in this Job Mela
+    const melaApplications = (applications || []).filter(a => {
+      if (a.melaId && String(a.melaId) === String(melaId)) return true;
+      if (a.melaTitle && (mela.title && a.melaTitle.toLowerCase() === mela.title.toLowerCase() || mela.event && a.melaTitle.toLowerCase() === mela.event.toLowerCase())) return true;
+      return false;
+    });
+
+    // Registrations for entry pass to this Job Mela
+    const melaRegistrations = (registrations || []).filter(r => {
+      if (r.melaId && String(r.melaId) === String(melaId)) return true;
+      if (r.event && (mela.title && r.event.toLowerCase() === mela.title.toLowerCase() || mela.event && r.event.toLowerCase() === mela.event.toLowerCase())) return true;
+      if (r.eventName && (mela.title && r.eventName.toLowerCase() === mela.title.toLowerCase() || mela.event && r.eventName.toLowerCase() === mela.event.toLowerCase())) return true;
+      return false;
+    });
+
+    // Unique Candidates map: 1 person applying to 3 companies counts as 1 person for the Job Mela
+    const uniqueCandidatesMap = new Map();
+
+    melaApplications.forEach(app => {
+      const key = (app.candidateEmail || app.email || app.candidateId || app.candidate || app.candidateName || '').toLowerCase().trim();
+      if (key) {
+        if (!uniqueCandidatesMap.has(key)) {
+          uniqueCandidatesMap.set(key, {
+            id: app.candidateId || `cand-app-${key}`,
+            name: app.candidate || app.candidateName || key,
+            email: app.candidateEmail || app.email || key,
+            phone: app.phone || '',
+            appliedCompanies: [app.company || app.companyName],
+            appliedRoles: [app.role || app.title || 'Role'],
+            applicationsCount: 1,
+            hasPass: false,
+            passId: app.passId || null,
+          });
+        } else {
+          const existing = uniqueCandidatesMap.get(key);
+          const compName = app.company || app.companyName;
+          if (compName && !existing.appliedCompanies.includes(compName)) {
+            existing.appliedCompanies.push(compName);
+          }
+          const roleName = app.role || app.title;
+          if (roleName && !existing.appliedRoles.includes(roleName)) {
+            existing.appliedRoles.push(roleName);
+          }
+          existing.applicationsCount += 1;
+        }
+      }
+    });
+
+    melaRegistrations.forEach(reg => {
+      const key = (reg.candidateEmail || reg.email || reg.candidateId || reg.candidate || reg.candidateName || '').toLowerCase().trim();
+      if (key) {
+        if (!uniqueCandidatesMap.has(key)) {
+          uniqueCandidatesMap.set(key, {
+            id: reg.candidateId || `cand-reg-${key}`,
+            name: reg.candidate || reg.candidateName || key,
+            email: reg.candidateEmail || reg.email || key,
+            phone: reg.phone || '',
+            appliedCompanies: [],
+            appliedRoles: [],
+            applicationsCount: 0,
+            hasPass: true,
+            passId: reg.passId || reg.entryToken || reg.id,
+            gateNumber: reg.gateNumber || 'Gate 1',
+            registrationDate: reg.registrationDate || ''
+          });
+        } else {
+          const existing = uniqueCandidatesMap.get(key);
+          existing.hasPass = true;
+          existing.passId = reg.passId || reg.entryToken || reg.id;
+          if (reg.gateNumber) existing.gateNumber = reg.gateNumber;
+          if (reg.registrationDate) existing.registrationDate = reg.registrationDate;
+        }
+      }
+    });
+
+    const uniqueAppliedCandidates = Array.from(uniqueCandidatesMap.values());
+    const uniqueAppliedCandidatesCount = uniqueAppliedCandidates.length;
+    const totalCompanyApplicationsCount = melaApplications.length;
+
+    // Candidates NOT applied/registered in this Job Mela
+    const appliedKeys = new Set(Array.from(uniqueCandidatesMap.keys()));
+    const notAppliedCandidates = (candidates || []).filter(c => {
+      const candEmail = (c.email || '').toLowerCase().trim();
+      const candId = (c.id || '').toLowerCase().trim();
+      const candName = (c.name || '').toLowerCase().trim();
+      return !appliedKeys.has(candEmail) && !appliedKeys.has(candId) && !appliedKeys.has(candName);
+    });
+
+    const totalPlatformCandidatesCount = (candidates || []).length;
+    const notAppliedCandidatesCount = Math.max(0, totalPlatformCandidatesCount - uniqueAppliedCandidatesCount);
+
+    // Specific company stats helper
+    const getCompanyStats = (comp) => {
+      const compName = (comp.company || comp.name || '').trim().toLowerCase();
+      const compId = comp.companyId || comp.id;
+      const compApps = melaApplications.filter(a => {
+        const aName = (a.company || a.companyName || '').trim().toLowerCase();
+        const aId = a.companyId || a.companyEntryId;
+        return (compName && aName === compName) || (compId && aId === compId);
+      });
+      return {
+        appliedCount: compApps.length,
+        applicants: compApps
+      };
+    };
+
+    return {
+      mela,
+      companiesCount,
+      participatingCompanies,
+      melaApplications,
+      melaRegistrations,
+      totalCompanyApplicationsCount,
+      uniqueAppliedCandidates,
+      uniqueAppliedCandidatesCount,
+      notAppliedCandidates,
+      notAppliedCandidatesCount,
+      totalPlatformCandidatesCount,
+      getCompanyStats
+    };
+  };
+
   // Report actions
   const resolveReport = (reportId, resolutionNotes = '') => {
     setReports(prev =>
@@ -3115,6 +4038,17 @@ export function AdminProvider({ children }) {
           ...(prev.welcomePopup || DEFAULT_HOME_CONTENT.welcomePopup),
           ...(newContent.welcomePopup || {}),
         },
+        gallery: {
+          ...(prev.gallery || DEFAULT_HOME_CONTENT.gallery),
+          ...(newContent.gallery || {}),
+          images: newContent.gallery?.images || prev.gallery?.images || DEFAULT_HOME_CONTENT.gallery.images,
+          videos: newContent.gallery?.videos || prev.gallery?.videos || DEFAULT_HOME_CONTENT.gallery.videos,
+        },
+        newsArticles: {
+          ...(prev.newsArticles || DEFAULT_HOME_CONTENT.newsArticles),
+          ...(newContent.newsArticles || {}),
+          articles: newContent.newsArticles?.articles || prev.newsArticles?.articles || DEFAULT_HOME_CONTENT.newsArticles.articles,
+        },
       };
       return updated;
     });
@@ -3124,6 +4058,136 @@ export function AdminProvider({ children }) {
   const resetHomeContent = () => {
     setHomeContent(DEFAULT_HOME_CONTENT);
     addAuditLog('Home Page Content Reset to Defaults', 'Public Home Page Content CMS', 'SETTINGS');
+  };
+
+  // Gallery CMS Helper Actions
+  const addGalleryImage = (image) => {
+    const newImage = {
+      id: `img-${Date.now()}`,
+      title: image.title || 'Untitled Image',
+      category: image.category || 'Job Melas',
+      imageUrl: image.imageUrl || '',
+      date: image.date || new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+      description: image.description || '',
+    };
+    setHomeContent(prev => ({
+      ...prev,
+      gallery: {
+        ...(prev.gallery || DEFAULT_HOME_CONTENT.gallery),
+        images: [newImage, ...(prev.gallery?.images || [])],
+      },
+    }));
+    addAuditLog('Gallery Image Added', newImage.title, 'SETTINGS');
+    return newImage;
+  };
+
+  const updateGalleryImage = (imageId, updatedData) => {
+    setHomeContent(prev => ({
+      ...prev,
+      gallery: {
+        ...(prev.gallery || DEFAULT_HOME_CONTENT.gallery),
+        images: (prev.gallery?.images || []).map(img => img.id === imageId ? { ...img, ...updatedData } : img),
+      },
+    }));
+    addAuditLog('Gallery Image Updated', updatedData.title || imageId, 'SETTINGS');
+  };
+
+  const deleteGalleryImage = (imageId) => {
+    setHomeContent(prev => ({
+      ...prev,
+      gallery: {
+        ...(prev.gallery || DEFAULT_HOME_CONTENT.gallery),
+        images: (prev.gallery?.images || []).filter(img => img.id !== imageId),
+      },
+    }));
+    addAuditLog('Gallery Image Deleted', imageId, 'SETTINGS');
+  };
+
+  const addGalleryVideo = (video) => {
+    const newVideo = {
+      id: `vid-${Date.now()}`,
+      title: video.title || 'Untitled Video',
+      youtubeUrl: video.youtubeUrl || '',
+      category: video.category || 'Job Melas',
+      date: video.date || new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+      description: video.description || '',
+    };
+    setHomeContent(prev => ({
+      ...prev,
+      gallery: {
+        ...(prev.gallery || DEFAULT_HOME_CONTENT.gallery),
+        videos: [newVideo, ...(prev.gallery?.videos || [])],
+      },
+    }));
+    addAuditLog('Gallery Video Added', newVideo.title, 'SETTINGS');
+    return newVideo;
+  };
+
+  const updateGalleryVideo = (videoId, updatedData) => {
+    setHomeContent(prev => ({
+      ...prev,
+      gallery: {
+        ...(prev.gallery || DEFAULT_HOME_CONTENT.gallery),
+        videos: (prev.gallery?.videos || []).map(vid => vid.id === videoId ? { ...vid, ...updatedData } : vid),
+      },
+    }));
+    addAuditLog('Gallery Video Updated', updatedData.title || videoId, 'SETTINGS');
+  };
+
+  const deleteGalleryVideo = (videoId) => {
+    setHomeContent(prev => ({
+      ...prev,
+      gallery: {
+        ...(prev.gallery || DEFAULT_HOME_CONTENT.gallery),
+        videos: (prev.gallery?.videos || []).filter(vid => vid.id !== videoId),
+      },
+    }));
+    addAuditLog('Gallery Video Deleted', videoId, 'SETTINGS');
+  };
+
+  // News Articles CMS Helper Actions
+  const addNewsArticle = (article) => {
+    const newArticle = {
+      id: `news-${Date.now()}`,
+      newspaper: article.newspaper || 'Daily News',
+      title: article.title || 'Untitled Article',
+      date: article.date || new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+      edition: article.edition || '',
+      imageUrl: article.imageUrl || '',
+      sourceUrl: article.sourceUrl || '',
+      summary: article.summary || '',
+    };
+    setHomeContent(prev => ({
+      ...prev,
+      newsArticles: {
+        ...(prev.newsArticles || DEFAULT_HOME_CONTENT.newsArticles),
+        articles: [newArticle, ...(prev.newsArticles?.articles || [])],
+      },
+    }));
+    addAuditLog('News Article Added', newArticle.title, 'SETTINGS');
+    return newArticle;
+  };
+
+  const updateNewsArticle = (articleId, updatedData) => {
+    setHomeContent(prev => ({
+      ...prev,
+      newsArticles: {
+        ...(prev.newsArticles || DEFAULT_HOME_CONTENT.newsArticles),
+        articles: (prev.newsArticles?.articles || []).map(a => a.id === articleId ? { ...a, ...updatedData } : a),
+      },
+    }));
+    addAuditLog('News Article Updated', updatedData.title || articleId, 'SETTINGS');
+  };
+
+  const deleteNewsArticle = (articleId) => {
+    setHomeContent(prev => ({
+      ...prev,
+      newsArticles: {
+        ...(prev.newsArticles || DEFAULT_HOME_CONTENT.newsArticles),
+        articles: (prev.newsArticles?.articles || []).filter(a => a.id !== articleId),
+      },
+    }));
+    addAuditLog('News Article Deleted', articleId, 'SETTINGS');
   };
 
   // Jobs Page Hero & Search Content CMS update
@@ -3290,12 +4354,18 @@ export function AdminProvider({ children }) {
         verifyRecruiter,
         suspendRecruiter,
         activateRecruiter,
+        addRecruiter,
         suspendCandidate,
         activateCandidate,
+        addCandidate,
+        updateCandidate,
+        deleteCandidate,
+        updateCandidatePlacement,
         approveCompany,
         rejectCompany,
         suspendCompany,
         activateCompany,
+        addCompany,
         approveJob,
         rejectJob,
         requestJobChanges,
@@ -3307,11 +4377,26 @@ export function AdminProvider({ children }) {
         addCompanyToJobMela,
         updateCompanyInJobMela,
         removeCompanyFromJobMela,
+        registerForJobMela,
+        applyToJobMelaCompany,
+        getMelaStats,
+        setJobMelas,
+        setRegistrations,
+        setApplications,
         resolveReport,
         rejectReport,
         updateAdminSettings,
         updateHomeContent,
         resetHomeContent,
+        addGalleryImage,
+        updateGalleryImage,
+        deleteGalleryImage,
+        addGalleryVideo,
+        updateGalleryVideo,
+        deleteGalleryVideo,
+        addNewsArticle,
+        updateNewsArticle,
+        deleteNewsArticle,
         updateJobsPageContent,
         resetJobsPageContent,
         updateJobMelaContent,

@@ -29,6 +29,7 @@ import TrainingPage           from './pages/public/TrainingPage';
 import SkillDevelopmentOverviewPage from './pages/public/SkillDevelopmentOverviewPage';
 import SkillCoursesPage       from './pages/public/SkillCoursesPage';
 import AboutPage              from './pages/public/AboutPage';
+import GalleryPage            from './pages/public/GalleryPage';
 import ContactPage            from './pages/public/ContactPage';
 import PrivacyPage            from './pages/public/PrivacyPage';
 import TermsPage              from './pages/public/TermsPage';
@@ -133,6 +134,7 @@ export default function App() {
                       <Route path="/training"                  element={<SkillDevelopmentOverviewPage />} />
                       <Route path="/training/courses"          element={<SkillCoursesPage />} />
                       <Route path="/about"                     element={<AboutPage />} />
+                      <Route path="/gallery"                   element={<GalleryPage />} />
                       <Route path="/contact"                   element={<ContactPage />} />
                       <Route path="/privacy"                   element={<PrivacyPage />} />
                       <Route path="/terms"                     element={<TermsPage />} />
@@ -227,6 +229,8 @@ export default function App() {
                       <Route path="skill-development-content"  element={<AdminWebsiteContentPage />} />
                       <Route path="job-melas-content"          element={<AdminWebsiteContentPage />} />
                       <Route path="about-content"              element={<AdminWebsiteContentPage />} />
+                      <Route path="gallery-content"            element={<AdminWebsiteContentPage />} />
+                      <Route path="news-content"               element={<AdminWebsiteContentPage />} />
                       <Route path="settings"                   element={<AdminSettingsPage />} />
                       <Route path="profile"                    element={<AdminProfilePage />} />
                       <Route path="change-password"            element={<AdminChangePasswordPage />} />

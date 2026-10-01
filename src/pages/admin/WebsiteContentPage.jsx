@@ -25,6 +25,8 @@ import {
 } from '../../context/AdminContext';
 import heroImgDefault from '../../assets/hero.jpeg';
 import { INDIAN_STATES, INDIAN_UNION_TERRITORIES } from '../../data/indiaLocations';
+import AdminGalleryManager from '../../components/admin/AdminGalleryManager';
+import AdminNewsManager from '../../components/admin/AdminNewsManager';
 
 const AVAILABLE_ICONS = [
   { value: 'Briefcase', label: 'Briefcase (Jobs)' },
@@ -92,6 +94,12 @@ export default function AdminWebsiteContentPage() {
     } else if (selectedPage === 'about') {
       resetAboutContent();
       addToast('About Us content reset to default values.', 'info');
+    } else if (selectedPage === 'gallery') {
+      updateHomeContent({ gallery: DEFAULT_HOME_CONTENT.gallery });
+      addToast('Gallery content reset to default values.', 'info');
+    } else if (selectedPage === 'news') {
+      updateHomeContent({ newsArticles: DEFAULT_HOME_CONTENT.newsArticles });
+      addToast('News articles reset to default values.', 'info');
     }
   };
 
@@ -880,6 +888,20 @@ export default function AdminWebsiteContentPage() {
       desc: 'Manage content',
       publicPath: '/about',
     },
+    {
+      id: 'gallery',
+      title: 'Media & Gallery',
+      icon: '🖼️',
+      desc: 'Photos & Videos',
+      publicPath: '/gallery',
+    },
+    {
+      id: 'news',
+      title: 'News & Press',
+      icon: '📰',
+      desc: 'Newspaper Clippings',
+      publicPath: '/#news-articles',
+    },
   ];
 
   const currentPageObj = pagesList.find(p => p.id === selectedPage);
@@ -1073,6 +1095,48 @@ export default function AdminWebsiteContentPage() {
                 style={{ gap: '6px', flexShrink: 0 }}
               >
                 <Edit3 size={14} /> Manage Popup
+              </button>
+            </div>
+
+            {/* Media & Event Gallery */}
+            <div className="cms-section-card">
+              <div className="cms-section-card-info">
+                <div className="cms-section-card-header">
+                  <h3 className="cms-section-title">Media & Event Gallery</h3>
+                  <span className="cms-section-badge">Photos & Interactive Videos</span>
+                </div>
+                <p className="cms-section-desc">
+                  Manage event photos and YouTube videos with hover-to-play, click pause/play, mute toggle, and YouTube links.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleSelectPage('gallery')}
+                className="btn btn-primary btn-sm"
+                style={{ gap: '6px', flexShrink: 0 }}
+              >
+                <Edit3 size={14} /> Manage Gallery
+              </button>
+            </div>
+
+            {/* Newspaper Articles & Media Highlights */}
+            <div className="cms-section-card">
+              <div className="cms-section-card-info">
+                <div className="cms-section-card-header">
+                  <h3 className="cms-section-title">Newspaper Articles & Press Highlights</h3>
+                  <span className="cms-section-badge">Newspaper Clippings & Auto-Moving Carousel</span>
+                </div>
+                <p className="cms-section-desc">
+                  Manage authentic newspaper press coverage clippings (Sakshi, Eenadu, Suryaa, etc.) displayed in the slowly auto-moving landing page carousel.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleSelectPage('news')}
+                className="btn btn-primary btn-sm"
+                style={{ gap: '6px', flexShrink: 0 }}
+              >
+                <Edit3 size={14} /> Manage Press Clippings
               </button>
             </div>
 
@@ -1479,6 +1543,16 @@ export default function AdminWebsiteContentPage() {
               </button>
             </div>
           </>
+        )}
+
+        {/* 6. MEDIA & GALLERY MANAGEMENT */}
+        {selectedPage === 'gallery' && (
+          <AdminGalleryManager />
+        )}
+
+        {/* 7. NEWSPAPER ARTICLES & PRESS MANAGEMENT */}
+        {selectedPage === 'news' && (
+          <AdminNewsManager />
         )}
       </div>
 

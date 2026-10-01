@@ -3,7 +3,7 @@ import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
   Menu, X, Briefcase, Building2, BookOpen, CalendarDays,
   ChevronDown, User, UserPlus, Info, Sparkles, Globe, Home,
-  ExternalLink, LogOut, LayoutDashboard, Search, FileText
+  ExternalLink, LogOut, LayoutDashboard, Search, FileText, Camera
 } from 'lucide-react';
 import Button from '../ui/Button';
 import { DropdownMenu } from '../ui/DropdownMenu';
@@ -40,6 +40,18 @@ export default function PublicHeader() {
     { label: nav.jobMelas,    href: '/job-melas',         icon: <CalendarDays size={16} /> },
     { label: nav.skillDev,    href: '/skill-development', icon: <Sparkles size={16} /> },
   ];
+
+  const handleAboutToggle = (e) => {
+    e.stopPropagation();
+    setGetStartedOpen(false);
+    setAboutDropdownOpen((prev) => !prev);
+  };
+
+  const handleGetStartedToggle = (e) => {
+    e.stopPropagation();
+    setAboutDropdownOpen(false);
+    setGetStartedOpen((prev) => !prev);
+  };
 
   // Close dropdowns on outside click
   useEffect(() => {
@@ -91,13 +103,24 @@ export default function PublicHeader() {
     { label: 'Log Out', icon: <LogOut size={15} />, danger: true, onClick: handleAdminLogout },
   ];
 
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 15);
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    handleScroll();
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
   return (
     <>
-      <header className="public-header">
+      <header className={`public-header ${scrolled ? 'scrolled' : ''}`}>
         <div className="public-header-inner">
           {/* ── 1. Official NTR VIKASA Branding ── */}
-          <Link to="/" className="logo" aria-label="NTR Vikasa Home" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center' }}>
-            <img src="/logo_image.png" alt="NTR Vikasa Logo" style={{ height: '48px', objectFit: 'contain' }} />
+          <Link to="/" className="public-header-logo" aria-label="NTR Vikasa Home">
+            <img src="/logo_image.png" alt="NTR Vikasa Logo" />
           </Link>
 
           {/* ── 2. Desktop Navigation ── */}
@@ -119,69 +142,56 @@ export default function PublicHeader() {
               );
             })}
 
-            {/* About Dropdown */}
+            {/* About Dropdown (Click-to-open only) */}
             <div
               ref={aboutRef}
-              style={{ position: 'relative' }}
-              onMouseEnter={() => setAboutDropdownOpen(true)}
-              onMouseLeave={() => setAboutDropdownOpen(false)}
+              className="nav-dropdown-wrapper"
             >
               <button
                 type="button"
                 className={`public-nav-link ${location.pathname.startsWith('/about') ? 'active' : ''}`}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  font: 'inherit',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 4
-                }}
+                onClick={handleAboutToggle}
                 aria-expanded={aboutDropdownOpen}
                 aria-haspopup="true"
               >
-                {nav.about}
+                <span>{nav.about}</span>
                 <ChevronDown
                   size={14}
                   style={{
                     transform: aboutDropdownOpen ? 'rotate(180deg)' : 'none',
-                    transition: 'transform 150ms ease',
-                    opacity: 0.7
+                    transition: 'transform 200ms ease',
+                    opacity: 0.75
                   }}
                 />
               </button>
 
               {aboutDropdownOpen && (
-                <div
-                  className="dropdown-menu"
-                  style={{
-                    position: 'absolute',
-                    top: 'calc(100% + 4px)',
-                    left: 0,
-                    right: 'auto',
-                    minWidth: 230,
-                    background: 'var(--color-surface)',
-                    border: '1px solid var(--color-border)',
-                    borderRadius: 'var(--radius-xl)',
-                    boxShadow: 'var(--shadow-xl)',
-                    padding: 'var(--space-2)',
-                    zIndex: 200,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: 2
-                  }}
-                >
+                <div className="nav-dropdown-menu">
                   <Link
                     to="/about"
-                    className="dropdown-item"
+                    className="nav-dropdown-item"
                     onClick={() => setAboutDropdownOpen(false)}
-                    style={{ padding: '8px 12px', fontSize: 'var(--text-sm)' }}
                   >
-                    <Info size={16} style={{ color: 'var(--color-primary-600)' }} />
+                    <div className="nav-dropdown-icon-box">
+                      <Info size={16} />
+                    </div>
                     <div>
-                      <p style={{ fontWeight: 600, color: 'var(--color-text)', lineHeight: 1.2 }}>{nav.aboutUs}</p>
-                      <p style={{ fontSize: '11px', color: 'var(--color-text-muted)' }}>{nav.aboutDesc}</p>
+                      <p className="nav-dropdown-title">{nav.aboutUs}</p>
+                      <p className="nav-dropdown-desc">{nav.aboutDesc}</p>
+                    </div>
+                  </Link>
+
+                  <Link
+                    to="/gallery"
+                    className="nav-dropdown-item"
+                    onClick={() => setAboutDropdownOpen(false)}
+                  >
+                    <div className="nav-dropdown-icon-box">
+                      <Camera size={16} />
+                    </div>
+                    <div>
+                      <p className="nav-dropdown-title">Media & Gallery</p>
+                      <p className="nav-dropdown-desc">Event photos, job fairs & video highlights</p>
                     </div>
                   </Link>
 
@@ -189,14 +199,15 @@ export default function PublicHeader() {
                     href="https://naipunyam.ap.gov.in/"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="dropdown-item"
+                    className="nav-dropdown-item"
                     onClick={() => setAboutDropdownOpen(false)}
-                    style={{ padding: '8px 12px', fontSize: 'var(--text-sm)' }}
                   >
-                    <ExternalLink size={16} style={{ color: 'var(--color-primary-600)' }} />
+                    <div className="nav-dropdown-icon-box">
+                      <ExternalLink size={16} />
+                    </div>
                     <div>
-                      <p style={{ fontWeight: 600, color: 'var(--color-text)', lineHeight: 1.2 }}>{nav.trainingPrograms}</p>
-                      <p style={{ fontSize: '11px', color: 'var(--color-text-muted)' }}>{nav.trainingProgramsDesc}</p>
+                      <p className="nav-dropdown-title">{nav.trainingPrograms}</p>
+                      <p className="nav-dropdown-desc">{nav.trainingProgramsDesc}</p>
                     </div>
                   </a>
                 </div>
@@ -216,15 +227,15 @@ export default function PublicHeader() {
                   items={adminMenuItems}
                   align="right"
                   trigger={
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', cursor: 'pointer', padding: '4px 10px', borderRadius: 'var(--radius-lg)', background: '#f8fafc', border: '1px solid #cbd5e1' }}>
-                      <div className="sidebar-user-avatar" style={{ width: 30, height: 30, fontSize: 'var(--text-xs)', background: 'linear-gradient(135deg, #1e1b4b, #4338ca)', color: '#fff' }}>
+                    <div className="nav-user-trigger admin-trigger">
+                      <div className="sidebar-user-avatar" style={{ width: 32, height: 32, fontSize: 'var(--text-xs)', background: 'linear-gradient(135deg, #1e1b4b, #4338ca)', color: '#fff' }}>
                         {currentAdmin?.avatar || 'A'}
                       </div>
                       <div className="hide-mobile" style={{ textAlign: 'left' }}>
-                        <span style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--color-text)', display: 'block', lineHeight: 1.1 }}>
+                        <span className="nav-user-name">
                           {currentAdmin?.name || 'Admin User'}
                         </span>
-                        <span style={{ fontSize: '10px', color: '#4338ca', fontWeight: 700, letterSpacing: '0.02em' }}>
+                        <span className="nav-user-role admin-role">
                           Administrator
                         </span>
                       </div>
@@ -243,11 +254,11 @@ export default function PublicHeader() {
                   items={candidateMenuItems}
                   align="right"
                   trigger={
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', cursor: 'pointer', padding: '4px 8px', borderRadius: 'var(--radius-lg)', background: 'var(--color-gray-50)', border: '1px solid var(--color-border)' }}>
-                      <div className="sidebar-user-avatar" style={{ width: 30, height: 30, fontSize: 'var(--text-xs)' }}>
+                    <div className="nav-user-trigger candidate-trigger">
+                      <div className="sidebar-user-avatar" style={{ width: 32, height: 32, fontSize: 'var(--text-xs)' }}>
                         {candidate?.name?.[0] || 'P'}
                       </div>
-                      <span className="hide-mobile" style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--color-text)' }}>
+                      <span className="hide-mobile nav-user-name">
                         {candidate?.name}
                       </span>
                       <ChevronDown size={14} className="hide-mobile" style={{ color: 'var(--color-text-muted)' }} />
@@ -265,15 +276,15 @@ export default function PublicHeader() {
                   items={recruiterMenuItems}
                   align="right"
                   trigger={
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', cursor: 'pointer', padding: '4px 8px', borderRadius: 'var(--radius-lg)', background: '#f5f3ff', border: '1px solid #c7d2fe' }}>
-                      <div className="sidebar-user-avatar" style={{ width: 30, height: 30, fontSize: 'var(--text-xs)', background: 'linear-gradient(135deg, var(--color-primary-600), #7c3aed)', color: '#fff' }}>
+                    <div className="nav-user-trigger recruiter-trigger">
+                      <div className="sidebar-user-avatar" style={{ width: 32, height: 32, fontSize: 'var(--text-xs)', background: 'linear-gradient(135deg, var(--color-primary-600), #7c3aed)', color: '#fff' }}>
                         {recruiter?.avatar || recruiter?.name?.[0] || 'R'}
                       </div>
                       <div className="hide-mobile" style={{ textAlign: 'left' }}>
-                        <span style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--color-text)', display: 'block', lineHeight: 1.1 }}>
+                        <span className="nav-user-name">
                           {recruiter?.name}
                         </span>
-                        <span style={{ fontSize: '10px', color: 'var(--color-primary-700)', fontWeight: 600 }}>
+                        <span className="nav-user-role recruiter-role">
                           Recruiter
                         </span>
                       </div>
@@ -284,71 +295,66 @@ export default function PublicHeader() {
               </div>
             ) : (
               <>
+                <div className="nav-vertical-divider hide-mobile" />
+
                 <Link to="/login" className="hide-mobile">
-                  <Button variant="ghost" size="sm">{nav.login}</Button>
+                  <span className="nav-login-btn">{nav.login}</span>
                 </Link>
 
                 {/* Get Started Dropdown (Candidate vs Recruiter) */}
-                <div ref={getStartedRef} style={{ position: 'relative' }} className="hide-mobile">
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    onClick={() => setGetStartedOpen((v) => !v)}
-                    rightIcon={<ChevronDown size={14} style={{ transform: getStartedOpen ? 'rotate(180deg)' : 'none', transition: 'transform 150ms ease' }} />}
+                <div ref={getStartedRef} className="nav-dropdown-wrapper hide-mobile">
+                  <button
+                    type="button"
+                    className="nav-get-started-btn"
+                    onClick={handleGetStartedToggle}
+                    aria-expanded={getStartedOpen}
+                    aria-haspopup="true"
                   >
-                    {nav.getStarted}
-                  </Button>
+                    <span>{nav.getStarted}</span>
+                    <ChevronDown
+                      size={14}
+                      style={{
+                        transform: getStartedOpen ? 'rotate(180deg)' : 'none',
+                        transition: 'transform 200ms ease'
+                      }}
+                    />
+                  </button>
 
                   {getStartedOpen && (
-                    <div
-                      className="dropdown-menu"
-                      style={{
-                        position: 'absolute',
-                        top: 'calc(100% + 8px)',
-                        right: 0,
-                        minWidth: 260,
-                        background: 'var(--color-surface)',
-                        border: '1px solid var(--color-border)',
-                        borderRadius: 'var(--radius-xl)',
-                        boxShadow: 'var(--shadow-xl)',
-                        padding: 'var(--space-2)',
-                        zIndex: 200,
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: 2
-                      }}
-                    >
+                    <div className="nav-get-started-menu">
                       <Link
                         to="/register/candidate"
-                        className="dropdown-item"
+                        className="nav-dropdown-item"
                         onClick={() => setGetStartedOpen(false)}
-                        style={{ padding: '10px 14px' }}
                       >
-                        <User size={18} style={{ color: 'var(--color-primary-600)', flexShrink: 0 }} />
+                        <div className="nav-dropdown-icon-box candidate-box">
+                          <User size={18} />
+                        </div>
                         <div>
-                          <p style={{ fontWeight: 600, fontSize: 'var(--text-sm)', color: 'var(--color-text)', lineHeight: 1.2 }}>
+                          <p className="nav-dropdown-title">
                             {nav.asJobSeeker || nav.candidateReg || 'Candidate Registration'}
                           </p>
-                          <p style={{ fontSize: '11px', color: 'var(--color-text-muted)', marginTop: 2 }}>
+                          <p className="nav-dropdown-desc">
                             {nav.asJobSeekerDesc || nav.candidateDesc || 'Find jobs, internships & job fairs'}
                           </p>
                         </div>
                       </Link>
 
-                      <div style={{ height: 1, background: 'var(--color-border)', margin: '2px 0' }} />
+                      <div className="nav-dropdown-divider" />
 
                       <Link
                         to="/register/recruiter"
-                        className="dropdown-item"
+                        className="nav-dropdown-item"
                         onClick={() => setGetStartedOpen(false)}
-                        style={{ padding: '10px 14px' }}
                       >
-                        <Building2 size={18} style={{ color: 'var(--color-primary-600)', flexShrink: 0 }} />
+                        <div className="nav-dropdown-icon-box recruiter-box">
+                          <Building2 size={18} />
+                        </div>
                         <div>
-                          <p style={{ fontWeight: 600, fontSize: 'var(--text-sm)', color: 'var(--color-text)', lineHeight: 1.2 }}>
+                          <p className="nav-dropdown-title">
                             {nav.asEmployer || nav.recruiterReg || 'Recruiter Registration'}
                           </p>
-                          <p style={{ fontSize: '11px', color: 'var(--color-text-muted)', marginTop: 2 }}>
+                          <p className="nav-dropdown-desc">
                             {nav.asEmployerDesc || nav.recruiterDesc || 'Post jobs & hire verified talent'}
                           </p>
                         </div>
@@ -359,39 +365,24 @@ export default function PublicHeader() {
               </>
             )}
 
+            {/* Language switch button */}
+            <button
+              className={`nav-lang-btn notranslate hide-mobile ${lang === 'te' ? 'te-active' : ''}`}
+              onClick={toggle}
+              aria-label={lang === 'en' ? 'Switch to Telugu' : 'Switch to English'}
+            >
+              <Globe size={14} />
+              <span>{lang === 'en' ? 'Telugu' : 'English'}</span>
+            </button>
+
             {/* Mobile menu hamburger button */}
             <button
-              className="menu-toggle hide-desktop"
+              className="nav-hamburger-btn hide-desktop"
               onClick={() => setMenuOpen(!menuOpen)}
               aria-label="Toggle menu"
               aria-expanded={menuOpen}
             >
               {menuOpen ? <X size={20} /> : <Menu size={20} />}
-            </button>
-
-            {/* Language switch button */}
-            <button
-              className="btn btn-outline btn-sm hide-mobile notranslate"
-              onClick={toggle}
-              aria-label={lang === 'en' ? 'Switch to Telugu' : 'Switch to English'}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 5,
-                fontSize: 'var(--text-xs)',
-                fontWeight: lang === 'te' ? 700 : 500,
-                color: lang === 'te' ? 'var(--color-primary-600)' : 'var(--color-text-muted)',
-                padding: '4px 10px',
-                borderRadius: 'var(--radius-lg)',
-                border: '1px solid var(--color-border)',
-                background: 'transparent',
-                cursor: 'pointer',
-                transition: 'color 150ms ease, border-color 150ms ease',
-                borderColor: lang === 'te' ? 'var(--color-primary-300)' : 'var(--color-border)',
-              }}
-            >
-              <Globe size={14} />
-              {lang === 'en' ? 'Telugu' : 'English'}
             </button>
           </div>
         </div>
@@ -474,6 +465,15 @@ export default function PublicHeader() {
                     >
                       <Info size={14} />
                       {nav.aboutUs}
+                    </NavLink>
+                    <NavLink
+                      to="/gallery"
+                      className={({ isActive }) => `mobile-nav-link ${isActive ? 'active' : ''}`}
+                      onClick={() => setMenuOpen(false)}
+                      style={{ fontSize: 'var(--text-sm)', padding: 'var(--space-2) var(--space-3)' }}
+                    >
+                      <Camera size={14} />
+                      Media & Gallery
                     </NavLink>
                     <a
                       href="https://naipunyam.ap.gov.in/"

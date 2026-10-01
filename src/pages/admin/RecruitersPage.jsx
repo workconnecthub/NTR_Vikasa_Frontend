@@ -3,16 +3,20 @@ import { useSearchParams } from 'react-router-dom';
 import {
   Users, Search, Filter, Eye, ShieldAlert, ShieldCheck,
   Building2, Briefcase, Mail, Phone, MapPin, CheckCircle2,
-  XCircle, AlertTriangle, FileText, GraduationCap, UserCheck
+  XCircle, AlertTriangle, FileText, GraduationCap, UserCheck,
+  UserPlus, Plus, Sparkles, Download
 } from 'lucide-react';
 import Button from '../../components/ui/Button';
 import { StatusBadge } from '../../components/ui/Badge';
 import { Modal, ConfirmDialog } from '../../components/ui/Modal';
 import Table from '../../components/ui/Table';
+import FormField from '../../components/ui/FormField';
+import Input from '../../components/ui/Input';
+import Select from '../../components/ui/Select';
 import { EmptyState } from '../../components/ui/States';
 import Pagination from '../../components/ui/Pagination';
 import ExportDropdown from '../../components/ui/ExportDropdown';
-import { exportToExcel, exportToPDF, getExportFilename } from '../../utils/exportUtils';
+import { exportToExcel, exportToPDF, getExportFilename, exportRecruiterDossierPDF } from '../../utils/exportUtils';
 import { useToast } from '../../context/ToastContext';
 import { useAdmin } from '../../context/AdminContext';
 
@@ -27,6 +31,7 @@ export default function AdminRecruitersPage() {
     verifyRecruiter,
     suspendRecruiter,
     activateRecruiter,
+    addRecruiter,
     companies = [],
     jobs = [],
     internships = [],
@@ -62,7 +67,7 @@ export default function AdminRecruitersPage() {
     }
   };
 
-  const PAGE_SIZE = 10;
+  const [pageSize, setPageSize] = useState(10);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [companyFilter, setCompanyFilter] = useState('ALL');
@@ -70,7 +75,7 @@ export default function AdminRecruitersPage() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [search, statusFilter, companyFilter]);
+  }, [search, statusFilter, companyFilter, pageSize]);
 
   // Derive unique company names from existing recruiter and company data
   const availableCompanies = useMemo(() => {
@@ -93,6 +98,65 @@ export default function AdminRecruitersPage() {
   // View modal
   const [selectedRecruiter, setSelectedRecruiter] = useState(null);
   const [viewModalOpen, setViewModalOpen] = useState(false);
+
+  // Add Recruiter Modal State
+  const [addModalOpen, setAddModalOpen] = useState(false);
+  const [addForm, setAddForm] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    designation: 'Talent Acquisition Manager',
+    companyType: 'EXISTING', // 'EXISTING' | 'NEW'
+    selectedCompany: '',
+    newCompanyName: '',
+    industry: 'Information Technology & Services',
+    location: 'Vijayawada, NTR District',
+  });
+
+  const handleAddRecruiterSubmit = (e) => {
+    e.preventDefault();
+    if (!addForm.name.trim() || !addForm.email.trim()) {
+      addToast('Please enter recruiter name and email address.', 'error');
+      return;
+    }
+
+    const assignedCompany = addForm.companyType === 'EXISTING'
+      ? (addForm.selectedCompany || availableCompanies[0] || 'NTR Partner Enterprise')
+      : addForm.newCompanyName.trim();
+
+    if (!assignedCompany) {
+      addToast('Please specify a company for this recruiter.', 'error');
+      return;
+    }
+
+    const newRecruiter = {
+      name: addForm.name.trim(),
+      email: addForm.email.trim(),
+      phone: addForm.phone.trim() || '+91 98480 12345',
+      company: assignedCompany,
+      designation: addForm.designation.trim() || 'Talent Acquisition Manager',
+      industry: addForm.industry.trim() || 'Information Technology & Services',
+      location: addForm.location.trim() || 'Vijayawada, NTR District',
+      verificationStatus: 'VERIFIED',
+      accountStatus: 'ACTIVE',
+      postedJobsCount: 0
+    };
+
+    addRecruiter(newRecruiter);
+    addToast(`Recruiter "${newRecruiter.name}" (${assignedCompany}) successfully registered and verified!`, 'success');
+    setAddModalOpen(false);
+    setAddForm({
+      name: '',
+      email: '',
+      phone: '',
+      designation: 'Talent Acquisition Manager',
+      companyType: 'EXISTING',
+      selectedCompany: availableCompanies[0] || '',
+      newCompanyName: '',
+      industry: 'Information Technology & Services',
+      location: 'Vijayawada, NTR District',
+    });
+  };
 
   // Suspend Dialog
   const [suspendTarget, setSuspendTarget] = useState(null);
@@ -134,11 +198,11 @@ export default function AdminRecruitersPage() {
     });
   }, [recruiters, search, statusFilter, companyFilter]);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const paginatedRecruiters = useMemo(() => {
-    const startIndex = (currentPage - 1) * PAGE_SIZE;
-    return filtered.slice(startIndex, startIndex + PAGE_SIZE);
-  }, [filtered, currentPage]);
+    const startIndex = (currentPage - 1) * pageSize;
+    return filtered.slice(startIndex, startIndex + pageSize);
+  }, [filtered, currentPage, pageSize]);
 
   const handleVerify = (r) => {
     verifyRecruiter(r.id);
@@ -354,6 +418,19 @@ export default function AdminRecruitersPage() {
             View
           </Button>
 
+          <Button
+            size="xs"
+            variant="outline"
+            leftIcon={<Download size={12} />}
+            onClick={() => {
+              exportRecruiterDossierPDF(row);
+              addToast(`Downloading recruiter dossier for ${row.name}...`, 'success');
+            }}
+            title="Download Recruiter Dossier (PDF)"
+          >
+            PDF
+          </Button>
+
           {row.verificationStatus === 'PENDING' && (
             <Button
               size="xs"
@@ -490,7 +567,7 @@ export default function AdminRecruitersPage() {
                 </p>
               </div>
 
-              <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
+              <div style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'center', flexWrap: 'wrap' }}>
                 <span style={{
                   background: '#f5f3ff',
                   color: '#6d28d9',
@@ -502,6 +579,20 @@ export default function AdminRecruitersPage() {
                 }}>
                   {recruiters.filter(r => r.verificationStatus === 'VERIFIED').length} Verified Recruiters
                 </span>
+
+                <Button
+                  variant="primary"
+                  leftIcon={<Plus size={16} />}
+                  onClick={() => {
+                    setAddForm(prev => ({
+                      ...prev,
+                      selectedCompany: prev.selectedCompany || availableCompanies[0] || ''
+                    }));
+                    setAddModalOpen(true);
+                  }}
+                >
+                  Add Recruiter
+                </Button>
               </div>
             </div>
           </div>
@@ -633,11 +724,16 @@ export default function AdminRecruitersPage() {
                   currentPage={currentPage}
                   totalPages={totalPages}
                   totalItems={filtered.length}
-                  pageSize={PAGE_SIZE}
+                  pageSize={pageSize}
                   onPageChange={(p) => {
                     setCurrentPage(p);
                     window.scrollTo({ top: 120, behavior: 'smooth' });
                   }}
+                  onPageSizeChange={(newSize) => {
+                    setPageSize(newSize);
+                    setCurrentPage(1);
+                  }}
+                  itemName="recruiters"
                 />
               </>
             )}
@@ -947,32 +1043,45 @@ export default function AdminRecruitersPage() {
                     )}
                   </div>
 
-                  {/* 6. Admin Actions (ONLY [ Close ] [ Suspend Account ]) */}
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-3)', borderTop: '1px solid var(--color-border)', paddingTop: 'var(--space-4)' }}>
-                    <Button variant="outline" onClick={() => setViewModalOpen(false)}>
-                      Close
+                  {/* 6. Admin Actions */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--color-border)', paddingTop: 'var(--space-4)', flexWrap: 'wrap', gap: 'var(--space-3)' }}>
+                    <Button
+                      variant="primary"
+                      leftIcon={<Download size={14} />}
+                      onClick={() => {
+                        exportRecruiterDossierPDF(selectedRecruiter);
+                        addToast(`Downloading verified recruiter dossier for ${selectedRecruiter.name}...`, 'success');
+                      }}
+                    >
+                      Download Dossier (PDF)
                     </Button>
-                    {selectedRecruiter.accountStatus === 'ACTIVE' ? (
-                      <Button
-                        variant="danger"
-                        onClick={() => {
-                          setViewModalOpen(false);
-                          setSuspendTarget(selectedRecruiter);
-                        }}
-                      >
-                        Suspend Account
+
+                    <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
+                      <Button variant="outline" onClick={() => setViewModalOpen(false)}>
+                        Close
                       </Button>
-                    ) : (
-                      <Button
-                        variant="primary"
-                        onClick={() => {
-                          handleActivate(selectedRecruiter);
-                          setSelectedRecruiter({ ...selectedRecruiter, accountStatus: 'ACTIVE' });
-                        }}
-                      >
-                        Activate Account
-                      </Button>
-                    )}
+                      {selectedRecruiter.accountStatus === 'ACTIVE' ? (
+                        <Button
+                          variant="danger"
+                          onClick={() => {
+                            setViewModalOpen(false);
+                            setSuspendTarget(selectedRecruiter);
+                          }}
+                        >
+                          Suspend Account
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="primary"
+                          onClick={() => {
+                            handleActivate(selectedRecruiter);
+                            setSelectedRecruiter({ ...selectedRecruiter, accountStatus: 'ACTIVE' });
+                          }}
+                        >
+                          Activate Account
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </div>
               </Modal>
@@ -990,6 +1099,177 @@ export default function AdminRecruitersPage() {
               onConfirm={handleConfirmSuspend}
               onCancel={() => setSuspendTarget(null)}
             />
+          )}
+
+          {/* ── 3. Add Recruiter Modal ── */}
+          {addModalOpen && (
+            <Modal
+              isOpen={addModalOpen}
+              onClose={() => setAddModalOpen(false)}
+              title="Direct Register Recruiter / Employer"
+              size="md"
+            >
+              <form onSubmit={handleAddRecruiterSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+                {/* Notice Banner */}
+                <div style={{
+                  padding: '12px 14px',
+                  borderRadius: 'var(--radius-lg)',
+                  background: '#eff6ff',
+                  border: '1px solid #bfdbfe',
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: 'var(--space-3)'
+                }}>
+                  <Sparkles size={18} style={{ color: '#2563eb', flexShrink: 0, marginTop: 2 }} />
+                  <div>
+                    <strong style={{ fontSize: 'var(--text-xs)', color: '#1e40af', display: 'block' }}>
+                      Admin Direct Onboarding & Auto-Verification
+                    </strong>
+                    <span style={{ fontSize: '11px', color: '#3b82f6', lineHeight: 1.4 }}>
+                      Recruiters onboarded directly by Administrator are verified and granted authorized access to manage job postings and candidate pipelines.
+                    </span>
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 'var(--space-3)' }}>
+                  <FormField label="Recruiter Full Name" required>
+                    <Input
+                      placeholder="e.g. Anand Mahindra"
+                      value={addForm.name}
+                      onChange={(e) => setAddForm({ ...addForm, name: e.target.value })}
+                      required
+                    />
+                  </FormField>
+
+                  <FormField label="Official Work Email" required>
+                    <Input
+                      type="email"
+                      placeholder="e.g. anand@company.com"
+                      value={addForm.email}
+                      onChange={(e) => setAddForm({ ...addForm, email: e.target.value })}
+                      required
+                    />
+                  </FormField>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 'var(--space-3)' }}>
+                  <FormField label="Mobile Phone Number">
+                    <Input
+                      type="tel"
+                      placeholder="e.g. +91 98480 12345"
+                      value={addForm.phone}
+                      onChange={(e) => setAddForm({ ...addForm, phone: e.target.value })}
+                    />
+                  </FormField>
+
+                  <FormField label="Designation / Role">
+                    <Input
+                      placeholder="e.g. Talent Acquisition Lead"
+                      value={addForm.designation}
+                      onChange={(e) => setAddForm({ ...addForm, designation: e.target.value })}
+                    />
+                  </FormField>
+                </div>
+
+                {/* Company Assignment */}
+                <div style={{
+                  padding: 'var(--space-3)',
+                  background: 'var(--color-gray-50)',
+                  borderRadius: 'var(--radius-lg)',
+                  border: '1px solid var(--color-border)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 'var(--space-3)'
+                }}>
+                  <label style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-text)' }}>
+                    Company Assignment *
+                  </label>
+                  <div style={{ display: 'flex', gap: 'var(--space-4)', flexWrap: 'wrap' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--text-xs)', cursor: 'pointer' }}>
+                      <input
+                        type="radio"
+                        name="recruiterCompanyType"
+                        checked={addForm.companyType === 'EXISTING'}
+                        onChange={() => setAddForm({ ...addForm, companyType: 'EXISTING' })}
+                      />
+                      <span>Select Existing Company</span>
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--text-xs)', cursor: 'pointer' }}>
+                      <input
+                        type="radio"
+                        name="recruiterCompanyType"
+                        checked={addForm.companyType === 'NEW'}
+                        onChange={() => setAddForm({ ...addForm, companyType: 'NEW' })}
+                      />
+                      <span>Register New Company</span>
+                    </label>
+                  </div>
+
+                  {addForm.companyType === 'EXISTING' ? (
+                    <FormField label="Select Registered Organization">
+                      <select
+                        className="form-control"
+                        value={addForm.selectedCompany || (availableCompanies.length > 0 ? availableCompanies[0] : '')}
+                        onChange={(e) => setAddForm({ ...addForm, selectedCompany: e.target.value })}
+                        style={{ height: 38, borderRadius: 'var(--radius-lg)', fontSize: 'var(--text-xs)' }}
+                      >
+                        {availableCompanies.map((cName) => (
+                          <option key={cName} value={cName}>
+                            {cName}
+                          </option>
+                        ))}
+                      </select>
+                    </FormField>
+                  ) : (
+                    <FormField label="New Company / Organization Name" required>
+                      <Input
+                        placeholder="e.g. Amaravati Tech Systems Pvt Ltd"
+                        value={addForm.newCompanyName}
+                        onChange={(e) => setAddForm({ ...addForm, newCompanyName: e.target.value })}
+                        required
+                      />
+                    </FormField>
+                  )}
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 'var(--space-3)' }}>
+                  <FormField label="Industry Domain">
+                    <select
+                      className="form-control"
+                      value={addForm.industry}
+                      onChange={(e) => setAddForm({ ...addForm, industry: e.target.value })}
+                      style={{ height: 38, borderRadius: 'var(--radius-lg)', fontSize: 'var(--text-xs)' }}
+                    >
+                      <option value="Information Technology & Services">Information Technology & Services</option>
+                      <option value="Manufacturing & Automobile">Manufacturing & Automobile</option>
+                      <option value="Banking & Financial Services">Banking & Financial Services</option>
+                      <option value="Logistics & Supply Chain">Logistics & Supply Chain</option>
+                      <option value="Healthcare & Pharmaceuticals">Healthcare & Pharmaceuticals</option>
+                      <option value="Retail & E-Commerce">Retail & E-Commerce</option>
+                      <option value="Education & Training">Education & Training</option>
+                      <option value="Construction & Infrastructure">Construction & Infrastructure</option>
+                    </select>
+                  </FormField>
+
+                  <FormField label="Location / District">
+                    <Input
+                      placeholder="e.g. Vijayawada, NTR District"
+                      value={addForm.location}
+                      onChange={(e) => setAddForm({ ...addForm, location: e.target.value })}
+                    />
+                  </FormField>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-3)', marginTop: 'var(--space-2)' }}>
+                  <Button type="button" variant="outline" onClick={() => setAddModalOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button type="submit" variant="primary" leftIcon={<UserPlus size={16} />}>
+                    Register & Verify Recruiter
+                  </Button>
+                </div>
+              </form>
+            </Modal>
           )}
         </>
       )}

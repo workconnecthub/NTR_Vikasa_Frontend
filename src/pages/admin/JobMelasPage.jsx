@@ -5,7 +5,7 @@ import {
   Clock, CheckCircle2, Ticket, XCircle, Inbox, Check, X, AlertCircle,
   Pencil, Trash2, ExternalLink, Share2, Users, Briefcase,
   ChevronLeft, ChevronRight, User, Phone, Mail, Award, DollarSign,
-  FileSpreadsheet, FileText, Download, Info, Calendar
+  FileSpreadsheet, FileText, Download, Info, Calendar, Sparkles
 } from 'lucide-react';
 import Button from '../../components/ui/Button';
 import { StatusBadge } from '../../components/ui/Badge';
@@ -21,6 +21,7 @@ import { exportToExcel, exportToPDF, exportToCSV, generatePDFBlob, getExportFile
 import { useToast } from '../../context/ToastContext';
 import { useAdmin } from '../../context/AdminContext';
 import { formatMelaId, formatJobId } from '../../utils/applicationUtils';
+import JobMelaPosterModal, { downloadPosterImage } from '../../components/ui/JobMelaPosterModal';
 
 export default function AdminJobMelasPage() {
   const { addToast } = useToast();
@@ -29,6 +30,8 @@ export default function AdminJobMelasPage() {
     candidates,
     companies,
     registrations,
+    applications,
+    getMelaStats,
     approveJobMela,
     rejectJobMela,
     addCompanyToJobMela,
@@ -48,6 +51,7 @@ export default function AdminJobMelasPage() {
 
   // Main event view modal
   const [selectedMela, setSelectedMela] = useState(null);
+  const [selectedPosterMela, setSelectedPosterMela] = useState(null);
   const [viewModalOpen, setViewModalOpen] = useState(false);
 
   // Participating Company filtering, search & pagination within modal
@@ -245,35 +249,57 @@ export default function AdminJobMelasPage() {
     if (!mela) return [];
     const eventQuery = (mela.event || mela.title || '').toLowerCase();
     const matching = (registrations || []).filter(r => {
+      if (r.melaId && (String(r.melaId) === String(mela.id))) return true;
       const regEvent = (r.event || r.eventName || '').toLowerCase();
-      return regEvent.includes(eventQuery) || eventQuery.includes(regEvent);
+      return regEvent && (regEvent.includes(eventQuery) || eventQuery.includes(regEvent));
     });
-    if (matching.length > 0) {
-      return matching.map((r, idx) => ({
-        ...r,
-        id: r.id || `REG-${mela.id || 'MELA'}-${1000 + idx}`,
-        candidate: r.candidate || r.candidateName || 'Candidate',
-        candidateEmail: r.candidateEmail || r.email || 'candidate@example.com',
-        phone: r.phone || '+91 98765 43210',
-        entryToken: r.entryToken || `TKN-${(mela.location || 'AP').substring(0, 3).toUpperCase()}-${String(100 + idx).padStart(4, '0')}`,
-        gateNumber: r.gateNumber || (idx % 2 === 0 ? 'Gate 1 (Main Hall)' : 'Gate 2 (Tech Wing)'),
-        registrationDate: r.registrationDate || r.registeredDate || '2026-08-28',
-        status: r.status || 'CONFIRMED',
-        event: mela.event || mela.title
-      }));
-    }
-    return (candidates || []).slice(0, 10).map((c, idx) => ({
-      id: `REG-${mela.id || 'MELA'}-${1000 + idx}`,
-      candidate: c.name,
-      candidateEmail: c.email,
-      phone: c.phone || '+91 98765 43210',
-      registrationDate: c.registrationDate || '2026-08-28',
-      status: idx % 4 === 3 ? 'WAITLISTED' : 'CONFIRMED',
-      event: mela.event || mela.title,
-      position: c.headline || 'Software Engineer',
-      entryToken: `TKN-${(mela.location || 'AP').substring(0, 3).toUpperCase()}-${String(100 + idx).padStart(4, '0')}`,
-      gateNumber: idx % 2 === 0 ? 'Gate 1 (Main Hall)' : 'Gate 2 (Tech Wing)'
-    }));
+
+    const melaApps = (applications || []).filter(a => {
+      if (a.melaId && (String(a.melaId) === String(mela.id))) return true;
+      const aTitle = (a.melaTitle || '').toLowerCase();
+      return aTitle && (aTitle.includes(eventQuery) || eventQuery.includes(aTitle));
+    });
+
+    const uniqueMap = new Map();
+    matching.forEach((r, idx) => {
+      const email = (r.candidateEmail || r.email || '').toLowerCase().trim();
+      const key = email || r.id;
+      if (!uniqueMap.has(key)) {
+        uniqueMap.set(key, {
+          ...r,
+          id: r.id || `REG-${mela.id || 'MELA'}-${1000 + idx}`,
+          candidate: r.candidate || r.candidateName || 'Candidate',
+          candidateEmail: r.candidateEmail || r.email || 'candidate@example.com',
+          phone: r.phone || '+91 98765 43210',
+          entryToken: r.entryToken || r.passId || `TKN-${(mela.location || 'AP').substring(0, 3).toUpperCase()}-${String(100 + idx).padStart(4, '0')}`,
+          gateNumber: r.gateNumber || (idx % 2 === 0 ? 'Gate 1 (Main Hall)' : 'Gate 2 (Tech Wing)'),
+          registrationDate: r.registrationDate || r.registeredDate || '2026-08-28',
+          status: r.status || 'CONFIRMED',
+          event: mela.event || mela.title
+        });
+      }
+    });
+
+    melaApps.forEach((a, idx) => {
+      const email = (a.candidateEmail || a.email || '').toLowerCase().trim();
+      const key = email || a.id;
+      if (!uniqueMap.has(key)) {
+        uniqueMap.set(key, {
+          id: a.id || `APP-${mela.id || 'MELA'}-${1000 + idx}`,
+          candidate: a.candidateName || a.candidate || 'Candidate',
+          candidateEmail: a.candidateEmail || a.email || 'candidate@example.com',
+          phone: a.phone || '+91 98765 43210',
+          entryToken: a.passId || a.appNumber || `APP-${String(100 + idx).padStart(4, '0')}`,
+          gateNumber: 'Gate 2 (Tech Wing)',
+          registrationDate: a.appliedDate || 'Today',
+          status: 'CONFIRMED',
+          event: mela.event || mela.title,
+          appliedCompany: a.company || a.companyName
+        });
+      }
+    });
+
+    return Array.from(uniqueMap.values());
   };
 
   // Scoped helper for individual mela participating companies
@@ -281,27 +307,27 @@ export default function AdminJobMelasPage() {
     if (!mela) return [];
     const baseList = (Array.isArray(mela.participatingCompanies) && mela.participatingCompanies.length > 0)
       ? mela.participatingCompanies
-      : (companies || []).map((comp, idx) => ({
-          id: `pmc-default-${idx}`,
-          companyId: comp.id,
-          company: comp.name,
-          recruiter: comp.recruiter || 'Talent Acquisition Lead',
-          position: idx % 2 === 0 ? 'Software Engineer / Graduate Trainee' : 'Operations Specialist & Analyst',
-          qualification: 'B.Tech / B.Sc / Any Degree',
-          experience: '0-3 Years',
-          salary: '₹3,50,000 - ₹8,00,000 / year',
-          vacancies: 15 + (idx * 5),
-          applications: 45 + (idx * 12),
-          location: mela.location || comp.location || 'On-site Mela Stalls',
-          notes: comp.verificationStatus === 'VERIFIED' ? 'Verified Participant' : 'Pending Verification'
-        }));
+      : [];
 
-    return baseList.map(item => {
-      if (!item.recruiter) {
-        const found = companies.find(c => c.id === item.companyId || c.name === item.company);
-        return { ...item, recruiter: found?.recruiter || 'Talent Acquisition Lead' };
-      }
-      return item;
+    return baseList.map((item, idx) => {
+      const companyName = item.company || item.name || 'Company';
+      const realAppCount = (applications || []).filter(a => {
+        const melaMatch = (a.melaId && String(a.melaId) === String(mela.id)) ||
+          (a.melaTitle && (mela.title || mela.event) && a.melaTitle.toLowerCase() === (mela.title || mela.event).toLowerCase());
+        const compMatch = (a.company || a.companyName || '').toLowerCase().trim() === companyName.toLowerCase().trim();
+        return melaMatch && compMatch;
+      }).length;
+
+      const found = (companies || []).find(c => c.id === item.companyId || c.name?.toLowerCase() === companyName.toLowerCase());
+      return {
+        ...item,
+        id: item.id || `pmc-${idx}`,
+        company: companyName,
+        recruiter: item.recruiter || found?.recruiter || 'Talent Acquisition Lead',
+        applications: item.applications !== undefined && item.applications > realAppCount ? item.applications : realAppCount,
+        vacancies: item.vacancies || 15,
+        location: item.location || mela.location || 'On-site Mela Stalls',
+      };
     });
   };
 
@@ -664,6 +690,23 @@ export default function AdminJobMelasPage() {
               </span>
             </div>
             <span style={{ fontSize: '11px', color: 'var(--color-primary-600)', fontWeight: 600 }}>{venue}</span>
+            {row.client && (
+              <div>
+                <span style={{
+                  fontSize: '10px',
+                  background: '#eff6ff',
+                  color: '#1d4ed8',
+                  border: '1px solid #bfdbfe',
+                  padding: '1px 6px',
+                  borderRadius: '4px',
+                  fontWeight: 700,
+                  marginTop: 2,
+                  display: 'inline-block'
+                }}>
+                  🏢 Client: {row.client}
+                </span>
+              </div>
+            )}
           </div>
         );
       }
@@ -728,6 +771,85 @@ export default function AdminJobMelasPage() {
               <Building2 size={13} /> {count} Companies
             </span>
           </button>
+        );
+      }
+    },
+    {
+      key: 'registeredCandidatesCount',
+      label: 'Registered Candidates (Banner)',
+      sortable: true,
+      render: (_, row) => {
+        const stats = getMelaStats ? getMelaStats(row.id) : null;
+        const regCount = stats
+          ? stats.uniqueAppliedCandidatesCount
+          : (row.registeredCandidatesCount !== undefined
+              ? row.registeredCandidatesCount
+              : ((registrations || []).filter(r =>
+                  (r.melaId && String(r.melaId) === String(row.id)) ||
+                  (r.event && (row.event || row.title) && r.event.toLowerCase().includes((row.event || row.title).toLowerCase()))
+                ).length));
+        const maxCapacity = Number(row.capacity || row.maxCapacity) || 3000;
+        const pct = Math.min(100, Math.round((regCount / maxCapacity) * 100));
+
+        return (
+          <div style={{ minWidth: 155 }}>
+            <button
+              type="button"
+              onClick={() => handleOpenMelaRegistrations(row)}
+              title="Click to view registered candidates list"
+              style={{
+                background: 'none',
+                border: 'none',
+                padding: 0,
+                cursor: 'pointer',
+                textAlign: 'left',
+                width: '100%'
+              }}
+            >
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 6,
+                marginBottom: 3
+              }}>
+                <span style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  fontSize: '11px',
+                  fontWeight: 800,
+                  color: '#4338ca',
+                  background: '#e0e7ff',
+                  padding: '2px 8px',
+                  borderRadius: 'var(--radius-md)'
+                }}>
+                  <Users size={12} /> {(Number(regCount) || 0).toLocaleString('en-IN')} Candidates
+                </span>
+                <span style={{ fontSize: '10px', color: 'var(--color-text-muted)', fontWeight: 700 }}>
+                  {pct}%
+                </span>
+              </div>
+              <div style={{
+                width: '100%',
+                height: 6,
+                borderRadius: 3,
+                background: 'var(--color-gray-200)',
+                overflow: 'hidden'
+              }}>
+                <div style={{
+                  width: `${pct}%`,
+                  height: '100%',
+                  background: pct > 80 ? '#059669' : 'linear-gradient(90deg, #4f46e5, #7c3aed)',
+                  borderRadius: 3,
+                  transition: 'width 300ms ease'
+                }} />
+              </div>
+              <span style={{ fontSize: '10px', color: 'var(--color-text-muted)', display: 'block', marginTop: 2 }}>
+                Cap: {maxCapacity.toLocaleString('en-IN')} students
+              </span>
+            </button>
+          </div>
         );
       }
     },
@@ -887,6 +1009,23 @@ export default function AdminJobMelasPage() {
     }
   ];
 
+  // Overall Job Mela Registration Count & Capacity for Admin Banner
+  const totalMelaRegistrations = useMemo(() => {
+    return jobMelas.reduce((acc, m) => {
+      const c = m.registeredCandidatesCount !== undefined
+        ? m.registeredCandidatesCount
+        : (m.registrationsCount !== undefined ? m.registrationsCount : 150);
+      return acc + Number(c || 0);
+    }, 0);
+  }, [jobMelas]);
+
+  const totalMelaCapacity = useMemo(() => {
+    return jobMelas.reduce((acc, m) => {
+      const c = Number(m.capacity || m.maxCapacity) || 2500;
+      return acc + c;
+    }, 0);
+  }, [jobMelas]);
+
   return (
     <div className="admin-job-melas-page" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)', paddingBottom: 'var(--space-16)' }}>
 
@@ -926,6 +1065,104 @@ export default function AdminJobMelasPage() {
                 Create Job Mela
               </Button>
             </Link>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Prominent Job Mela Registration Count Banner for Admin ── */}
+      <div style={{
+        background: 'linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4338ca 100%)',
+        borderRadius: 'var(--radius-2xl)',
+        padding: 'var(--space-6)',
+        color: '#fff',
+        boxShadow: '0 10px 25px -5px rgba(49, 46, 129, 0.3)',
+        position: 'relative',
+        overflow: 'hidden'
+      }}>
+        {/* Ambient decorative glow */}
+        <div style={{
+          position: 'absolute',
+          right: -30,
+          top: -30,
+          width: 220,
+          height: 220,
+          borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(99, 102, 241, 0.35) 0%, rgba(99, 102, 241, 0) 70%)',
+          pointerEvents: 'none'
+        }} />
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--space-5)', position: 'relative', zIndex: 1 }}>
+          <div>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(255,255,255,0.15)', padding: '4px 12px', borderRadius: 'var(--radius-full)', fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8, backdropFilter: 'blur(4px)' }}>
+              <Sparkles size={13} style={{ color: '#fbbf24' }} /> Job Mela Registration Counter
+            </div>
+            <h2 style={{ fontSize: 'var(--text-xl)', fontWeight: 800, margin: 0, color: '#fff' }}>
+              Candidate Registrations & Enrollment Overview
+            </h2>
+            <p style={{ fontSize: 'var(--text-xs)', color: '#c7d2fe', margin: '4px 0 0 0', maxWidth: 620, lineHeight: 1.5 }}>
+              Track how many candidates have registered for state employment drives, job melas, and client-sponsored expos across NTR District.
+            </p>
+          </div>
+
+          <div style={{ display: 'flex', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
+            <div style={{
+              background: 'rgba(255, 255, 255, 0.12)',
+              backdropFilter: 'blur(10px)',
+              padding: 'var(--space-3) var(--space-5)',
+              borderRadius: 'var(--radius-xl)',
+              border: '1px solid rgba(255, 255, 255, 0.25)',
+              minWidth: 155
+            }}>
+              <span style={{ fontSize: '11px', color: '#c7d2fe', textTransform: 'uppercase', fontWeight: 700, display: 'block' }}>
+                Total Registered
+              </span>
+              <div style={{ fontSize: 'var(--text-2xl)', fontWeight: 800, color: '#fff', display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                <Users size={20} style={{ color: '#34d399' }} />
+                {totalMelaRegistrations.toLocaleString('en-IN')}
+              </div>
+              <span style={{ fontSize: '10px', color: '#a7f3d0', fontWeight: 600 }}>
+                Enrolled Students
+              </span>
+            </div>
+
+            <div style={{
+              background: 'rgba(255, 255, 255, 0.12)',
+              backdropFilter: 'blur(10px)',
+              padding: 'var(--space-3) var(--space-5)',
+              borderRadius: 'var(--radius-xl)',
+              border: '1px solid rgba(255, 255, 255, 0.25)',
+              minWidth: 155
+            }}>
+              <span style={{ fontSize: '11px', color: '#c7d2fe', textTransform: 'uppercase', fontWeight: 700, display: 'block' }}>
+                Total Event Capacity
+              </span>
+              <div style={{ fontSize: 'var(--text-2xl)', fontWeight: 800, color: '#fff', display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                <Ticket size={20} style={{ color: '#60a5fa' }} />
+                {totalMelaCapacity.toLocaleString('en-IN')}
+              </div>
+              <span style={{ fontSize: '10px', color: '#93c5fd', fontWeight: 600 }}>
+                Across {jobMelas.length} Career Melas
+              </span>
+            </div>
+
+            <div style={{
+              background: 'rgba(255, 255, 255, 0.12)',
+              backdropFilter: 'blur(10px)',
+              padding: 'var(--space-3) var(--space-5)',
+              borderRadius: 'var(--radius-xl)',
+              border: '1px solid rgba(255, 255, 255, 0.25)',
+              minWidth: 155
+            }}>
+              <span style={{ fontSize: '11px', color: '#c7d2fe', textTransform: 'uppercase', fontWeight: 700, display: 'block' }}>
+                Turnout Fill Rate
+              </span>
+              <div style={{ fontSize: 'var(--text-2xl)', fontWeight: 800, color: '#fcd34d', display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                {totalMelaCapacity > 0 ? Math.round((totalMelaRegistrations / totalMelaCapacity) * 100) : 0}%
+              </div>
+              <span style={{ fontSize: '10px', color: '#fde68a', fontWeight: 600 }}>
+                Intake Capacity Used
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -1189,6 +1426,25 @@ export default function AdminJobMelasPage() {
                 </div>
 
                 <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'center', flexWrap: 'wrap' }}>
+                  <Button
+                    size="xs"
+                    variant="secondary"
+                    leftIcon={<Eye size={12} />}
+                    onClick={() => setSelectedPosterMela(selectedMela)}
+                  >
+                    View Flyer / Poster
+                  </Button>
+                  <Button
+                    size="xs"
+                    variant="secondary"
+                    leftIcon={<Download size={12} />}
+                    onClick={() => {
+                      const poster = selectedMela.posterImage || selectedMela.banner || selectedMela.image || '/hero2.jpg';
+                      downloadPosterImage(poster, selectedMela.title || selectedMela.event);
+                    }}
+                  >
+                    Download Poster
+                  </Button>
                   <Link to={`/job-melas/${selectedMela.id}`} target="_blank" style={{ textDecoration: 'none' }}>
                     <Button size="xs" variant="secondary" leftIcon={<ExternalLink size={12} />}>
                       Public Page
@@ -2767,7 +3023,10 @@ export default function AdminJobMelasPage() {
             ['Location / District', selectedPass.location || selectedPass.district || matchedCandForPass?.location || 'Andhra Pradesh'],
             ['Total Experience', selectedPass.experience || matchedCandForPass?.experience || 'N/A'],
             ['Education Qualification', selectedPass.education || selectedPass.qualification || matchedCandForPass?.education || 'Graduate'],
-            ['Key Skills', Array.isArray(selectedPass.skills || matchedCandForPass?.skills) ? (selectedPass.skills || matchedCandForPass?.skills).join(', ') : (selectedPass.skills || matchedCandForPass?.skills || 'N/A')],
+            ['Key Skills', (() => {
+              const s = selectedPass.skills || matchedCandForPass?.skills;
+              return Array.isArray(s) ? s.join(', ') : (s || 'N/A');
+            })()],
             ['Pass / Gate Status', selectedPass.status || 'CONFIRMED']
           ];
 
@@ -2813,7 +3072,10 @@ export default function AdminJobMelasPage() {
             ['Location / District', selectedPass.location || selectedPass.district || matchedCandForPass?.location || 'Andhra Pradesh'],
             ['Total Experience', selectedPass.experience || matchedCandForPass?.experience || 'N/A'],
             ['Education Qualification', selectedPass.education || selectedPass.qualification || matchedCandForPass?.education || 'Graduate'],
-            ['Key Skills', Array.isArray(selectedPass.skills || matchedCandForPass?.skills) ? (selectedPass.skills || matchedCandForPass?.skills).join(', ') : (selectedPass.skills || matchedCandForPass?.skills || 'N/A')],
+            ['Key Skills', (() => {
+              const s = selectedPass.skills || matchedCandForPass?.skills;
+              return Array.isArray(s) ? s.join(', ') : (s || 'N/A');
+            })()],
             ['Pass / Gate Status', selectedPass.status || 'CONFIRMED']
           ];
 
@@ -3210,6 +3472,18 @@ export default function AdminJobMelasPage() {
           </Modal>
         );
       })()}
+
+      {/* Full Resolution Poster Lightbox Modal */}
+      {selectedPosterMela && (
+        <JobMelaPosterModal
+          isOpen={Boolean(selectedPosterMela)}
+          onClose={() => setSelectedPosterMela(null)}
+          posterUrl={selectedPosterMela.posterImage || selectedPosterMela.banner || selectedPosterMela.image || '/hero2.jpg'}
+          eventTitle={selectedPosterMela.title || selectedPosterMela.event}
+          eventDate={selectedPosterMela.date}
+          eventVenue={selectedPosterMela.venue || selectedPosterMela.location}
+        />
+      )}
     </div>
   );
 }

@@ -584,3 +584,132 @@ export function getExportFilename(prefix, status, ext = 'xlsx') {
   const safeStatus = status && status !== 'ALL' ? `_${String(status).toLowerCase().replace(/[^a-z0-9_-]/g, '_')}` : '';
   return `${safePrefix}${safeStatus}_${dateStr}.${ext}`;
 }
+
+// ─── 6. SINGLE RECORD DOSSIER PDF EXPORTERS ────────────────────────────────
+
+/**
+ * Exports complete verified profile dossier for an individual candidate / student
+ */
+export function exportCandidateDossierPDF(c) {
+  if (!c) return;
+  const safeName = (c.name || 'Candidate').replace(/[^a-zA-Z0-9]/g, '_');
+  const filename = `Candidate_Dossier_${safeName}_${new Date().toISOString().split('T')[0]}.pdf`;
+
+  const isComplete = c.profileCompletion === 100 || c.profileStatus === 'COMPLETE';
+
+  const headers = ['Candidate Information Field', 'Verified Platform KYC & Career Record'];
+  const rows = [
+    ['Candidate Full Name', c.name || 'N/A'],
+    ['Candidate ID', c.id || 'N/A'],
+    ['Official Email Address', c.email || 'N/A'],
+    ['Mobile Phone Number', c.phone || 'N/A'],
+    ['Gender', c.gender || 'N/A'],
+    ['Aadhaar Number (UIDAI)', c.aadhaarNumber ? `•••• •••• ${c.aadhaarNumber.slice(-4)} (12-Digit Government Verified)` : 'N/A'],
+    ['Profile Verification Status', isComplete ? '100% Complete & Verified Candidate' : `35% Basic KYC Registered (${c.profileStatus || 'Awaiting Full Profile'})`],
+    ['Qualification Tier', c.qualificationCategory || c.qualificationTier || '10th / Intermediate / UG'],
+    ['Degree / School / College', c.degree || c.education || 'N/A'],
+    ['Key Skills & Competencies', Array.isArray(c.skills) ? c.skills.join(', ') : (c.skills || 'N/A')],
+    ['Geographic Address', `${c.village ? c.village + ', ' : ''}${c.mandal || 'Vijayawada Urban'}, ${c.district || 'NTR District'}`],
+    ['Referred By (Admin / Nodal Officer)', c.referenceAdmin || 'Admin Direct Onboarding'],
+    ['Placement Status', c.placementStatus === 'PLACED' ? 'PLACED / HIRED' : 'Seeking Employment'],
+    ['Placed Organization', c.placementStatus === 'PLACED' ? `${c.placedCompany || 'N/A'} ${c.isCompanyInDatabase ? '(Verified Partner DB)' : '(External Company)'}` : 'Not Placed Yet'],
+    ['Designation / Role Offered', c.placedRole || (c.placementStatus === 'PLACED' ? 'Full-Time Position' : 'N/A')],
+    ['Annual Package (CTC)', c.placedSalary || (c.placementStatus === 'PLACED' ? 'Best in Industry' : 'N/A')],
+    ['Registration Date', c.registrationDate ? new Date(c.registrationDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : new Date().toLocaleDateString('en-IN')]
+  ];
+
+  exportToPDF({
+    filename,
+    title: `Candidate Dossier: ${c.name}`,
+    subtitle: `NTR VIKASA Official Candidate Verification & Employment Card`,
+    metadata: {
+      'Candidate ID': c.id || 'N/A',
+      'Contact': c.phone || c.email || 'N/A',
+      'Aadhaar Tag': c.aadhaarNumber ? `XX-XXXX-${c.aadhaarNumber.slice(-4)}` : 'Verified',
+      'Placement': c.placementStatus === 'PLACED' ? 'PLACED' : 'SEEKING',
+      'Issued On': new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+    },
+    headers,
+    rows
+  });
+}
+
+/**
+ * Exports complete verified profile dossier for an individual recruiter
+ */
+export function exportRecruiterDossierPDF(r) {
+  if (!r) return;
+  const safeName = (r.name || 'Recruiter').replace(/[^a-zA-Z0-9]/g, '_');
+  const filename = `Recruiter_Dossier_${safeName}_${new Date().toISOString().split('T')[0]}.pdf`;
+
+  const headers = ['Recruiter Credential', 'Official Authorization & Activity Details'];
+  const rows = [
+    ['Recruiter Full Name', r.name || 'N/A'],
+    ['Recruiter ID', r.id || 'N/A'],
+    ['Official Corporate Email', r.email || 'N/A'],
+    ['Mobile Phone Number', r.phone || 'N/A'],
+    ['Designation / Role', r.designation || 'Talent Acquisition Manager'],
+    ['Assigned Company / Entity', r.company || r.companyName || 'N/A'],
+    ['Industry Sector', r.industry || 'Information Technology & Services'],
+    ['Location / District Hub', r.location || 'Vijayawada, NTR District'],
+    ['Verification Status', r.verificationStatus || 'VERIFIED'],
+    ['Account Status', r.accountStatus || 'ACTIVE'],
+    ['Active Jobs Posted', `${r.postedJobsCount !== undefined ? r.postedJobsCount : 0} vacancies`],
+    ['Registration Date', r.registrationDate ? new Date(r.registrationDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Aug 2026']
+  ];
+
+  exportToPDF({
+    filename,
+    title: `Recruiter Dossier: ${r.name}`,
+    subtitle: `NTR VIKASA Authorized Platform Recruiter Verification Record`,
+    metadata: {
+      'Company': r.company || 'N/A',
+      'Verification': r.verificationStatus || 'VERIFIED',
+      'Account': r.accountStatus || 'ACTIVE',
+      'Issued On': new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+    },
+    headers,
+    rows
+  });
+}
+
+/**
+ * Exports complete profile certificate for an individual corporate employer / company
+ */
+export function exportCompanyDossierPDF(comp) {
+  if (!comp) return;
+  const safeName = (comp.name || 'Company').replace(/[^a-zA-Z0-9]/g, '_');
+  const filename = `Company_Record_${safeName}_${new Date().toISOString().split('T')[0]}.pdf`;
+
+  const headers = ['Corporate Attribute', 'Enterprise Credential & Verification Details'];
+  const rows = [
+    ['Enterprise Name', comp.name || 'N/A'],
+    ['Corporate Entity ID', comp.id || 'N/A'],
+    ['Industry Sector', comp.industry || 'Information Technology & Services'],
+    ['Corporate Email', comp.email || 'N/A'],
+    ['Contact Phone', comp.phone || 'N/A'],
+    ['Official Website', comp.website || 'N/A'],
+    ['Corporate CIN Number', comp.cin || comp.cinNumber || 'N/A'],
+    ['GSTIN Number', comp.gstin || comp.gstNumber || 'N/A'],
+    ['Employee Workforce Size', comp.size || comp.employeeCount || '100-500 employees'],
+    ['Company Entity Type', comp.type || comp.companyType || 'Private Limited (Pvt Ltd)'],
+    ['Headquarters Location', comp.location || 'Vijayawada, NTR District'],
+    ['Verification Status', comp.verificationStatus || 'VERIFIED'],
+    ['Active Vacancies', `${comp.activeJobsCount || 0} Openings`],
+    ['Corporate Bio & Overview', comp.description || comp.about || `${comp.name} is a verified enterprise employer registered with the NTR Vikasa Employment Portal.`]
+  ];
+
+  exportToPDF({
+    filename,
+    title: `Enterprise Profile: ${comp.name}`,
+    subtitle: `NTR VIKASA Verified Corporate Partner Organization Dossier`,
+    metadata: {
+      'CIN': comp.cin || 'Verified',
+      'GSTIN': comp.gstin || 'Verified',
+      'Verification': comp.verificationStatus || 'VERIFIED',
+      'Issued On': new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+    },
+    headers,
+    rows
+  });
+}

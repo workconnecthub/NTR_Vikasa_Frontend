@@ -1,8 +1,10 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { MapPin, Clock, Briefcase, Banknote, Bookmark, BookmarkCheck, Building2 } from 'lucide-react';
+import { MapPin, Clock, Briefcase, Banknote, Bookmark, BookmarkCheck, Building2, Eye, Download } from 'lucide-react';
 import { Badge, StatusBadge } from './Badge';
 import Button from './Button';
 import { JobCardSkeleton } from './Skeleton';
+import JobMelaPosterModal, { downloadPosterImage } from './JobMelaPosterModal';
 
 /**
  * JobCard — displays a job listing matching Company cards design
@@ -347,9 +349,11 @@ export function InternshipCard({ internship, saved = false, onSave, loading = fa
 
 
 /**
- * JobMelaCard — Job Fair card
+ * JobMelaCard — Job Fair card with full flyer/poster image display and instant download
  */
 export function JobMelaCard({ event, loading = false }) {
+  const [posterModalOpen, setPosterModalOpen] = useState(false);
+
   if (loading) {
     return (
       <div className="jobmela-card">
@@ -363,38 +367,171 @@ export function JobMelaCard({ event, loading = false }) {
     );
   }
 
-  const { id, title, date, venue, city, companies = 0, seats, status } = event;
+  const id = event.id;
+  const title = event.title || event.event || 'Mega Job Mela';
+  const date = event.date;
+  const venue = event.venue || event.location || 'Exhibition Grounds';
+  const city = event.city || '';
+  const companies = (event.participatingCompanies && event.participatingCompanies.length) || event.companiesCount || event.companies || 0;
+  const seats = event.seats;
+  const status = event.status || 'UPCOMING';
+  const posterImage = event.posterImage || event.banner || event.image || '/hero2.jpg';
+
+  let formattedDate = date;
+  try {
+    const d = new Date(date);
+    if (!isNaN(d.getTime())) {
+      formattedDate = d.toLocaleDateString('en-IN', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' });
+    }
+  } catch {
+    formattedDate = date;
+  }
 
   return (
-    <Link to={`/job-melas/${id}`} className="jobmela-card hover-lift">
-      <div className="jobmela-card-banner">
-        <StatusBadge status={status} size="sm" />
-      </div>
-      <div className="jobmela-card-body">
-        <h3 className="jobmela-card-title">{title}</h3>
-        <div className="jobmela-card-meta">
-          {date && (
-            <span className="jobmela-card-meta-item">
-              <Clock size={14} />
-              {new Date(date).toLocaleDateString('en-IN', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' })}
-            </span>
-          )}
-          {venue && (
-            <span className="jobmela-card-meta-item">
-              <MapPin size={14} />{venue}, {city}
-            </span>
-          )}
-          {companies > 0 && (
-            <span className="jobmela-card-meta-item">
-              <Building2 size={14} />{companies} Companies Participating
-            </span>
-          )}
+    <>
+      <div className="jobmela-card hover-lift" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+        {/* Poster Image display (Displays uploaded image properly in the card) */}
+        {posterImage ? (
+          <div
+            style={{
+              position: 'relative',
+              width: '100%',
+              height: '190px',
+              background: '#090d16',
+              overflow: 'hidden',
+              cursor: 'pointer'
+            }}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setPosterModalOpen(true);
+            }}
+            title="Click to view and download full flyer/poster"
+          >
+            <img
+              src={posterImage}
+              alt={title}
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+                transition: 'transform 250ms ease'
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.04)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
+            />
+            {/* Status badge floating on top right of the poster */}
+            <div style={{ position: 'absolute', top: 10, right: 10, zIndex: 2 }}>
+              <StatusBadge status={status} size="sm" />
+            </div>
+
+            {/* Bottom translucent preview overlay pill */}
+            <div
+              style={{
+                position: 'absolute',
+                bottom: 8,
+                left: 8,
+                right: 8,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '4px 8px',
+                background: 'rgba(15, 23, 42, 0.78)',
+                backdropFilter: 'blur(6px)',
+                borderRadius: 'var(--radius-md)',
+                color: '#ffffff',
+                fontSize: '11px',
+                fontWeight: 600
+              }}
+            >
+              <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <Eye size={12} style={{ color: '#38bdf8' }} /> Click to View Poster
+              </span>
+              <button
+                type="button"
+                style={{
+                  background: 'rgba(255, 255, 255, 0.2)',
+                  border: 'none',
+                  color: '#fff',
+                  borderRadius: '4px',
+                  padding: '2px 6px',
+                  fontSize: '10px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 3
+                }}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  downloadPosterImage(posterImage, title);
+                }}
+                title="Download this poster"
+              >
+                <Download size={11} /> Download
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="jobmela-card-banner">
+            <StatusBadge status={status} size="sm" />
+          </div>
+        )}
+
+        <div className="jobmela-card-body" style={{ flex: 1 }}>
+          <Link to={`/job-melas/${id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+            <h3 className="jobmela-card-title">{title}</h3>
+          </Link>
+          <div className="jobmela-card-meta">
+            {formattedDate && (
+              <span className="jobmela-card-meta-item">
+                <Clock size={14} />
+                {formattedDate}
+              </span>
+            )}
+            {venue && (
+              <span className="jobmela-card-meta-item">
+                <MapPin size={14} />{venue}{city ? `, ${city}` : ''}
+              </span>
+            )}
+            {companies > 0 && (
+              <span className="jobmela-card-meta-item">
+                <Building2 size={14} />{companies} Companies Participating
+              </span>
+            )}
+          </div>
+        </div>
+
+        <div className="jobmela-card-footer">
+          {seats ? <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>{seats} seats available</span> : <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-success-700)', fontWeight: 600 }}>Free Entry Pass</span>}
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+            {posterImage && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setPosterModalOpen(true);
+                }}
+                title="View Full Poster"
+              >
+                <Eye size={13} style={{ marginRight: 4 }} /> Poster
+              </Button>
+            )}
+            <Link to={`/job-melas/${id}`}>
+              <Button size="sm" variant="primary">Register</Button>
+            </Link>
+          </div>
         </div>
       </div>
-      <div className="jobmela-card-footer">
-        {seats && <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>{seats} seats available</span>}
-        <Button size="sm" variant="primary" style={{ pointerEvents: 'none' }}>Register</Button>
-      </div>
-    </Link>
+
+      <JobMelaPosterModal
+        isOpen={posterModalOpen}
+        onClose={() => setPosterModalOpen(false)}
+        event={event}
+        imageUrl={posterImage}
+      />
+    </>
   );
 }

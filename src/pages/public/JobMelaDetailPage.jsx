@@ -3,7 +3,7 @@ import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom'
 import {
   CalendarDays, MapPin, Clock, Building2, Users, CheckCircle2,
   AlertCircle, Share2, Sparkles, Send, ShieldCheck, FileText,
-  Mail, Phone, Info, Award
+  Mail, Phone, Info, Award, Eye, Download
 } from 'lucide-react';
 import Breadcrumb from '../../components/ui/Breadcrumb';
 import { StatusBadge } from '../../components/ui/Badge';
@@ -12,6 +12,7 @@ import { Modal } from '../../components/ui/Modal';
 import FormField from '../../components/ui/FormField';
 import Input from '../../components/ui/Input';
 import FileUpload from '../../components/ui/FileUpload';
+import JobMelaPosterModal, { downloadPosterImage } from '../../components/ui/JobMelaPosterModal';
 import { useToast } from '../../context/ToastContext';
 import { useAdmin } from '../../context/AdminContext';
 import { useCandidate } from '../../context/CandidateContext';
@@ -22,13 +23,14 @@ export default function JobMelaDetailPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { toast } = useToast();
-  const { jobMelas } = useAdmin();
-  const { candidate, isLoggedIn } = useCandidate();
+  const { jobMelas, getMelaStats, registerForJobMela, applyToJobMelaCompany } = useAdmin();
+  const { candidate, isLoggedIn, updateCandidate } = useCandidate();
 
   const [registerModalOpen, setRegisterModalOpen] = useState(false);
   const [selectedCompany, setSelectedCompany] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isRegistered, setIsRegistered] = useState(false);
+  const [posterModalOpen, setPosterModalOpen] = useState(false);
 
   // Form inputs - prepopulate from candidate profile if logged in
   const [candidateName, setCandidateName] = useState(candidate?.name || '');
@@ -38,27 +40,50 @@ export default function JobMelaDetailPage() {
   const [experience, setExperience] = useState('Fresher (0-1 yr)');
 
   const mela = useMemo(() => {
-    const fromAdmin = (jobMelas || []).find((m) => m.id === id);
+    const fromAdmin = (jobMelas || []).find((m) => String(m.id) === String(id));
     if (fromAdmin) {
+      const companies = (fromAdmin.participatingCompanies && fromAdmin.participatingCompanies.length > 0)
+        ? fromAdmin.participatingCompanies
+        : (fromAdmin.availableJobs && fromAdmin.availableJobs.length > 0
+          ? fromAdmin.availableJobs.map((j, idx) => ({
+              id: `${fromAdmin.id}-c-${idx}`,
+              company: j.company,
+              position: j.title,
+              salary: j.salary,
+              vacancies: j.vacancies,
+              qualification: 'Graduate',
+              experience: '0-2 Yrs'
+            }))
+          : []);
+
       return {
         ...fromAdmin,
         title: fromAdmin.title || fromAdmin.event,
         venue: fromAdmin.venue || fromAdmin.location,
-        city: fromAdmin.city || (fromAdmin.location ? fromAdmin.location.split(',')[0] : 'City'),
-        state: fromAdmin.state || (fromAdmin.location && fromAdmin.location.includes(',') ? fromAdmin.location.split(',')[1] : 'State'),
+        city: fromAdmin.city || (fromAdmin.location ? fromAdmin.location.split(',')[0].trim() : 'City'),
+        state: fromAdmin.state || (fromAdmin.location && fromAdmin.location.includes(',') ? fromAdmin.location.split(',')[1].trim() : 'Andhra Pradesh'),
         time: fromAdmin.time || `${fromAdmin.startTime || '09:00 AM'} - ${fromAdmin.endTime || '06:00 PM'}`,
         registrationDeadline: fromAdmin.regEndDate || fromAdmin.registrationDeadline || '2026-11-10',
-        participatingCompanies: fromAdmin.participatingCompanies || [],
-        availableJobs: (fromAdmin.participatingCompanies || []).map(c => ({
-          title: c.position,
-          company: c.company,
-          salary: c.salary,
-          vacancies: c.vacancies,
+        participatingCompanies: companies,
+        companiesCount: companies.length || fromAdmin.companiesCount || fromAdmin.companies || 0,
+        availableJobs: companies.map(c => ({
+          title: c.position || c.title || c.role || 'Walk-in Role',
+          company: c.company || c.name || 'Participating Company',
+          salary: c.salary || 'Best in Industry',
+          vacancies: c.vacancies ? (typeof c.vacancies === 'number' ? `${c.vacancies} Spots` : String(c.vacancies)) : 'Multiple',
         }))
       };
     }
-    return MOCK_JOB_MELAS.find((m) => m.id === id) || MOCK_JOB_MELAS[0];
+    const fallback = MOCK_JOB_MELAS.find((m) => String(m.id) === String(id)) || MOCK_JOB_MELAS[0];
+    return {
+      ...fallback,
+      companiesCount: (fallback.participatingCompanies && fallback.participatingCompanies.length) || fallback.companiesCount || 0
+    };
   }, [id, jobMelas]);
+
+  const stats = useMemo(() => {
+    return getMelaStats ? getMelaStats(mela?.id) : null;
+  }, [mela, getMelaStats]);
 
   // Prepopulate candidate fields when candidate context updates
   useEffect(() => {
@@ -104,6 +129,37 @@ export default function JobMelaDetailPage() {
   const handleRegisterSubmit = (e) => {
     e.preventDefault();
     setIsSubmitting(true);
+
+    if (registerForJobMela) {
+      registerForJobMela({
+        melaId: mela.id,
+        candidateId: candidate?.id,
+        candidateName: candidateName || candidate?.name || 'Candidate',
+        candidateEmail: candidateEmail || candidate?.email || 'candidate@example.com',
+        phone: candidatePhone || candidate?.phone || '',
+        location: mela.city,
+        event: mela.title,
+        venue: mela.venue,
+        city: mela.city,
+        date: mela.date
+      });
+    }
+
+    if (selectedCompany && applyToJobMelaCompany) {
+      applyToJobMelaCompany({
+        melaId: mela.id,
+        melaTitle: mela.title,
+        company: selectedCompany,
+        candidateId: candidate?.id,
+        candidateName: candidateName || candidate?.name,
+        candidateEmail: candidateEmail || candidate?.email,
+        phone: candidatePhone || candidate?.phone,
+        status: 'APPLIED',
+        role: 'Walk-in Role',
+        appliedDate: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+      });
+    }
+
     setTimeout(() => {
       setIsSubmitting(false);
       setIsRegistered(true);
@@ -115,7 +171,7 @@ export default function JobMelaDetailPage() {
           ? `You have registered for ${selectedCompany} at ${mela.title}. Your Fast-Track Entry QR Code has been generated.`
           : `You are registered for ${mela.title}. Your Fast-Track Entry QR Code has been generated.`,
       });
-    }, 1200);
+    }, 600);
   };
 
   const handleShare = () => {
@@ -129,7 +185,7 @@ export default function JobMelaDetailPage() {
     }
   };
 
-  const isRegistrationOpen = mela.status === 'REGISTRATION_OPEN' || mela.status === 'UPCOMING';
+  const isRegistrationOpen = mela.status === 'REGISTRATION_OPEN' || mela.status === 'UPCOMING' || mela.status === 'APPROVED';
 
   return (
     <div className="job-mela-detail-page" style={{ background: 'var(--color-bg)', minHeight: '100vh', paddingBottom: 'var(--space-16)' }}>
@@ -145,8 +201,69 @@ export default function JobMelaDetailPage() {
 
           {/* ── Left Main Content Column ── */}
           <div>
-            {/* Header Event Card */}
+            {/* Header Event Card with Official Flyer */}
             <div className="card" style={{ marginBottom: 'var(--space-6)', borderRadius: 'var(--radius-2xl)', overflow: 'hidden' }}>
+              {/* Official Flyer Image Container */}
+              <div
+                style={{
+                  position: 'relative',
+                  width: '100%',
+                  maxHeight: '340px',
+                  background: '#090d16',
+                  cursor: 'pointer',
+                  overflow: 'hidden'
+                }}
+                onClick={() => setPosterModalOpen(true)}
+                title="Click to view full official flyer"
+              >
+                <img
+                  src={mela?.posterImage || mela?.banner || mela?.image || '/hero2.jpg'}
+                  alt={mela?.title || 'Official Job Mela Flyer'}
+                  style={{
+                    width: '100%',
+                    maxHeight: '340px',
+                    objectFit: 'cover',
+                    display: 'block',
+                    transition: 'transform 250ms ease'
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.02)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
+                />
+                {/* Floating Quick Action Buttons on Image */}
+                <div style={{
+                  position: 'absolute',
+                  bottom: 12,
+                  right: 12,
+                  display: 'flex',
+                  gap: 8,
+                  zIndex: 2
+                }}>
+                  <Button
+                    variant="secondary"
+                    size="xs"
+                    leftIcon={<Eye size={12} />}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setPosterModalOpen(true);
+                    }}
+                    style={{ background: 'rgba(15,23,42,0.85)', color: '#fff', border: 'none', backdropFilter: 'blur(4px)' }}
+                  >
+                    View Full Poster
+                  </Button>
+                  <Button
+                    variant="primary"
+                    size="xs"
+                    leftIcon={<Download size={12} />}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      downloadPosterImage(mela?.posterImage || mela?.banner || mela?.image || '/hero2.jpg', mela?.title);
+                    }}
+                  >
+                    Download Poster
+                  </Button>
+                </div>
+              </div>
+
               <div style={{
                 background: 'linear-gradient(135deg, #1e1b4b 0%, #312e81 40%, #4f46e5 100%)',
                 color: '#ffffff',
@@ -408,10 +525,10 @@ export default function JobMelaDetailPage() {
                 <div style={{ marginBottom: 'var(--space-4)' }}>
                   <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>Registered Candidates</p>
                   <p style={{ fontSize: 'var(--text-2xl)', fontWeight: 800, color: 'var(--color-primary-600)' }}>
-                    {mela.registeredCount || 2400}+ / {mela.seats || 5000} Seats
+                    {stats?.uniqueAppliedCandidatesCount ?? (mela.registeredCount || 0)} / {mela.seats || 3500} Seats
                   </p>
                   <div style={{ height: 6, background: 'var(--color-gray-200)', borderRadius: 'var(--radius-full)', overflow: 'hidden', margin: 'var(--space-2) 0' }}>
-                    <div style={{ width: `${Math.min(100, Math.round(((mela.registeredCount || 2400) / (mela.seats || 5000)) * 100))}%`, height: '100%', background: 'var(--color-primary-600)' }} />
+                    <div style={{ width: `${Math.min(100, Math.round(((stats?.uniqueAppliedCandidatesCount ?? (mela.registeredCount || 0)) / (mela.seats || 3500)) * 100))}%`, height: '100%', background: 'var(--color-primary-600)' }} />
                   </div>
                 </div>
 
@@ -465,6 +582,60 @@ export default function JobMelaDetailPage() {
                     <span>Pass Type:</span>
                     <strong>Digital QR Badge</strong>
                   </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Official Event Flyer / Poster Sidebar Card */}
+            <div className="card" style={{ borderRadius: 'var(--radius-2xl)', overflow: 'hidden' }}>
+              <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: 'var(--space-4) var(--space-6)' }}>
+                <h3 style={{ fontSize: 'var(--text-sm)', fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <FileText size={15} style={{ color: 'var(--color-primary-600)' }} />
+                  Official Event Poster / Flyer
+                </h3>
+              </div>
+              <div className="card-body" style={{ padding: 'var(--space-4) var(--space-6)', textAlign: 'center' }}>
+                <div
+                  style={{
+                    borderRadius: 'var(--radius-lg)',
+                    overflow: 'hidden',
+                    border: '1px solid var(--color-border)',
+                    cursor: 'pointer',
+                    background: '#0b1120',
+                    marginBottom: 'var(--space-3)',
+                    maxHeight: 220
+                  }}
+                  onClick={() => setPosterModalOpen(true)}
+                  title="Click to inspect full event flyer"
+                >
+                  <img
+                    src={mela?.posterImage || mela?.banner || mela?.image || '/hero2.jpg'}
+                    alt="Official event flyer"
+                    style={{ width: '100%', maxHeight: 220, objectFit: 'contain', display: 'block', margin: '0 auto' }}
+                  />
+                </div>
+                <p style={{ fontSize: '11px', color: 'var(--color-text-muted)', marginBottom: 'var(--space-3)', textAlign: 'left' }}>
+                  Official announcement flyer containing participating companies, walk-in interview schedule, and venue map.
+                </p>
+                <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    fullWidth
+                    leftIcon={<Eye size={13} />}
+                    onClick={() => setPosterModalOpen(true)}
+                  >
+                    View Full
+                  </Button>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    fullWidth
+                    leftIcon={<Download size={13} />}
+                    onClick={() => downloadPosterImage(mela?.posterImage || mela?.banner || mela?.image || '/hero2.jpg', mela?.title)}
+                  >
+                    Download
+                  </Button>
                 </div>
               </div>
             </div>
@@ -552,6 +723,18 @@ export default function JobMelaDetailPage() {
           </div>
         </form>
       </Modal>
+
+      {/* Full Resolution Poster Lightbox Modal */}
+      {posterModalOpen && (
+        <JobMelaPosterModal
+          isOpen={posterModalOpen}
+          onClose={() => setPosterModalOpen(false)}
+          posterUrl={mela?.posterImage || mela?.banner || mela?.image || '/hero2.jpg'}
+          eventTitle={mela?.title || 'Official Job Mela Event Flyer'}
+          eventDate={mela?.date}
+          eventVenue={mela?.venue}
+        />
+      )}
     </div>
   );
 }

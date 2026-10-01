@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { User, Mail, Phone, ArrowRight, ArrowLeft, CreditCard, CheckCircle2, AlertCircle } from 'lucide-react';
+import { User, Mail, Phone, ArrowRight, ArrowLeft, CreditCard, CheckCircle2, AlertCircle, GraduationCap, MapPin, Shield } from 'lucide-react';
 import Button from '../../components/ui/Button';
 import FormField from '../../components/ui/FormField';
 import Input from '../../components/ui/Input';
@@ -8,6 +8,7 @@ import Select from '../../components/ui/Select';
 import OtpVerificationModal from '../../components/ui/OtpVerificationModal';
 import { useToast } from '../../context/ToastContext';
 import { useCandidate } from '../../context/CandidateContext';
+import { REFERENCE_ADMINS, NTR_MANDALS } from '../../context/AdminContext';
 import { LOCATIONS } from '../../data/mockData';
 import { isDailyOtpLimitReached, recordOtpAttempt } from '../../utils/otpUtils';
 
@@ -26,7 +27,11 @@ export default function RegisterCandidatePage() {
     email: '',
     phone: '',
     aadhaarNumber: '',
-    location: '',
+    location: 'NTR District (Vijayawada)',
+    mandal: 'Vijayawada Urban',
+    village: '',
+    qualificationLevel: '10TH',
+    referenceAdmin: 'Direct Student Self-Registration',
   });
 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
@@ -167,7 +172,57 @@ export default function RegisterCandidatePage() {
                 </FormField>
               </div>
 
-              <FormField label="Current City / Location" htmlFor="location" required>
+              <div className="form-row">
+                <FormField label="Qualification Category" htmlFor="qualificationLevel" required hint="Your highest completed tier">
+                  <Select
+                    id="qualificationLevel"
+                    options={[
+                      { value: '10TH', label: '10th Class (SSC)' },
+                      { value: 'INTER', label: 'Intermediate / 10+2 / Diploma' },
+                      { value: 'UG', label: 'Undergraduate Degree (B.Tech, B.Sc, B.Com, etc.)' },
+                      { value: 'PG', label: 'Postgraduate / Master Degree (MBA, MCA, M.Tech, etc.)' }
+                    ]}
+                    value={form.qualificationLevel}
+                    onChange={set('qualificationLevel')}
+                    required
+                  />
+                </FormField>
+
+                <FormField label="Mandal (NTR District)" htmlFor="mandal" required hint="Select your mandal">
+                  <Select
+                    id="mandal"
+                    options={NTR_MANDALS}
+                    value={form.mandal}
+                    onChange={set('mandal')}
+                    required
+                  />
+                </FormField>
+              </div>
+
+              <div className="form-row">
+                <FormField label="Village / Locality / Ward" htmlFor="village" required hint="e.g. Gollapudi / Kondapalli">
+                  <Input
+                    id="village"
+                    placeholder="Enter your village or locality"
+                    value={form.village}
+                    onChange={set('village')}
+                    leftIcon={<MapPin size={16} />}
+                    required
+                  />
+                </FormField>
+
+                <FormField label="Referred by Admin / Officer (Reference Dropdown)" htmlFor="referenceAdmin" required hint="Select the referring authority">
+                  <Select
+                    id="referenceAdmin"
+                    options={REFERENCE_ADMINS}
+                    value={form.referenceAdmin}
+                    onChange={set('referenceAdmin')}
+                    required
+                  />
+                </FormField>
+              </div>
+
+              <FormField label="Current District / City Location" htmlFor="location" required>
                 <Select
                   id="location"
                   options={LOCATIONS.filter(l => l !== 'All Locations')}

@@ -21,17 +21,21 @@ import {
   LOCATIONS
 } from '../../data/mockData';
 import heroImg from '../../assets/hero.jpeg';
+import GallerySection from '../../components/home/GallerySection';
+import NewsArticlesSection from '../../components/home/NewsArticlesSection';
 
 export default function HomePage() {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { homeContent } = useAdmin();
+  const { homeContent, jobMelas = [] } = useAdmin();
 
   const currentContent = homeContent || DEFAULT_HOME_CONTENT;
   const heroContent = currentContent.hero || DEFAULT_HOME_CONTENT.hero;
   const statsContent = currentContent.stats || DEFAULT_HOME_CONTENT.stats;
   const wcContent = currentContent.whyChoose || DEFAULT_HOME_CONTENT.whyChoose;
   const welcomePopup = currentContent.welcomePopup || DEFAULT_HOME_CONTENT.welcomePopup;
+  const galleryContent = currentContent.gallery || DEFAULT_HOME_CONTENT.gallery;
+  const newsContent = currentContent.newsArticles || DEFAULT_HOME_CONTENT.newsArticles;
 
   const [showWelcomePopup, setShowWelcomePopup] = useState(false);
 
@@ -99,7 +103,10 @@ export default function HomePage() {
   const latestJobs = MOCK_JOBS.slice(0, 6);
   const topCompanies = MOCK_COMPANIES.slice(0, 8);
   const featuredInternships = MOCK_INTERNSHIPS.slice(0, 3);
-  const upcomingJobMelas = MOCK_JOB_MELAS.filter(m => m.status === 'REGISTRATION_OPEN' || m.status === 'UPCOMING').slice(0, 2);
+  const allJobMelas = jobMelas && jobMelas.length > 0 ? jobMelas : MOCK_JOB_MELAS;
+  const upcomingJobMelas = allJobMelas
+    .filter(m => m.status === 'REGISTRATION_OPEN' || m.status === 'UPCOMING' || m.status === 'APPROVED')
+    .slice(0, 2);
 
   const iconMap24 = {
     Briefcase: <Briefcase size={24} />,
@@ -693,7 +700,13 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── 8. Why Choose Us Section ── */}
+      {/* ── 8. Media & Event Gallery (Photos & Interactive Hover-to-Play Videos) ── */}
+      <GallerySection galleryContent={galleryContent} />
+
+      {/* ── 9. Newspaper Articles & Media Highlights (Slow auto-moving carousel) ── */}
+      <NewsArticlesSection newsContent={newsContent} />
+
+      {/* ── 10. Why Choose Us Section ── */}
       <section style={{ padding: 'var(--space-20) 0', background: 'var(--color-surface)', borderTop: '1px solid var(--color-border)' }}>
         <div className="container">
           <div style={{ textAlign: 'center', maxWidth: 700, margin: '0 auto var(--space-12)' }}>

@@ -2,20 +2,22 @@ import { useState, useMemo, useEffect } from 'react';
 import {
   Building2, Search, Filter, Eye, ShieldCheck, ShieldAlert,
   Users, Briefcase, Globe, Mail, Phone, MapPin, CheckCircle2,
-  XCircle, AlertTriangle, FileText
+  XCircle, AlertTriangle, FileText, Plus, Sparkles, Download
 } from 'lucide-react';
 import Button from '../../components/ui/Button';
 import { StatusBadge } from '../../components/ui/Badge';
 import { Modal, ConfirmDialog } from '../../components/ui/Modal';
 import Table from '../../components/ui/Table';
 import FormField from '../../components/ui/FormField';
+import Input from '../../components/ui/Input';
+import Select from '../../components/ui/Select';
 import Textarea from '../../components/ui/Textarea';
 import { EmptyState } from '../../components/ui/States';
 import Pagination from '../../components/ui/Pagination';
 import ExportDropdown from '../../components/ui/ExportDropdown';
-import { exportToExcel, exportToPDF, getExportFilename } from '../../utils/exportUtils';
+import { exportToExcel, exportToPDF, getExportFilename, exportCompanyDossierPDF } from '../../utils/exportUtils';
 import { useToast } from '../../context/ToastContext';
-import { useAdmin } from '../../context/AdminContext';
+import { useAdmin, NTR_MANDALS } from '../../context/AdminContext';
 
 export default function AdminCompaniesPage() {
   const { addToast } = useToast();
@@ -28,10 +30,11 @@ export default function AdminCompaniesPage() {
     jobMelas = [],
     approveCompany,
     rejectCompany,
-    suspendCompany
+    suspendCompany,
+    addCompany
   } = useAdmin();
 
-  const PAGE_SIZE = 10;
+  const [pageSize, setPageSize] = useState(10);
   const [search, setSearch] = useState('');
   const [industryFilter, setIndustryFilter] = useState('ALL');
   const [statusFilter, setStatusFilter] = useState('ALL');
@@ -39,7 +42,77 @@ export default function AdminCompaniesPage() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [search, industryFilter, statusFilter]);
+  }, [search, industryFilter, statusFilter, pageSize]);
+
+  // Add Company Modal State
+  const [addModalOpen, setAddModalOpen] = useState(false);
+  const [addForm, setAddForm] = useState({
+    name: '',
+    industry: 'Information Technology & Services',
+    recruiter: '',
+    email: '',
+    phone: '',
+    district: 'NTR District',
+    mandal: 'Vijayawada Urban',
+    village: 'Benz Circle',
+    size: '100-500 employees',
+    type: 'Private Limited (Pvt Ltd)',
+    cin: '',
+    gstin: '',
+    website: '',
+    about: '',
+  });
+
+  const handleAddCompanySubmit = (e) => {
+    e.preventDefault();
+    if (!addForm.name.trim()) {
+      addToast('Please enter the organization name.', 'error');
+      return;
+    }
+
+    const companyLocation = `${addForm.village ? addForm.village + ', ' : ''}${addForm.mandal}, ${addForm.district}`;
+
+    const newCompany = {
+      name: addForm.name.trim(),
+      industry: addForm.industry.trim() || 'Information Technology & Services',
+      recruiter: addForm.recruiter.trim() || 'Corporate HR Lead',
+      email: addForm.email.trim() || `hr@${addForm.name.toLowerCase().replace(/[^a-z0-9]/g, '')}.com`,
+      phone: addForm.phone.trim() || '+91 866 245 0000',
+      location: companyLocation,
+      mandal: addForm.mandal,
+      village: addForm.village,
+      district: addForm.district,
+      size: addForm.size || '100-500 employees',
+      type: addForm.type || 'Private Limited (Pvt Ltd)',
+      cin: addForm.cin.trim() || `U72200AP${new Date().getFullYear()}PTC0${Math.floor(10000 + Math.random() * 90000)}`,
+      gstin: addForm.gstin.trim() || `37AAAAA${Math.floor(1000 + Math.random() * 9000)}A1Z5`,
+      website: addForm.website.trim() || `https://www.${addForm.name.toLowerCase().replace(/[^a-z0-9]/g, '')}.com`,
+      description: addForm.about.trim() || `${addForm.name.trim()} is an enterprise company operating in ${addForm.district}, offering career placements and hiring drives.`,
+      verificationStatus: 'VERIFIED',
+      accountStatus: 'ACTIVE',
+      activeJobsCount: 0
+    };
+
+    addCompany(newCompany);
+    addToast(`Company "${newCompany.name}" successfully registered and verified in NTR Vikasa!`, 'success');
+    setAddModalOpen(false);
+    setAddForm({
+      name: '',
+      industry: 'Information Technology & Services',
+      recruiter: '',
+      email: '',
+      phone: '',
+      district: 'NTR District',
+      mandal: 'Vijayawada Urban',
+      village: 'Benz Circle',
+      size: '100-500 employees',
+      type: 'Private Limited (Pvt Ltd)',
+      cin: '',
+      gstin: '',
+      website: '',
+      about: '',
+    });
+  };
 
   // View modal
   const [selectedComp, setSelectedComp] = useState(null);
@@ -90,11 +163,11 @@ export default function AdminCompaniesPage() {
     });
   }, [companies, search, industryFilter, statusFilter]);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const paginatedCompanies = useMemo(() => {
-    const startIndex = (currentPage - 1) * PAGE_SIZE;
-    return filtered.slice(startIndex, startIndex + PAGE_SIZE);
-  }, [filtered, currentPage]);
+    const startIndex = (currentPage - 1) * pageSize;
+    return filtered.slice(startIndex, startIndex + pageSize);
+  }, [filtered, currentPage, pageSize]);
 
   const handleExportExcel = () => {
     if (filtered.length === 0) {
@@ -295,6 +368,19 @@ export default function AdminCompaniesPage() {
             View
           </Button>
 
+          <Button
+            size="xs"
+            variant="outline"
+            leftIcon={<Download size={12} />}
+            onClick={() => {
+              exportCompanyDossierPDF(row);
+              addToast(`Downloading company dossier for ${row.name}...`, 'success');
+            }}
+            title="Download Company Dossier (PDF)"
+          >
+            PDF
+          </Button>
+
           {row.verificationStatus !== 'VERIFIED' && (
             <Button
               size="xs"
@@ -334,7 +420,7 @@ export default function AdminCompaniesPage() {
                 </p>
               </div>
 
-              <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
+              <div style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'center', flexWrap: 'wrap' }}>
                 <span style={{
                   background: '#eff6ff',
                   color: '#1d4ed8',
@@ -346,6 +432,14 @@ export default function AdminCompaniesPage() {
                 }}>
                   {companies.filter(c => c.verificationStatus === 'VERIFIED').length} Verified Organizations
                 </span>
+
+                <Button
+                  variant="primary"
+                  leftIcon={<Plus size={16} />}
+                  onClick={() => setAddModalOpen(true)}
+                >
+                  Add Company
+                </Button>
               </div>
             </div>
           </div>
@@ -414,11 +508,16 @@ export default function AdminCompaniesPage() {
                   currentPage={currentPage}
                   totalPages={totalPages}
                   totalItems={filtered.length}
-                  pageSize={PAGE_SIZE}
+                  pageSize={pageSize}
                   onPageChange={(p) => {
                     setCurrentPage(p);
                     window.scrollTo({ top: 120, behavior: 'smooth' });
                   }}
+                  onPageSizeChange={(newSize) => {
+                    setPageSize(newSize);
+                    setCurrentPage(1);
+                  }}
+                  itemName="companies"
                 />
               </>
             )}
@@ -729,20 +828,33 @@ export default function AdminCompaniesPage() {
                     )}
                   </div>
 
-                  {/* 6. ADMIN ACTIONS (Bottom: ONLY [ Close ] [ Suspend Company ]) */}
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-3)', borderTop: '1px solid var(--color-border)', paddingTop: 'var(--space-4)' }}>
-                    <Button variant="outline" onClick={() => setViewModalOpen(false)}>
-                      Close
-                    </Button>
+                  {/* 6. ADMIN ACTIONS */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--color-border)', paddingTop: 'var(--space-4)', flexWrap: 'wrap', gap: 'var(--space-3)' }}>
                     <Button
-                      variant={isSuspended ? 'secondary' : 'danger'}
+                      variant="primary"
+                      leftIcon={<Download size={14} />}
                       onClick={() => {
-                        setViewModalOpen(false);
-                        setSuspendTarget(selectedComp);
+                        exportCompanyDossierPDF(selectedComp);
+                        addToast(`Downloading enterprise profile for ${selectedComp.name}...`, 'success');
                       }}
                     >
-                      {isSuspended ? 'Company Suspended' : 'Suspend Company'}
+                      Download Company Profile (PDF)
                     </Button>
+
+                    <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
+                      <Button variant="outline" onClick={() => setViewModalOpen(false)}>
+                        Close
+                      </Button>
+                      <Button
+                        variant={isSuspended ? 'secondary' : 'danger'}
+                        onClick={() => {
+                          setViewModalOpen(false);
+                          setSuspendTarget(selectedComp);
+                        }}
+                      >
+                        {isSuspended ? 'Company Suspended' : 'Suspend Company'}
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </Modal>
@@ -915,6 +1027,207 @@ export default function AdminCompaniesPage() {
                   </Button>
                   <Button type="submit" variant="danger">
                     Confirm Rejection
+                  </Button>
+                </div>
+              </form>
+            </Modal>
+          )}
+
+          {/* ── 4. Add Company Modal ── */}
+          {addModalOpen && (
+            <Modal
+              isOpen={addModalOpen}
+              onClose={() => setAddModalOpen(false)}
+              title="Direct Onboard Corporate Employer / Enterprise"
+              size="lg"
+            >
+              <form onSubmit={handleAddCompanySubmit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+                {/* Notice Banner */}
+                <div style={{
+                  padding: '12px 14px',
+                  borderRadius: 'var(--radius-lg)',
+                  background: '#eff6ff',
+                  border: '1px solid #bfdbfe',
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: 'var(--space-3)'
+                }}>
+                  <Sparkles size={18} style={{ color: '#2563eb', flexShrink: 0, marginTop: 2 }} />
+                  <div>
+                    <strong style={{ fontSize: 'var(--text-xs)', color: '#1e40af', display: 'block' }}>
+                      Admin Corporate Authorization & Partner Verification
+                    </strong>
+                    <span style={{ fontSize: '11px', color: '#3b82f6', lineHeight: 1.4 }}>
+                      Enterprises onboarded directly by District/State Administrator are instantly marked as Verified Partner Organizations in the NTR Vikasa Portal.
+                    </span>
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 'var(--space-3)' }}>
+                  <FormField label="Company / Entity Name" required>
+                    <Input
+                      placeholder="e.g. Amaravati Tech Systems Pvt Ltd"
+                      value={addForm.name}
+                      onChange={(e) => setAddForm({ ...addForm, name: e.target.value })}
+                      required
+                    />
+                  </FormField>
+
+                  <FormField label="Industry Domain" required>
+                    <select
+                      className="form-control"
+                      value={addForm.industry}
+                      onChange={(e) => setAddForm({ ...addForm, industry: e.target.value })}
+                      style={{ height: 38, borderRadius: 'var(--radius-lg)', fontSize: 'var(--text-xs)' }}
+                    >
+                      <option value="Information Technology & Services">Information Technology & Services</option>
+                      <option value="Manufacturing & Automobile">Manufacturing & Automobile</option>
+                      <option value="Logistics & Supply Chain">Logistics & Supply Chain</option>
+                      <option value="Banking & Financial Services">Banking & Financial Services</option>
+                      <option value="Healthcare & Pharmaceuticals">Healthcare & Pharmaceuticals</option>
+                      <option value="Retail & E-Commerce">Retail & E-Commerce</option>
+                      <option value="Education & EdTech">Education & EdTech</option>
+                      <option value="Construction & Infrastructure">Construction & Infrastructure</option>
+                    </select>
+                  </FormField>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 'var(--space-3)' }}>
+                  <FormField label="Authorized Recruiter / HR Lead">
+                    <Input
+                      placeholder="e.g. Ramesh Varma"
+                      value={addForm.recruiter}
+                      onChange={(e) => setAddForm({ ...addForm, recruiter: e.target.value })}
+                    />
+                  </FormField>
+
+                  <FormField label="Official Corporate Email">
+                    <Input
+                      type="email"
+                      placeholder="e.g. careers@company.com"
+                      value={addForm.email}
+                      onChange={(e) => setAddForm({ ...addForm, email: e.target.value })}
+                    />
+                  </FormField>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 'var(--space-3)' }}>
+                  <FormField label="Contact Phone">
+                    <Input
+                      type="tel"
+                      placeholder="e.g. +91 866 245 0000"
+                      value={addForm.phone}
+                      onChange={(e) => setAddForm({ ...addForm, phone: e.target.value })}
+                    />
+                  </FormField>
+
+                  <FormField label="Official Website">
+                    <Input
+                      type="url"
+                      placeholder="e.g. https://www.company.com"
+                      value={addForm.website}
+                      onChange={(e) => setAddForm({ ...addForm, website: e.target.value })}
+                    />
+                  </FormField>
+                </div>
+
+                {/* Geographic Address in NTR District */}
+                <div style={{
+                  padding: 'var(--space-3)',
+                  background: 'var(--color-gray-50)',
+                  borderRadius: 'var(--radius-lg)',
+                  border: '1px solid var(--color-border)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 'var(--space-3)'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <MapPin size={15} style={{ color: 'var(--color-primary-600)' }} />
+                    <strong style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text)' }}>
+                      Corporate Location (NTR District Hub)
+                    </strong>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 'var(--space-3)' }}>
+                    <FormField label="District">
+                      <Input value="NTR District" disabled />
+                    </FormField>
+
+                    <FormField label="Mandal in NTR District" required>
+                      <select
+                        className="form-control"
+                        value={addForm.mandal}
+                        onChange={(e) => setAddForm({ ...addForm, mandal: e.target.value })}
+                        style={{ height: 38, borderRadius: 'var(--radius-lg)', fontSize: 'var(--text-xs)' }}
+                      >
+                        {NTR_MANDALS.map((m) => (
+                          <option key={m} value={m}>
+                            {m}
+                          </option>
+                        ))}
+                      </select>
+                    </FormField>
+
+                    <FormField label="Village / Industrial Area / Ward">
+                      <Input
+                        placeholder="e.g. Kondapalli / Autonagar / Benz Circle"
+                        value={addForm.village}
+                        onChange={(e) => setAddForm({ ...addForm, village: e.target.value })}
+                      />
+                    </FormField>
+                  </div>
+                </div>
+
+                {/* Corporate Registration & Verification Credentials */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 'var(--space-3)' }}>
+                  <FormField label="Company Size">
+                    <select
+                      className="form-control"
+                      value={addForm.size}
+                      onChange={(e) => setAddForm({ ...addForm, size: e.target.value })}
+                      style={{ height: 38, borderRadius: 'var(--radius-lg)', fontSize: 'var(--text-xs)' }}
+                    >
+                      <option value="1-50 employees">1-50 employees</option>
+                      <option value="50-200 employees">50-200 employees</option>
+                      <option value="100-500 employees">100-500 employees</option>
+                      <option value="500-1000 employees">500-1000 employees</option>
+                      <option value="1000-5000 employees">1000-5000 employees</option>
+                      <option value="5000+ employees">5000+ employees</option>
+                    </select>
+                  </FormField>
+
+                  <FormField label="Corporate CIN Number">
+                    <Input
+                      placeholder="e.g. U72200AP2021PTC118942"
+                      value={addForm.cin}
+                      onChange={(e) => setAddForm({ ...addForm, cin: e.target.value.toUpperCase() })}
+                    />
+                  </FormField>
+
+                  <FormField label="GSTIN Number">
+                    <Input
+                      placeholder="e.g. 37AAAAA1234A1Z5"
+                      value={addForm.gstin}
+                      onChange={(e) => setAddForm({ ...addForm, gstin: e.target.value.toUpperCase() })}
+                    />
+                  </FormField>
+                </div>
+
+                <FormField label="Company Overview & Bio">
+                  <Textarea
+                    rows={2}
+                    placeholder="Brief description of operations, products/services, and employment opportunities..."
+                    value={addForm.about}
+                    onChange={(e) => setAddForm({ ...addForm, about: e.target.value })}
+                  />
+                </FormField>
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-3)', marginTop: 'var(--space-2)' }}>
+                  <Button type="button" variant="outline" onClick={() => setAddModalOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button type="submit" variant="primary" leftIcon={<Building2 size={16} />}>
+                    Register & Verify Company
                   </Button>
                 </div>
               </form>
