@@ -1,9 +1,10 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   Briefcase, Plus, Search, Filter, Users, Eye, Edit2,
   XCircle, CheckCircle2, Clock, AlertTriangle, ArrowRight,
-  MoreVertical, Calendar, DollarSign, MapPin, Sparkles, Building2
+  MoreVertical, Calendar, DollarSign, MapPin, Sparkles, Building2,
+  Loader2
 } from 'lucide-react';
 import { useRecruiter } from '../../context/RecruiterContext';
 import { useToast } from '../../context/ToastContext';
@@ -15,12 +16,13 @@ import Pagination from '../../components/ui/Pagination';
 import ExportDropdown from '../../components/ui/ExportDropdown';
 import { exportToExcel, exportToPDF, getExportFilename } from '../../utils/exportUtils';
 import { formatJobId } from '../../utils/applicationUtils';
+import recruiterJobService from '../../services/recruiterJobService';
 
 const PAGE_SIZE = 9;
 
 export default function JobsPage() {
   const navigate = useNavigate();
-  const { recruiter, closeJob, updateJob } = useRecruiter();
+  const { recruiter } = useRecruiter();
   const { addToast } = useToast();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -29,83 +31,123 @@ export default function JobsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [closingJobId, setClosingJobId] = useState(null);
 
-  const jobs = recruiter?.jobs || [];
+  const [loading, setLoading] = useState(true);
+  const [jobs, setJobs] = useState([]);
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [tabCounts, setTabCounts] = useState({ all: 0, active: 0, pending: 0, draft: 0, closed: 0 });
+  const [allDepartments, setAllDepartments] = useState([
+    'Core Engineering',
+    'Platform Core',
+    'Infra & SecOps',
+    'AI Innovation Lab',
+    'Marketing & Growth',
+  ]);
+
+  // Fetch tab counts across all statuses
+  const fetchCountsAndDepts = useCallback(async () => {
+    try {
+      const res = await recruiterJobService.getJobs({ page: 1, page_size: 100, status: 'ALL' });
+      if (res && res.items) {
+        const allItems = res.items;
+        setTabCounts({
+          all: res.total || allItems.length,
+          active: allItems.filter(j => j.status === 'PUBLISHED').length,
+          pending: allItems.filter(j => j.status === 'PENDING').length,
+          draft: allItems.filter(j => j.status === 'DRAFT').length,
+          closed: allItems.filter(j => j.status === 'CLOSED').length,
+        });
+
+        const depts = Array.from(new Set(allItems.map(j => j.department).filter(Boolean)));
+        if (depts.length > 0) {
+          setAllDepartments(depts);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load tab counts:', err);
+    }
+  }, []);
+
+  // Fetch paginated jobs based on current filters
+  const fetchJobs = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await recruiterJobService.getJobs({
+        page: currentPage,
+        page_size: PAGE_SIZE,
+        status: selectedStatusTab,
+        department: departmentFilter !== 'ALL' ? departmentFilter : undefined,
+        search: searchQuery.trim() || undefined,
+      });
+
+      if (res && res.items) {
+        setJobs(res.items);
+        setTotalItems(res.total || res.items.length);
+        setTotalPages(res.total_pages || Math.max(1, Math.ceil((res.total || res.items.length) / PAGE_SIZE)));
+      } else {
+        setJobs([]);
+        setTotalItems(0);
+        setTotalPages(1);
+      }
+    } catch (err) {
+      console.error('Failed to fetch jobs:', err);
+      addToast('Failed to load jobs from server.', 'error');
+    } finally {
+      setLoading(false);
+    }
+  }, [currentPage, selectedStatusTab, departmentFilter, searchQuery, addToast]);
+
+  // Initial load
+  useEffect(() => {
+    fetchCountsAndDepts();
+  }, [fetchCountsAndDepts]);
 
   // Reset to page 1 whenever filters change
   useEffect(() => {
     setCurrentPage(1);
   }, [searchQuery, selectedStatusTab, departmentFilter]);
 
-  // Extract unique departments
-  const departments = useMemo(() => {
-    const set = new Set(jobs.map(j => j.department).filter(Boolean));
-    return Array.from(set);
-  }, [jobs]);
+  // Debounced search / filter trigger
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchJobs();
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [fetchJobs]);
 
-  // Tab counts
-  const tabCounts = useMemo(() => {
-    return {
-      all: jobs.length,
-      active: jobs.filter(j => j.status === 'PUBLISHED').length,
-      pending: jobs.filter(j => j.status === 'PENDING').length,
-      draft: jobs.filter(j => j.status === 'DRAFT').length,
-      closed: jobs.filter(j => j.status === 'CLOSED').length,
-    };
-  }, [jobs]);
-
-  // Filtered jobs
-  const filteredJobs = useMemo(() => {
-    return jobs.filter((job) => {
-      // Status filter
-      if (selectedStatusTab === 'ACTIVE' && job.status !== 'PUBLISHED') return false;
-      if (selectedStatusTab === 'PENDING' && job.status !== 'PENDING') return false;
-      if (selectedStatusTab === 'DRAFT' && job.status !== 'DRAFT') return false;
-      if (selectedStatusTab === 'CLOSED' && job.status !== 'CLOSED') return false;
-
-      // Department filter
-      if (departmentFilter !== 'ALL' && job.department !== departmentFilter) return false;
-
-      // Search query
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase();
-        const matchTitle = job.title?.toLowerCase().includes(q);
-        const matchDept = job.department?.toLowerCase().includes(q);
-        const matchLoc = job.location?.toLowerCase().includes(q);
-        const matchSkills = job.skills?.some(s => s.toLowerCase().includes(q));
-        if (!matchTitle && !matchDept && !matchLoc && !matchSkills) return false;
-      }
-
-      return true;
-    });
-  }, [jobs, selectedStatusTab, departmentFilter, searchQuery]);
-
-  const totalPages = Math.max(1, Math.ceil(filteredJobs.length / PAGE_SIZE));
-
-  const paginatedJobs = useMemo(() => {
-    const startIndex = (currentPage - 1) * PAGE_SIZE;
-    return filteredJobs.slice(startIndex, startIndex + PAGE_SIZE);
-  }, [filteredJobs, currentPage]);
-
-  const handleConfirmClose = () => {
+  const handleConfirmClose = async () => {
     if (closingJobId) {
-      closeJob(closingJobId);
-      addToast('Job posting has been closed successfully.', 'info');
-      setClosingJobId(null);
+      try {
+        await recruiterJobService.closeJob(closingJobId);
+        addToast('Job posting has been closed successfully.', 'info');
+        setClosingJobId(null);
+        fetchJobs();
+        fetchCountsAndDepts();
+      } catch (err) {
+        addToast(err.message || 'Failed to close job.', 'error');
+      }
     }
   };
 
-  const handleReopen = (jobId) => {
-    updateJob(jobId, { status: 'PUBLISHED' });
-    addToast('Job posting has been republished and is now active.', 'success');
+  const handleReopen = async (jobId) => {
+    try {
+      await recruiterJobService.updateJob(jobId, { status: 'PUBLISHED' });
+      addToast('Job posting has been republished and is now active.', 'success');
+      fetchJobs();
+      fetchCountsAndDepts();
+    } catch (err) {
+      addToast(err.message || 'Failed to reopen job.', 'error');
+    }
   };
 
   const handleExportExcel = () => {
-    if (filteredJobs.length === 0) {
+    if (jobs.length === 0) {
       addToast('No records available to export for the selected filters.', 'info');
       return;
     }
     addToast('Exporting jobs list to Excel...', 'info');
     const headers = [
+      'Job Number',
       'Job Title',
       'Department',
       'Employment Type',
@@ -119,19 +161,20 @@ export default function JobsPage() {
       'Shortlisted Count',
       'Interview Count'
     ];
-    const rows = filteredJobs.map(j => [
+    const rows = jobs.map(j => [
+      j.job_number || j.job_id || 'N/A',
       j.title || 'N/A',
       j.department || 'General',
-      j.type || j.workMode || 'Full-time',
+      j.job_type || j.work_mode || 'Full-time',
       j.location || 'India',
       j.salary || 'Competitive',
       j.experience || '2-5 Years',
-      j.createdAt || j.postedDate || 'Aug 2026',
+      j.createdAt || j.posted_at || 'Aug 2026',
       j.deadline || 'Ongoing',
       j.status || 'PUBLISHED',
-      j.applicantsCount || 0,
-      j.shortlistedCount || 0,
-      j.interviewsCount || 0
+      j.applicantsCount || j.applicant_count || 0,
+      j.shortlistedCount || j.shortlisted_count || 0,
+      j.interviewsCount || j.interview_count || 0
     ]);
     exportToExcel({
       filename: getExportFilename('my_jobs', selectedStatusTab.toLowerCase(), 'xlsx'),
@@ -143,21 +186,22 @@ export default function JobsPage() {
   };
 
   const handleExportPdf = () => {
-    if (filteredJobs.length === 0) {
+    if (jobs.length === 0) {
       addToast('No records available to export for the selected filters.', 'info');
       return;
     }
     addToast('Exporting jobs list to PDF...', 'info');
-    const headers = ['Job Title', 'Department', 'Type', 'Location', 'Salary', 'Deadline', 'Status', 'Applicants'];
-    const rows = filteredJobs.map(j => [
+    const headers = ['Job Number', 'Job Title', 'Department', 'Type', 'Location', 'Salary', 'Deadline', 'Status', 'Applicants'];
+    const rows = jobs.map(j => [
+      j.job_number || j.job_id || 'N/A',
       j.title || 'N/A',
       j.department || 'General',
-      j.type || j.workMode || 'Full-time',
+      j.job_type || j.work_mode || 'Full-time',
       j.location || 'India',
       j.salary || 'Competitive',
       j.deadline || 'Ongoing',
       j.status || 'PUBLISHED',
-      j.applicantsCount || 0
+      j.applicantsCount || j.applicant_count || 0
     ]);
     const tabObj = [
       { id: 'ALL', label: 'All Jobs' },
@@ -176,7 +220,7 @@ export default function JobsPage() {
         'Export Date': new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
         'Status Filter': statusLabel,
         'Department': departmentFilter === 'ALL' ? 'All Departments' : departmentFilter,
-        'Total Records': filteredJobs.length
+        'Total Records': totalItems
       },
       headers,
       rows
@@ -234,7 +278,7 @@ export default function JobsPage() {
                 style={{ height: '42px', borderRadius: '8px' }}
               >
                 <option value="ALL">All Departments</option>
-                {departments.map(dept => (
+                {allDepartments.map(dept => (
                   <option key={dept} value={dept}>{dept}</option>
                 ))}
               </select>
@@ -244,7 +288,7 @@ export default function JobsPage() {
           <ExportDropdown
             onExportExcel={handleExportExcel}
             onExportPdf={handleExportPdf}
-            disabled={filteredJobs.length === 0}
+            disabled={jobs.length === 0}
           />
         </div>
 
@@ -298,8 +342,13 @@ export default function JobsPage() {
         </div>
       </div>
 
-      {/* Jobs Listing Grid */}
-      {filteredJobs.length === 0 ? (
+      {/* Loading state */}
+      {loading ? (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '4rem 1rem', gap: '0.75rem' }}>
+          <Loader2 className="animate-spin" size={36} style={{ color: 'var(--color-primary-600)' }} />
+          <p style={{ color: 'var(--color-gray-500)', fontSize: '0.9rem' }}>Loading job requisitions...</p>
+        </div>
+      ) : jobs.length === 0 ? (
         <EmptyState
           icon={<Briefcase size={48} />}
           title="No job postings found"
@@ -313,7 +362,7 @@ export default function JobsPage() {
       ) : (
         <div>
           <div className="recruiter-jobs-grid">
-            {paginatedJobs.map((job) => (
+            {jobs.map((job) => (
               <div
                 key={job.id}
                 className={`card recruiter-job-card ${job.status === 'PUBLISHED' ? 'is-published' : ''}`}
@@ -332,7 +381,7 @@ export default function JobsPage() {
                         padding: '0.15rem 0.45rem',
                         borderRadius: '4px'
                       }}>
-                        {formatJobId(job.id)}
+                        {job.job_number || formatJobId(job.job_id || job.id)}
                       </span>
                       <StatusBadge status={job.status} />
                     </div>
@@ -344,7 +393,7 @@ export default function JobsPage() {
                       borderRadius: '4px',
                       fontWeight: 600
                     }}>
-                      {job.workMode || 'Hybrid'}
+                      {job.workMode || job.work_mode || 'Hybrid'}
                     </span>
                   </div>
 
@@ -390,7 +439,7 @@ export default function JobsPage() {
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', color: 'var(--color-gray-500)', fontSize: '0.74rem' }}>
                       <Calendar size={13} style={{ color: 'var(--color-gray-400)', flexShrink: 0 }} />
-                      <span>Posted: {job.createdAt} • Deadline: {job.deadline}</span>
+                      <span>Posted: {job.createdAt || job.posted_at?.split(' ')[0] || 'Ongoing'} • Deadline: {job.deadline || 'Ongoing'}</span>
                     </div>
                   </div>
                 </div>
@@ -408,15 +457,15 @@ export default function JobsPage() {
                   marginTop: '0.25rem'
                 }}>
                   <div>
-                    <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-gray-900)' }}>{job.applicantsCount || 0}</div>
+                    <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-gray-900)' }}>{job.applicantsCount ?? job.applicant_count ?? 0}</div>
                     <div style={{ fontSize: '0.66rem', color: 'var(--color-gray-500)', textTransform: 'uppercase', fontWeight: 600 }}>Applicants</div>
                   </div>
                   <div style={{ borderLeft: '1px solid var(--color-gray-200)', borderRight: '1px solid var(--color-gray-200)' }}>
-                    <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-primary-600)' }}>{job.shortlistedCount || 0}</div>
+                    <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-primary-600)' }}>{job.shortlistedCount ?? job.shortlisted_count ?? 0}</div>
                     <div style={{ fontSize: '0.66rem', color: 'var(--color-gray-500)', textTransform: 'uppercase', fontWeight: 600 }}>Shortlisted</div>
                   </div>
                   <div>
-                    <div style={{ fontSize: '1rem', fontWeight: 700, color: '#8b5cf6' }}>{job.interviewsCount || 0}</div>
+                    <div style={{ fontSize: '1rem', fontWeight: 700, color: '#8b5cf6' }}>{job.interviewsCount ?? job.interview_count ?? 0}</div>
                     <div style={{ fontSize: '0.66rem', color: 'var(--color-gray-500)', textTransform: 'uppercase', fontWeight: 600 }}>Interviews</div>
                   </div>
                 </div>
@@ -451,7 +500,7 @@ export default function JobsPage() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--color-gray-100)', paddingTop: '0.65rem', gap: '0.5rem', marginTop: 'auto' }}>
                   <Link to="/recruiter/applications" style={{ textDecoration: 'none', flex: 1 }}>
                     <Button variant="primary" size="sm" style={{ width: '100%' }} icon={<Users size={13} />}>
-                      View Applicants ({job.applicantsCount || 0})
+                      View Applicants ({job.applicantsCount ?? job.applicant_count ?? 0})
                     </Button>
                   </Link>
 
@@ -488,7 +537,7 @@ export default function JobsPage() {
             <Pagination
               currentPage={currentPage}
               totalPages={totalPages}
-              totalItems={filteredJobs.length}
+              totalItems={totalItems}
               pageSize={PAGE_SIZE}
               itemName="jobs"
               onPageChange={(p) => {

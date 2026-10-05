@@ -18,6 +18,7 @@ import { exportToExcel, exportToPDF, getExportFilename } from '../../utils/expor
 import { formatInternshipId } from '../../utils/applicationUtils';
 import { useRecruiter } from '../../context/RecruiterContext';
 import { useToast } from '../../context/ToastContext';
+import recruiterInternshipService from '../../services/recruiterInternshipService';
 
 const PAGE_SIZE = 10;
 
@@ -25,11 +26,37 @@ export default function RecruiterInternshipsPage() {
   const { recruiter, createInternship } = useRecruiter();
   const { addToast } = useToast();
 
-  const internships = recruiter?.internships || [];
+  const [internships, setInternships] = useState(recruiter?.internships || []);
+  const [loading, setLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [search, setSearch] = useState('');
   const [selectedStatusTab, setSelectedStatusTab] = useState('ALL');
   const [currentPage, setCurrentPage] = useState(1);
   const [createModalOpen, setCreateModalOpen] = useState(false);
+
+  // Fetch live internships from backend API
+  const fetchInternships = async () => {
+    try {
+      setLoading(true);
+      const res = await recruiterInternshipService.getInternships({ page: 1, page_size: 100, status: 'ALL' });
+      if (res && Array.isArray(res.items) && res.items.length > 0) {
+        setInternships(res.items);
+      } else if (recruiter?.internships?.length) {
+        setInternships(recruiter.internships);
+      }
+    } catch (err) {
+      console.error('Failed to load internships from backend API:', err);
+      if (recruiter?.internships) {
+        setInternships(recruiter.internships);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchInternships();
+  }, []);
 
   // Reset to page 1 whenever filters change
   useEffect(() => {
@@ -54,29 +81,60 @@ export default function RecruiterInternshipsPage() {
     closed: internships.filter(i => i.status === 'CLOSED').length,
   }), [internships]);
 
-  const handleCreateSubmit = (e) => {
+  const handleCreateSubmit = async (e) => {
     e.preventDefault();
     if (!newInternship.title.trim()) {
       addToast('Please enter an internship title.', 'error');
       return;
     }
 
-    createInternship({
-      ...newInternship,
-      openings: parseInt(newInternship.openings, 10) || 1,
-    });
+    try {
+      setIsSubmitting(true);
+      const created = await recruiterInternshipService.createInternship({
+        title: newInternship.title,
+        stipend: newInternship.stipend,
+        duration: newInternship.duration,
+        workMode: newInternship.workMode,
+        location: newInternship.location,
+        openings: parseInt(newInternship.openings, 10) || 1,
+        description: newInternship.description,
+      });
 
-    setCreateModalOpen(false);
-    addToast(`Internship "${newInternship.title}" submitted for Admin review. Status: PENDING.`, 'success');
-    setNewInternship({
-      title: '',
-      stipend: '₹25,000 / month',
-      duration: '6 Months',
-      workMode: 'Hybrid',
-      location: 'Bengaluru, Karnataka',
-      openings: '3',
-      description: '',
-    });
+      // Synchronize recruiter context
+      createInternship({
+        id: created.id,
+        internship_number: created.internship_number,
+        title: newInternship.title,
+        stipend: newInternship.stipend,
+        duration: newInternship.duration,
+        workMode: newInternship.workMode,
+        location: newInternship.location,
+        openings: parseInt(newInternship.openings, 10) || 1,
+        description: newInternship.description,
+        status: 'PENDING',
+        applicantsCount: 0,
+      });
+
+      setCreateModalOpen(false);
+      addToast('Internship submitted successfully. It is now pending admin approval.', 'success');
+      setNewInternship({
+        title: '',
+        stipend: '₹25,000 / month',
+        duration: '6 Months',
+        workMode: 'Hybrid',
+        location: 'Bengaluru, Karnataka',
+        openings: '3',
+        description: '',
+      });
+
+      // Switch to PENDING tab and refresh live list
+      setSelectedStatusTab('PENDING');
+      await fetchInternships();
+    } catch (err) {
+      addToast(err.message || 'Failed to submit internship for approval.', 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const filtered = useMemo(() => {

@@ -17,6 +17,7 @@ import { exportToExcel, exportToPDF, getExportFilename } from '../../utils/expor
 import { formatMelaId } from '../../utils/applicationUtils';
 import { useRecruiter } from '../../context/RecruiterContext';
 import { useToast } from '../../context/ToastContext';
+import recruiterJobMelaService from '../../services/recruiterJobMelaService';
 
 const PAGE_SIZE = 9;
 
@@ -24,10 +25,52 @@ export default function RecruiterJobMelaPage() {
   const { recruiter, registerJobMela } = useRecruiter();
   const { addToast } = useToast();
 
-  const events = recruiter?.jobMelas || [];
+  const [events, setEvents] = useState(recruiter?.jobMelas || []);
+  const [loading, setLoading] = useState(true);
+  const [availableMelas, setAvailableMelas] = useState([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [search, setSearch] = useState('');
   const [selectedStatusTab, setSelectedStatusTab] = useState('ALL');
   const [currentPage, setCurrentPage] = useState(1);
+
+  // Fetch live Job Melas for this recruiter
+  const fetchJobMelas = async () => {
+    try {
+      setLoading(true);
+      const data = await recruiterJobMelaService.getJobMelas();
+      if (Array.isArray(data) && data.length > 0) {
+        setEvents(data);
+      } else if (recruiter?.jobMelas?.length) {
+        setEvents(recruiter.jobMelas);
+      }
+    } catch (err) {
+      console.error('Failed to fetch recruiter Job Melas from API, using cached data:', err);
+      if (recruiter?.jobMelas) {
+        setEvents(recruiter.jobMelas);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchJobMelas();
+  }, []);
+
+  // Fetch available melas for modal dropdown
+  useEffect(() => {
+    const fetchAvailable = async () => {
+      try {
+        const melas = await recruiterJobMelaService.getAvailableJobMelas();
+        if (Array.isArray(melas) && melas.length > 0) {
+          setAvailableMelas(melas);
+        }
+      } catch (err) {
+        console.error('Failed to load available Job Melas:', err);
+      }
+    };
+    fetchAvailable();
+  }, []);
 
   // Reset to page 1 whenever filters change
   useEffect(() => {
@@ -37,6 +80,7 @@ export default function RecruiterJobMelaPage() {
   // Request Participation Modal
   const [requestModalOpen, setRequestModalOpen] = useState(false);
   const [requestForm, setRequestForm] = useState({
+    job_mela_id: '',
     title: 'Visakhapatnam IT & FinTech Job Fair 2026',
     date: '2026-10-18',
     venue: 'Andhra University Convention Hall, Vizag',
@@ -148,19 +192,42 @@ export default function RecruiterJobMelaPage() {
     addToast(`Exported ${filteredEvents.length} Job Mela event(s) to PDF`, 'success');
   };
 
-  const handleRequestSubmit = (e) => {
+  const handleRequestSubmit = async (e) => {
     e.preventDefault();
-    registerJobMela({
-      title: requestForm.title,
-      date: requestForm.date,
-      venue: requestForm.venue,
-      status: 'PENDING',
-      boothNumber: 'Awaiting Admin Allocation',
-      candidatesCount: 0,
-      interviewsCount: 0,
-    });
-    setRequestModalOpen(false);
-    addToast(`Registration requested for "${requestForm.title}". Status: PENDING.`, 'success');
+    try {
+      setIsSubmitting(true);
+      const res = await recruiterJobMelaService.registerJobMela({
+        job_mela_id: requestForm.job_mela_id,
+        title: requestForm.title,
+        openings: requestForm.positions,
+        positions: requestForm.positions,
+        target_hires: parseInt(requestForm.expectedHires || 1, 10),
+        expectedHires: parseInt(requestForm.expectedHires || 1, 10),
+      });
+
+      registerJobMela({
+        id: res.id || `mela-${Date.now()}`,
+        job_mela_id: res.job_mela_id,
+        title: requestForm.title,
+        date: requestForm.date,
+        venue: requestForm.venue,
+        status: 'PENDING',
+        participationStatus: 'PENDING',
+        boothNumber: 'Awaiting Admin Allocation',
+        candidatesCount: 0,
+        interviewsCount: 0,
+        positions: requestForm.positions,
+        expectedHires: requestForm.expectedHires,
+      });
+
+      setRequestModalOpen(false);
+      addToast(`Registration requested for "${requestForm.title}". Status: PENDING.`, 'success');
+      await fetchJobMelas();
+    } catch (err) {
+      addToast(err.message || 'Failed to submit registration request', 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -437,11 +504,31 @@ export default function RecruiterJobMelaPage() {
             <FormField label="Job Mela Event *" required>
               <Select
                 value={requestForm.title}
-                onChange={(e) => setRequestForm({ ...requestForm, title: e.target.value })}
+                onChange={(e) => {
+                  const selectedTitle = e.target.value;
+                  const matched = availableMelas.find((m) => m.title === selectedTitle);
+                  setRequestForm({
+                    ...requestForm,
+                    title: selectedTitle,
+                    job_mela_id: matched ? matched.id : '',
+                    date: matched?.event_date || requestForm.date,
+                    venue: matched?.venue || requestForm.venue,
+                  });
+                }}
               >
-                <option value="Visakhapatnam IT & FinTech Job Fair 2026">Visakhapatnam IT & FinTech Job Fair 2026</option>
-                <option value="Tirupati Rayalaseema Mega Employment Drive">Tirupati Rayalaseema Mega Employment Drive</option>
-                <option value="Guntur & Amaravati Skills & Tech Expo">Guntur & Amaravati Skills & Tech Expo</option>
+                {availableMelas.length > 0 ? (
+                  availableMelas.map((m) => (
+                    <option key={m.id} value={m.title}>
+                      {m.title} ({m.city})
+                    </option>
+                  ))
+                ) : (
+                  <>
+                    <option value="Visakhapatnam IT & FinTech Job Fair 2026">Visakhapatnam IT & FinTech Job Fair 2026</option>
+                    <option value="Tirupati Rayalaseema Mega Employment Drive">Tirupati Rayalaseema Mega Employment Drive</option>
+                    <option value="Guntur & Amaravati Skills & Tech Expo">Guntur & Amaravati Skills & Tech Expo</option>
+                  </>
+                )}
               </Select>
             </FormField>
 
@@ -468,8 +555,8 @@ export default function RecruiterJobMelaPage() {
               <Button variant="outline" type="button" onClick={() => setRequestModalOpen(false)}>
                 Cancel
               </Button>
-              <Button variant="primary" type="submit">
-                Submit Participation Request
+              <Button variant="primary" type="submit" disabled={isSubmitting}>
+                {isSubmitting ? 'Submitting...' : 'Submit Participation Request'}
               </Button>
             </div>
           </form>

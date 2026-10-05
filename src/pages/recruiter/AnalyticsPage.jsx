@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
   TrendingUp, Users, CalendarCheck, CheckCircle2, Clock, Award,
@@ -8,23 +8,23 @@ import {
 import { useRecruiter } from '../../context/RecruiterContext';
 import { useToast } from '../../context/ToastContext';
 import Button from '../../components/ui/Button';
+import recruiterAnalyticsService from '../../services/recruiterAnalyticsService';
 
 export default function AnalyticsPage() {
   const { recruiter } = useRecruiter();
   const { addToast } = useToast();
   const [timeRange, setTimeRange] = useState('30d');
   const [customFrom, setCustomFrom] = useState('2026-08-01');
-  const [customTo, setCustomTo] = useState('2026-09-09');
+  const [customTo, setCustomTo] = useState('2026-10-05');
   const [appliedCustomRange, setAppliedCustomRange] = useState(null);
   const [dateError, setDateError] = useState('');
+  const [analyticsData, setAnalyticsData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [exporting, setExporting] = useState(false);
 
-  const jobs = recruiter?.jobs || [];
-  const applicants = recruiter?.applicants || recruiter?.applications || [];
-  const interviews = recruiter?.interviews || [];
-
-  // Active date boundary calculation
+  // Active date boundary calculation for display label
   const activeDateRange = useMemo(() => {
-    const now = new Date('2026-09-09T23:59:59.999Z');
+    const now = new Date('2026-10-05T23:59:59.999Z');
     if (timeRange === '7d') {
       const from = new Date(now);
       from.setDate(from.getDate() - 7);
@@ -56,14 +56,45 @@ export default function AnalyticsPage() {
     return null;
   }, [timeRange, appliedCustomRange]);
 
-  const isWithinRange = (dateStr) => {
-    if (!activeDateRange) return true;
-    if (!dateStr) return true;
-    const cleanStr = String(dateStr).replace(/\s*\([^)]*\)/g, '').replace(/Sept/gi, 'Sep').trim();
-    const d = new Date(cleanStr);
-    if (isNaN(d.getTime())) return true;
-    return d >= activeDateRange.from && d <= activeDateRange.to;
-  };
+  // Fetch real analytics from backend
+  useEffect(() => {
+    let isMounted = true;
+    const fetchAnalytics = async () => {
+      if (timeRange === 'custom' && !appliedCustomRange) {
+        return;
+      }
+      setLoading(true);
+      try {
+        const params = {};
+        if (timeRange === 'custom' && appliedCustomRange) {
+          params.start_date = appliedCustomRange.from;
+          params.end_date = appliedCustomRange.to;
+          params.date_range = 'custom';
+        } else {
+          params.date_range = timeRange;
+        }
+
+        const data = await recruiterAnalyticsService.getAnalytics(params);
+        if (isMounted) {
+          setAnalyticsData(data);
+        }
+      } catch (err) {
+        console.error('Failed to load hiring analytics:', err);
+        if (isMounted) {
+          addToast(err.message || 'Unable to load hiring analytics.', 'error');
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchAnalytics();
+    return () => {
+      isMounted = false;
+    };
+  }, [timeRange, appliedCustomRange, addToast]);
 
   const handleTimeRangeChange = (e) => {
     const val = e.target.value;
@@ -125,52 +156,81 @@ export default function AnalyticsPage() {
     );
   };
 
+  const handleExport = async () => {
+    setExporting(true);
+    const label = activeDateRange?.label || (timeRange === 'custom' ? 'Custom Date Range' : timeRange);
+    addToast(`Exporting recruitment report (${label})...`, 'info');
+    try {
+      const params = {};
+      if (timeRange === 'custom' && appliedCustomRange) {
+        params.start_date = appliedCustomRange.from;
+        params.end_date = appliedCustomRange.to;
+        params.date_range = 'custom';
+      } else {
+        params.date_range = timeRange;
+      }
+      await recruiterAnalyticsService.exportReport(params);
+      addToast('Recruitment report exported successfully.', 'success');
+    } catch (err) {
+      addToast(err.message || 'Failed to export recruitment report.', 'error');
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const isApplyDisabled = !customFrom || !customTo || Boolean(dateError) || (customFrom > customTo);
 
-  // Filtered collections
-  const filteredApplicants = useMemo(() => {
-    if (timeRange !== 'custom' || !appliedCustomRange) return applicants;
-    return applicants.filter(a => isWithinRange(a.appliedDate || a.createdAt));
-  }, [applicants, timeRange, appliedCustomRange, activeDateRange]);
+  // Derive metrics from backend response
+  const totalApplicants = analyticsData?.summary?.total_applications ?? 0;
+  const shortlistRate = analyticsData?.summary?.shortlist_conversion ?? 0;
+  const totalInterviews = analyticsData?.summary?.interviews_conducted ?? 0;
+  const avgTimeToHire = analyticsData?.summary?.average_time_to_hire_days ?? 0;
 
-  const filteredInterviews = useMemo(() => {
-    if (timeRange !== 'custom' || !appliedCustomRange) return interviews;
-    return interviews.filter(i => isWithinRange(i.date || i.interviewDate || i.createdAt));
-  }, [interviews, timeRange, appliedCustomRange, activeDateRange]);
+  const funnelReceived = analyticsData?.recruitment_funnel?.applications_received ?? totalApplicants;
+  const funnelShortlisted = analyticsData?.recruitment_funnel?.profile_shortlisted ?? 0;
+  const funnelInterviews = analyticsData?.recruitment_funnel?.technical_interviews ?? totalInterviews;
+  const funnelOffers = analyticsData?.recruitment_funnel?.final_offers_hires ?? 0;
 
-  const filteredJobs = useMemo(() => {
-    if (timeRange !== 'custom' || !appliedCustomRange) return jobs;
-    return jobs.filter(j => isWithinRange(j.createdAt || j.postedDate));
-  }, [jobs, timeRange, appliedCustomRange, activeDateRange]);
+  const interviewRate = funnelShortlisted > 0 ? Math.round((funnelInterviews / funnelShortlisted) * 100) : 0;
+  const offerRate = funnelInterviews > 0 ? Math.round((funnelOffers / funnelInterviews) * 100) : 0;
 
-  const totalApplicants = filteredApplicants.length;
-  const totalShortlisted = filteredApplicants.filter(a => a.status === 'SHORTLISTED' || a.status === 'INTERVIEW' || a.status === 'SELECTED' || a.status === 'HIRED').length;
-  const totalInterviews = filteredInterviews.length;
-  const totalOffers = filteredApplicants.filter(a => a.status === 'SELECTED' || a.status === 'HIRED').length;
+  // Monthly trends from backend velocity
+  const monthlyTrends = useMemo(() => {
+    if (analyticsData?.application_velocity && analyticsData.application_velocity.length > 0) {
+      return analyticsData.application_velocity;
+    }
+    return [
+      { period: 'Apr', month: 'Apr', applicants: 0, hired: 0 },
+      { period: 'May', month: 'May', applicants: 0, hired: 0 },
+      { period: 'Jun', month: 'Jun', applicants: 0, hired: 0 },
+      { period: 'Jul', month: 'Jul', applicants: 0, hired: 0 },
+      { period: 'Aug', month: 'Aug', applicants: 0, hired: 0 },
+      { period: 'Sep', month: 'Sep', applicants: 0, hired: 0 },
+    ];
+  }, [analyticsData]);
 
-  const shortlistRate = totalApplicants > 0 ? Math.round((totalShortlisted / totalApplicants) * 100) : 0;
-  const interviewRate = totalShortlisted > 0 ? Math.round((totalInterviews / totalShortlisted) * 100) : 0;
-  const offerRate = totalInterviews > 0 ? Math.round((totalOffers / totalInterviews) * 100) : 0;
+  const maxAppCount = Math.max(1, ...monthlyTrends.map(m => m.applicants ?? m.total_applicants ?? 0));
 
-  // Monthly trends mock
-  const monthlyTrends = [
-    { month: 'Apr', applicants: 32, interviews: 8, hired: 2 },
-    { month: 'May', applicants: 45, interviews: 12, hired: 3 },
-    { month: 'Jun', applicants: 58, interviews: 14, hired: 4 },
-    { month: 'Jul', applicants: 72, interviews: 19, hired: 5 },
-    { month: 'Aug', applicants: 94, interviews: 26, hired: 7 },
-    { month: 'Sep (Current)', applicants: 65, interviews: 18, hired: 4 },
-  ];
+  // Sources breakdown from backend
+  const candidateSources = useMemo(() => {
+    if (analyticsData?.candidate_sourcing && analyticsData.candidate_sourcing.length > 0) {
+      return analyticsData.candidate_sourcing.map((s, idx) => ({
+        ...s,
+        count: s.applicants,
+        color: s.color || ['var(--color-primary-600)', '#8b5cf6', '#10b981', '#f59e0b'][idx % 4],
+      }));
+    }
+    return [
+      { source: 'NTR Vikasa Job Portal Direct', count: 0, percentage: 0, color: 'var(--color-primary-600)' },
+      { source: 'NTR Vikasa Mega Job Melas', count: 0, percentage: 0, color: '#8b5cf6' },
+      { source: 'Skill Training Direct Pool', count: 0, percentage: 0, color: '#10b981' },
+      { source: 'Employee Referrals', count: 0, percentage: 0, color: '#f59e0b' },
+    ];
+  }, [analyticsData]);
 
-  const maxAppCount = Math.max(...monthlyTrends.map(m => m.applicants));
+  // Jobs performance from backend
+  const performanceJobs = analyticsData?.job_posting_performance || [];
 
-  // Sources breakdown
-  const candidateSources = [
-    { source: 'NTR Vikasa Job Portal Direct', count: 128, percentage: 56, color: 'var(--color-primary-600)' },
-    { source: 'NTR Vikasa Mega Job Melas', count: 54, percentage: 24, color: '#8b5cf6' },
-    { source: 'Skill Training Direct Pool', count: 32, percentage: 14, color: '#10b981' },
-    { source: 'Employee Referrals', count: 14, percentage: 6, color: '#f59e0b' },
-  ];
 
   return (
     <div className="portal-page">
@@ -245,10 +305,9 @@ export default function AnalyticsPage() {
             <Button
               variant="outline"
               icon={<Download size={14} />}
-              onClick={() => {
-                const label = activeDateRange?.label || (timeRange === 'custom' ? 'Custom Date Range' : timeRange);
-                addToast(`Exporting recruitment report (${label})...`, 'success');
-              }}
+              loading={exporting}
+              disabled={exporting}
+              onClick={handleExport}
             >
               Export Report
             </Button>
@@ -288,7 +347,7 @@ export default function AnalyticsPage() {
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginTop: '0.75rem', fontSize: '0.8rem', color: '#059669', fontWeight: 600 }}>
-            <ArrowUpRight size={14} /> +24% vs last period
+            <ArrowUpRight size={14} /> Active period applications
           </div>
         </div>
 
@@ -305,7 +364,7 @@ export default function AnalyticsPage() {
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginTop: '0.75rem', fontSize: '0.8rem', color: '#059669', fontWeight: 600 }}>
-            <ArrowUpRight size={14} /> +5.2% quality improvement
+            <ArrowUpRight size={14} /> Pipeline pass conversion
           </div>
         </div>
 
@@ -331,7 +390,7 @@ export default function AnalyticsPage() {
             <div>
               <span style={{ fontSize: '0.8rem', color: 'var(--color-gray-500)', fontWeight: 600, textTransform: 'uppercase' }}>Avg Time-to-Hire</span>
               <div style={{ fontSize: '1.8rem', fontWeight: 700, color: '#10b981', marginTop: '0.35rem' }}>
-                16 Days
+                {avgTimeToHire > 0 ? `${avgTimeToHire} Days` : 'N/A'}
               </div>
             </div>
             <div style={{ width: '40px', height: '40px', borderRadius: '8px', background: '#ecfdf5', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#10b981' }}>
@@ -339,7 +398,7 @@ export default function AnalyticsPage() {
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginTop: '0.75rem', fontSize: '0.8rem', color: '#059669', fontWeight: 600 }}>
-            <Zap size={14} /> 4 days faster than industry avg
+            <Zap size={14} /> Real time-to-hire metric
           </div>
         </div>
       </div>
@@ -357,10 +416,10 @@ export default function AnalyticsPage() {
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             {[
-              { stage: '1. Applications Received', count: totalApplicants, percent: 100, color: 'var(--color-primary-600)', sub: 'Top of funnel' },
-              { stage: '2. Profile Shortlisted', count: totalShortlisted, percent: shortlistRate, color: '#6366f1', sub: `${shortlistRate}% pass rate` },
-              { stage: '3. Technical Interviews', count: totalInterviews, percent: Math.round((totalInterviews / (totalApplicants || 1)) * 100), color: '#8b5cf6', sub: `${interviewRate}% interview conversion` },
-              { stage: '4. Final Offers & Hires', count: totalOffers, percent: Math.round((totalOffers / (totalApplicants || 1)) * 100), color: '#10b981', sub: 'Final selections' },
+              { stage: '1. Applications Received', count: funnelReceived, percent: 100, color: 'var(--color-primary-600)', sub: 'Top of funnel' },
+              { stage: '2. Profile Shortlisted', count: funnelShortlisted, percent: shortlistRate, color: '#6366f1', sub: `${shortlistRate}% pass rate` },
+              { stage: '3. Technical Interviews', count: funnelInterviews, percent: Math.round((funnelInterviews / (funnelReceived || 1)) * 100), color: '#8b5cf6', sub: `${interviewRate}% interview conversion` },
+              { stage: '4. Final Offers & Hires', count: funnelOffers, percent: Math.round((funnelOffers / (funnelReceived || 1)) * 100), color: '#10b981', sub: 'Final selections' },
             ].map((st, i) => (
               <div key={i} style={{ background: '#f8fafc', padding: '0.85rem 1rem', borderRadius: '8px', border: '1px solid var(--color-gray-200)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
@@ -384,40 +443,44 @@ export default function AnalyticsPage() {
             Application Velocity & Hires Trend
           </h3>
           <p style={{ fontSize: '0.85rem', color: 'var(--color-gray-500)', marginBottom: '1.5rem' }}>
-            Monthly candidate volume across all posted jobs.
+            Candidate volume and selections across your posted jobs.
           </p>
 
           <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', height: '180px', paddingTop: '1rem', gap: '0.75rem' }}>
             {monthlyTrends.map((item, idx) => {
-              const heightPct = Math.round((item.applicants / maxAppCount) * 100);
+              const appCount = item.total_applicants ?? item.applicants ?? 0;
+              const hiredCount = item.hired_candidates ?? item.hired ?? 0;
+              const heightPct = Math.round((appCount / maxAppCount) * 100);
               return (
                 <div key={idx} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1, height: '100%', justifyContent: 'flex-end' }}>
                   <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-primary-700)', marginBottom: '0.35rem' }}>
-                    {item.applicants}
+                    {appCount}
                   </div>
                   <div style={{
                     width: '100%',
                     maxWidth: '42px',
-                    height: `${heightPct}%`,
+                    height: `${Math.max(heightPct, 4)}%`,
                     background: 'linear-gradient(180deg, var(--color-primary-600) 0%, #818cf8 100%)',
                     borderRadius: '6px 6px 0 0',
                     position: 'relative'
                   }}>
-                    {/* Hired mini dot */}
-                    <div style={{
-                      position: 'absolute',
-                      bottom: '4px',
-                      left: '50%',
-                      transform: 'translateX(-50%)',
-                      fontSize: '0.65rem',
-                      color: '#fff',
-                      fontWeight: 700
-                    }}>
-                      {item.hired}h
-                    </div>
+                    {/* Hired mini badge */}
+                    {hiredCount > 0 && (
+                      <div style={{
+                        position: 'absolute',
+                        bottom: '4px',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        fontSize: '0.65rem',
+                        color: '#fff',
+                        fontWeight: 700
+                      }}>
+                        {hiredCount}h
+                      </div>
+                    )}
                   </div>
                   <div style={{ fontSize: '0.75rem', color: 'var(--color-gray-600)', marginTop: '0.5rem', fontWeight: 500 }}>
-                    {item.month}
+                    {item.period || item.month}
                   </div>
                 </div>
               );
@@ -462,27 +525,27 @@ export default function AnalyticsPage() {
                 </tr>
               </thead>
               <tbody>
-                {filteredJobs.length === 0 ? (
+                {performanceJobs.length === 0 ? (
                   <tr>
                     <td colSpan={5} style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--color-gray-500)' }}>
                       No job postings found in the selected date range.
                     </td>
                   </tr>
                 ) : (
-                  filteredJobs.map((job) => (
-                    <tr key={job.id} style={{ borderBottom: '1px solid var(--color-gray-100)' }}>
+                  performanceJobs.map((job) => (
+                    <tr key={job.job_id || job.id} style={{ borderBottom: '1px solid var(--color-gray-100)' }}>
                       <td style={{ padding: '0.75rem 0.5rem', fontWeight: 600, color: 'var(--color-gray-900)' }}>
-                        {job.title}
-                        <div style={{ fontSize: '0.75rem', color: 'var(--color-gray-500)', fontWeight: 400 }}>{job.department} • {job.workMode}</div>
+                        {job.job_title || job.title}
+                        <div style={{ fontSize: '0.75rem', color: 'var(--color-gray-500)', fontWeight: 400 }}>{job.department} • {job.work_mode || job.workMode}</div>
                       </td>
                       <td style={{ padding: '0.75rem 0.5rem', textAlign: 'center', fontWeight: 600 }}>
-                        {job.applicantsCount || 0}
+                        {job.applicants ?? job.applicantsCount ?? 0}
                       </td>
                       <td style={{ padding: '0.75rem 0.5rem', textAlign: 'center', color: 'var(--color-primary-600)', fontWeight: 600 }}>
-                        {job.shortlistedCount || 0}
+                        {job.shortlisted ?? job.shortlistedCount ?? 0}
                       </td>
                       <td style={{ padding: '0.75rem 0.5rem', textAlign: 'center', color: '#8b5cf6', fontWeight: 600 }}>
-                        {job.interviewsCount || 0}
+                        {job.interviews ?? job.interviewsCount ?? 0}
                       </td>
                       <td style={{ padding: '0.75rem 0.5rem', textAlign: 'right' }}>
                         <span style={{
@@ -490,8 +553,8 @@ export default function AnalyticsPage() {
                           fontWeight: 600,
                           padding: '0.2rem 0.5rem',
                           borderRadius: '4px',
-                          background: job.status === 'PUBLISHED' ? '#ecfdf5' : '#fffbeb',
-                          color: job.status === 'PUBLISHED' ? '#059669' : '#d97706'
+                          background: (job.status || '').toUpperCase() === 'PUBLISHED' ? '#ecfdf5' : '#fffbeb',
+                          color: (job.status || '').toUpperCase() === 'PUBLISHED' ? '#059669' : '#d97706'
                         }}>
                           {job.status}
                         </span>
@@ -518,10 +581,10 @@ export default function AnalyticsPage() {
               <div key={idx}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.85rem', marginBottom: '0.35rem' }}>
                   <span style={{ fontWeight: 600, color: 'var(--color-gray-800)' }}>{ch.source}</span>
-                  <span style={{ color: 'var(--color-gray-600)', fontWeight: 500 }}>{ch.count} applicants ({ch.percentage}%)</span>
+                  <span style={{ color: 'var(--color-gray-600)', fontWeight: 500 }}>{ch.applicants ?? ch.count ?? 0} applicants ({ch.percentage}%)</span>
                 </div>
                 <div style={{ width: '100%', height: '8px', background: 'var(--color-gray-200)', borderRadius: '4px', overflow: 'hidden' }}>
-                  <div style={{ width: `${ch.percentage}%`, height: '100%', background: ch.color, borderRadius: '4px' }} />
+                  <div style={{ width: `${Math.max(ch.percentage, 0)}%`, height: '100%', background: ch.color || 'var(--color-primary-600)', borderRadius: '4px' }} />
                 </div>
               </div>
             ))}
@@ -539,7 +602,7 @@ export default function AnalyticsPage() {
           }}>
             <Target size={24} color="var(--color-primary-600)" style={{ flexShrink: 0 }} />
             <div style={{ fontSize: '0.85rem', color: 'var(--color-primary-900)' }}>
-              <strong>Job Mela Participation Boost:</strong> Registering for upcoming NTR Vikasa Job Melas increases qualified applicant influx by <strong>+38%</strong>.
+              <strong>Job Mela Participation Boost:</strong> {analyticsData?.job_mela_insight?.message || 'Registering for upcoming NTR Vikasa Job Melas increases qualified applicant influx by +38%.'}
             </div>
           </div>
         </div>
@@ -547,3 +610,4 @@ export default function AnalyticsPage() {
     </div>
   );
 }
+

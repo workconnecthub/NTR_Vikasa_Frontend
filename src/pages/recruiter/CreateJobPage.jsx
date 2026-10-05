@@ -11,6 +11,7 @@ import Select from '../../components/ui/Select';
 import Textarea from '../../components/ui/Textarea';
 import { useRecruiter } from '../../context/RecruiterContext';
 import { useToast } from '../../context/ToastContext';
+import recruiterJobService from '../../services/recruiterJobService';
 
 export default function RecruiterCreateJobPage() {
   const navigate = useNavigate();
@@ -50,21 +51,24 @@ export default function RecruiterCreateJobPage() {
     setFormData({ ...formData, skills: formData.skills.filter(s => s !== skill) });
   };
 
-  const handleSaveDraft = () => {
+  const handleSaveDraft = async () => {
     if (!formData.title.trim()) {
       addToast('Please enter a job title before saving draft.', 'error');
       return;
     }
-    createJob({
-      ...formData,
-      status: 'DRAFT',
-      companyName: recruiter?.company?.name || 'My Company',
-    });
-    addToast(`Job "${formData.title}" saved as Draft.`, 'info');
-    navigate('/recruiter/jobs');
+    setLoading(true);
+    try {
+      await recruiterJobService.saveJobDraft(formData);
+      addToast(`Job "${formData.title}" saved as Draft.`, 'info');
+      navigate('/recruiter/jobs');
+    } catch (err) {
+      addToast(err.message || 'Failed to save job draft.', 'error');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleSubmitForApproval = (e) => {
+  const handleSubmitForApproval = async (e) => {
     e.preventDefault();
     if (!formData.title.trim() || !formData.description.trim()) {
       addToast('Please fill in all required job fields.', 'error');
@@ -72,16 +76,15 @@ export default function RecruiterCreateJobPage() {
     }
 
     setLoading(true);
-    setTimeout(() => {
-      createJob({
-        ...formData,
-        status: 'PENDING',
-        companyName: recruiter?.company?.name || 'My Company',
-      });
-      setLoading(false);
+    try {
+      await recruiterJobService.createJob(formData);
       addToast(`Job posting "${formData.title}" submitted for Admin review. Status: PENDING.`, 'success');
       navigate('/recruiter/jobs');
-    }, 500);
+    } catch (err) {
+      addToast(err.message || 'Failed to submit job for approval.', 'error');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

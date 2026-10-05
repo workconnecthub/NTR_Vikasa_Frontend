@@ -11,6 +11,7 @@ import { useToast } from '../../context/ToastContext';
 import { useRecruiter } from '../../context/RecruiterContext';
 import { useNotifications } from '../../context/NotificationContext';
 import { dispatchRecruiterEvent, RECRUITER_NOTIFICATION_EVENTS } from '../../services/notificationEventService';
+import recruiterSupportService from '../../services/recruiterSupportService';
 
 export default function RecruiterHelpSupportPage() {
   const { recruiter } = useRecruiter();
@@ -27,8 +28,16 @@ export default function RecruiterHelpSupportPage() {
   const companyName = recruiter?.company?.name || 'ABC Technologies Pvt Ltd';
   const recruiterEmail = recruiter?.email || 'recruiter@example.com';
 
-  const handleSubmitTicket = (e) => {
+  const handleSubmitTicket = async (e) => {
     e.preventDefault();
+    if (!subject.trim()) {
+      toast({
+        type: 'warning',
+        title: 'Missing Information',
+        message: 'Please provide a subject summary for your query.'
+      });
+      return;
+    }
     if (!description.trim()) {
       toast({
         type: 'warning',
@@ -39,15 +48,20 @@ export default function RecruiterHelpSupportPage() {
     }
 
     setSubmitting(true);
-    setTimeout(() => {
-      const ticketId = Math.floor(100000 + Math.random() * 900000);
-      setSubmitting(false);
+    try {
+      const response = await recruiterSupportService.submitSupportRequest({
+        issue_category: issueType,
+        subject: subject.trim(),
+        description: description.trim(),
+      });
+
+      const ticketNumber = response.ticket_number || 'SUP-000001';
       setSubject('');
       setDescription('');
       toast({
         type: 'success',
         title: 'Support Ticket Submitted',
-        message: `Ticket #${ticketId} created. Our employer support team will respond within 24 hours.`
+        message: `Ticket #${ticketNumber} created. Our employer support team will respond within 24 hours.`
       });
 
       dispatchRecruiterEvent({
@@ -57,15 +71,24 @@ export default function RecruiterHelpSupportPage() {
         addNotification,
         notification: {
           category: 'SUPPORT',
-          title: `Support Ticket #${ticketId} Created`,
+          title: `Support Ticket #${ticketNumber} Created`,
           message: `Your query regarding "${issueType}" has been logged. Our employer support desk will follow up.`,
           link: '/recruiter/help-support',
-          meta: { ticketId, issueType, subject }
+          meta: { ticketId: ticketNumber, issueType, subject }
         },
-        meta: { ticketId, issueType, subject }
+        meta: { ticketId: ticketNumber, issueType, subject }
       });
-    }, 800);
+    } catch (err) {
+      toast({
+        type: 'error',
+        title: 'Submission Failed',
+        message: err.message || 'Failed to submit support request. Please try again.'
+      });
+    } finally {
+      setSubmitting(false);
+    }
   };
+
 
   return (
     <div className="recruiter-help-support-page" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)', paddingBottom: 'var(--space-16)' }}>

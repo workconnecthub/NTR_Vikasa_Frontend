@@ -105,7 +105,7 @@ const candidateNotificationService = {
    */
   async dismiss(id) {
     try {
-      return await apiClient.patch(`/candidate/notifications/${encodeURIComponent(id)}/dismiss`);
+      return await apiClient.delete(`/candidate/notifications/${encodeURIComponent(id)}`);
     } catch (error) {
       throw new Error(parseApiError(error));
     }
@@ -118,8 +118,36 @@ const candidateNotificationService = {
    */
   async dismissMultiple(ids) {
     try {
-      return await apiClient.post('/candidate/notifications/dismiss', {
-        notification_ids: ids,
+      return await apiClient.delete('/candidate/notifications/bulk', {
+        data: { notification_ids: ids },
+      });
+    } catch (error) {
+      throw new Error(parseApiError(error));
+    }
+  },
+
+  /**
+   * Permanently delete a single notification from database.
+   * @param {string} id
+   * @returns {Promise<{ message: string }>}
+   */
+  async deleteNotification(id) {
+    try {
+      return await apiClient.delete(`/candidate/notifications/${encodeURIComponent(id)}`);
+    } catch (error) {
+      throw new Error(parseApiError(error));
+    }
+  },
+
+  /**
+   * Permanently delete multiple notifications from database in bulk.
+   * @param {string[]} ids
+   * @returns {Promise<{ message: string, deleted_count: number }>}
+   */
+  async deleteNotifications(ids) {
+    try {
+      return await apiClient.delete('/candidate/notifications/bulk', {
+        data: { notification_ids: ids },
       });
     } catch (error) {
       throw new Error(parseApiError(error));

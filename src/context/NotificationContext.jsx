@@ -1006,8 +1006,8 @@ export function NotificationProvider({ children }) {
       };
     });
     if (portal === 'candidate') {
-      candidateNotificationService.dismiss(id).catch(err => {
-        console.warn('Failed to dismiss notification on backend:', err);
+      candidateNotificationService.deleteNotification(id).catch(err => {
+        console.warn('Failed to delete notification on backend:', err);
       });
     }
   }, []);
@@ -1029,8 +1029,8 @@ export function NotificationProvider({ children }) {
       };
     });
     if (portal === 'candidate') {
-      candidateNotificationService.dismissMultiple(ids).catch(err => {
-        console.warn('Failed to bulk dismiss notifications on backend:', err);
+      candidateNotificationService.deleteNotifications(ids).catch(err => {
+        console.warn('Failed to bulk delete notifications on backend:', err);
       });
     }
   }, []);
