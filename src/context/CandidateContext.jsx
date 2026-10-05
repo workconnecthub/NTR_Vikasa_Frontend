@@ -1,6 +1,8 @@
 import { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import { useNotifications } from './NotificationContext';
 import { dispatchCandidateEvent, NOTIFICATION_EVENTS } from '../services/notificationEventService';
+import authService from '../services/authService';
+import candidateSavedJobsService from '../services/candidateSavedJobsService';
 
 export const calculateProfileCompletion = (c) => {
   if (!c) return 0;
@@ -988,7 +990,7 @@ export function CandidateProvider({ children }) {
   };
 
   // Save / Unsave Job
-  const saveJob = (jobId) => {
+  const saveJob = (jobId, jobData = {}) => {
     updateCandidate((prev) => {
       const idStr = String(jobId);
       if ((prev.savedJobIds || []).includes(idStr)) return prev;
@@ -997,6 +999,25 @@ export function CandidateProvider({ children }) {
         savedJobIds: [...(prev.savedJobIds || []), idStr]
       };
     });
+
+    // Synchronize to MySQL database if logged in
+    if (authService.isAuthenticated()) {
+      candidateSavedJobsService.saveJob({
+        job_id: String(jobId),
+        title: jobData.title || 'Senior Software Engineer',
+        company_name: jobData.company || jobData.company_name || 'TechCorp India',
+        company_verified: jobData.company_verified ?? true,
+        location: jobData.location || 'Bengaluru, Karnataka',
+        salary: jobData.salary || '₹14 - ₹22 LPA',
+        experience: jobData.experience || '3-5 years',
+        employment_type: jobData.type || jobData.employment_type || 'Full-time',
+        work_mode: jobData.mode || jobData.work_mode || 'Hybrid',
+        skills: jobData.tags || jobData.skills || [],
+      }).catch((err) => {
+        // Silently log; UI already updated optimistically
+        console.warn('Saved job sync error:', err.message);
+      });
+    }
   };
 
   const unsaveJob = (jobId) => {
@@ -1007,6 +1028,13 @@ export function CandidateProvider({ children }) {
         savedJobIds: (prev.savedJobIds || []).filter(id => id !== idStr)
       };
     });
+
+    // Synchronize removal to MySQL database if logged in
+    if (authService.isAuthenticated()) {
+      candidateSavedJobsService.removeSavedJob(String(jobId)).catch((err) => {
+        console.warn('Unsave job sync error:', err.message);
+      });
+    }
   };
 
   const isJobSaved = (jobId) => {

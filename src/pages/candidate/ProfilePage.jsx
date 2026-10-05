@@ -13,6 +13,8 @@ import Select from '../../components/ui/Select';
 import Textarea from '../../components/ui/Textarea';
 import { useToast } from '../../context/ToastContext';
 import { useCandidate } from '../../context/CandidateContext';
+import authService from '../../services/authService';
+import candidateProfileService from '../../services/candidateProfileService';
 import {
   LOCATIONS, SKILL_OPTIONS, JOB_TYPES, WORK_MODES, SALARY_RANGES
 } from '../../data/mockData';
@@ -243,11 +245,66 @@ export default function CandidateProfilePage() {
     if (candidate.projectsList) setProjectsList(candidate.projectsList);
   }, [candidate]);
 
+  // ── INITIAL FETCH FROM REAL BACKEND ──
+  useEffect(() => {
+    let cancelled = false;
+    async function loadBackendProfile() {
+      if (!authService.isAuthenticated()) return;
+      try {
+        const p = await candidateProfileService.getProfile();
+        if (cancelled || !p) return;
+        updateProfile({
+          id: p.id,
+          name: p.name || p.fullName,
+          fullName: p.name || p.fullName,
+          headline: p.headline,
+          email: p.email,
+          phone: p.phone,
+          location: p.location,
+          bio: p.bio,
+          linkedin: p.linkedin || p.linkedin_url,
+          github: p.github || p.github_url,
+          portfolio: p.portfolio || p.portfolio_url,
+          avatar: p.avatar,
+          profileCompletion: p.profile_completion_percentage ?? p.profileCompletion,
+          skillsPreferences: p.skillsPreferences,
+          resume: p.resume,
+          experienceList: p.experienceList,
+          educationList: p.educationList,
+          certificationsList: p.certificationsList,
+          projectsList: p.projectsList,
+        });
+      } catch (err) {
+        console.warn('Backend profile fetch error:', err.message);
+      }
+    }
+    loadBackendProfile();
+    return () => { cancelled = true; };
+  }, []);
+
   // ── HANDLERS ──
 
   // Save Personal Info
-  const handleSavePersonal = () => {
+  const handleSavePersonal = async () => {
     setEditingSection(null);
+    const payload = {
+      name: personal.fullName,
+      fullName: personal.fullName,
+      headline: personal.headline,
+      professional_title: personal.headline,
+      email: personal.email,
+      phone: personal.phone,
+      location: personal.location,
+      bio: personal.bio,
+      professional_summary: personal.bio,
+      linkedin: personal.linkedin,
+      linkedin_url: personal.linkedin,
+      github: personal.github,
+      github_url: personal.github,
+      portfolio: personal.portfolio,
+      portfolio_url: personal.portfolio,
+    };
+
     updateProfile({
       name: personal.fullName,
       headline: personal.headline,
@@ -259,6 +316,18 @@ export default function CandidateProfilePage() {
       github: personal.github,
       portfolio: personal.portfolio
     });
+
+    if (authService.isAuthenticated()) {
+      try {
+        const updated = await candidateProfileService.updatePersonal(payload);
+        if (updated?.profileCompletion !== undefined) {
+          updateProfile({ profileCompletion: updated.profileCompletion });
+        }
+      } catch (err) {
+        console.warn('Personal info sync error:', err.message);
+      }
+    }
+
     toast({
       type: 'success',
       title: 'Personal Information Updated',
@@ -267,8 +336,25 @@ export default function CandidateProfilePage() {
   };
 
   // Save Preferences
-  const handleSavePreferences = () => {
+  const handleSavePreferences = async () => {
     setEditingSection(null);
+    const prefPayload = {
+      experience: prefForm.totalExperience,
+      total_experience: prefForm.totalExperience,
+      currentSalary: prefForm.currentSalary,
+      current_salary: prefForm.currentSalary,
+      expectedSalary: prefForm.expectedSalary,
+      expected_salary: prefForm.expectedSalary,
+      workMode: prefForm.workMode,
+      work_mode: prefForm.workMode,
+      jobType: prefForm.jobType,
+      employment_type: prefForm.jobType,
+      preferredRoles: prefForm.preferredRoles,
+      preferred_job_roles: prefForm.preferredRoles,
+      preferredLocations: prefForm.preferredLocations,
+      preferred_locations: prefForm.preferredLocations
+    };
+
     updateSkillsPreferences({
       experience: prefForm.totalExperience,
       currentSalary: prefForm.currentSalary,
@@ -278,6 +364,15 @@ export default function CandidateProfilePage() {
       preferredRoles: prefForm.preferredRoles,
       preferredLocations: prefForm.preferredLocations
     });
+
+    if (authService.isAuthenticated()) {
+      try {
+        await candidateProfileService.updatePreferences(prefPayload);
+      } catch (err) {
+        console.warn('Preferences sync error:', err.message);
+      }
+    }
+
     toast({
       type: 'success',
       title: 'Preferences Updated',
@@ -318,37 +413,75 @@ export default function CandidateProfilePage() {
   };
 
   // Technical Skills Handlers
-  const handleToggleSkill = (skill) => {
+  const handleToggleSkill = async (skill) => {
     let updated;
-    if (skills.includes(skill)) {
+    const exists = skills.includes(skill);
+    if (exists) {
       updated = skills.filter(s => s !== skill);
     } else {
       updated = [...skills, skill];
     }
     setSkills(updated);
     updateSkillsPreferences({ skills: updated });
-  };
 
-  const handleAddCustomSkill = (e) => {
-    e.preventDefault();
-    if (customSkillInput.trim() && !skills.includes(customSkillInput.trim())) {
-      const updated = [...skills, customSkillInput.trim()];
-      setSkills(updated);
-      setCustomSkillInput('');
-      updateSkillsPreferences({ skills: updated });
-      toast({ type: 'success', title: 'Skill Added', message: `Added "${customSkillInput.trim()}".` });
+    if (authService.isAuthenticated()) {
+      try {
+        if (!exists) {
+          await candidateProfileService.addSkill(skill);
+        }
+      } catch (err) {
+        console.warn('Skill toggle sync error:', err.message);
+      }
     }
   };
 
-  const handleRemoveSkill = (skillToRemove) => {
+  const handleAddCustomSkill = async (e) => {
+    e.preventDefault();
+    const newSkill = customSkillInput.trim();
+    if (newSkill && !skills.includes(newSkill)) {
+      const updated = [...skills, newSkill];
+      setSkills(updated);
+      setCustomSkillInput('');
+      updateSkillsPreferences({ skills: updated });
+
+      if (authService.isAuthenticated()) {
+        try {
+          await candidateProfileService.addSkill(newSkill);
+        } catch (err) {
+          console.warn('Add skill sync error:', err.message);
+        }
+      }
+
+      toast({ type: 'success', title: 'Skill Added', message: `Added "${newSkill}".` });
+    }
+  };
+
+  const handleRemoveSkill = async (skillToRemove) => {
     const updated = skills.filter(s => s !== skillToRemove);
     setSkills(updated);
     updateSkillsPreferences({ skills: updated });
+
+    if (authService.isAuthenticated()) {
+      try {
+        const currentSkills = await candidateProfileService.getSkills();
+        const match = currentSkills.find(s => s.skill_name?.toLowerCase() === skillToRemove.toLowerCase() || s.name?.toLowerCase() === skillToRemove.toLowerCase());
+        if (match) {
+          await candidateProfileService.deleteSkill(match.id);
+        }
+      } catch (err) {
+        console.warn('Remove skill sync error:', err.message);
+      }
+    }
+
     toast({ type: 'info', title: 'Skill Removed', message: `Removed "${skillToRemove}".` });
   };
 
   // Resume Download Handler
   const handleDownloadResume = () => {
+    if (resume?.id && authService.isAuthenticated()) {
+      const downloadUrl = candidateProfileService.getResumeDownloadUrl(resume.id);
+      window.open(downloadUrl, '_blank');
+    }
     toast({
       type: 'success',
       title: 'Downloading Resume',
@@ -357,7 +490,7 @@ export default function CandidateProfilePage() {
   };
 
   // Resume File Upload/Replace Handler
-  const handleFileChange = (e) => {
+  const handleFileChange = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -372,7 +505,20 @@ export default function CandidateProfilePage() {
     }
 
     setUploadError('');
+
+    let uploadedItem = null;
+    if (authService.isAuthenticated()) {
+      try {
+        const formData = new FormData();
+        formData.append('file', file);
+        uploadedItem = await candidateProfileService.uploadResume(formData);
+      } catch (err) {
+        console.warn('Resume upload API error:', err.message);
+      }
+    }
+
     updateResume({
+      id: uploadedItem?.id || resume?.id,
       fileName: file.name,
       fileSize: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
       fileType: file.name.endsWith('.pdf') ? 'PDF Document' : 'Word Document'
@@ -387,7 +533,7 @@ export default function CandidateProfilePage() {
   };
 
   // Work Experience Add / Delete Handlers
-  const handleAddExperience = (e) => {
+  const handleAddExperience = async (e) => {
     e.preventDefault();
     if (!newExpForm.role || !newExpForm.company) return;
     const newEntry = {
@@ -398,18 +544,37 @@ export default function CandidateProfilePage() {
     setExperienceList(updated);
     setNewExpForm({ role: '', company: '', location: '', duration: '', description: '' });
     updateProfile({ experienceList: updated });
+
+    if (authService.isAuthenticated()) {
+      try {
+        const created = await candidateProfileService.addWorkExperience(newExpForm);
+        newEntry.id = created.id;
+      } catch (err) {
+        console.warn('Add experience sync error:', err.message);
+      }
+    }
+
     toast({ type: 'success', title: 'Experience Added', message: `Added "${newEntry.role}" at ${newEntry.company}.` });
   };
 
-  const handleDeleteExperience = (id) => {
+  const handleDeleteExperience = async (id) => {
     const updated = experienceList.filter(e => e.id !== id);
     setExperienceList(updated);
     updateProfile({ experienceList: updated });
+
+    if (authService.isAuthenticated()) {
+      try {
+        await candidateProfileService.deleteWorkExperience(id);
+      } catch (err) {
+        console.warn('Delete experience sync error:', err.message);
+      }
+    }
+
     toast({ type: 'info', title: 'Experience Removed', message: 'Experience record removed.' });
   };
 
   // Education Add / Delete Handlers
-  const handleAddEducation = (e) => {
+  const handleAddEducation = async (e) => {
     e.preventDefault();
     if (!newEduForm.degree || !newEduForm.institution) return;
     const newEntry = {
@@ -420,18 +585,37 @@ export default function CandidateProfilePage() {
     setEducationList(updated);
     setNewEduForm({ degree: '', institution: '', duration: '', score: '' });
     updateProfile({ educationList: updated });
+
+    if (authService.isAuthenticated()) {
+      try {
+        const created = await candidateProfileService.addEducation(newEduForm);
+        newEntry.id = created.id;
+      } catch (err) {
+        console.warn('Add education sync error:', err.message);
+      }
+    }
+
     toast({ type: 'success', title: 'Education Added', message: `Added "${newEntry.degree}".` });
   };
 
-  const handleDeleteEducation = (id) => {
+  const handleDeleteEducation = async (id) => {
     const updated = educationList.filter(e => e.id !== id);
     setEducationList(updated);
     updateProfile({ educationList: updated });
+
+    if (authService.isAuthenticated()) {
+      try {
+        await candidateProfileService.deleteEducation(id);
+      } catch (err) {
+        console.warn('Delete education sync error:', err.message);
+      }
+    }
+
     toast({ type: 'info', title: 'Education Removed', message: 'Education record removed.' });
   };
 
   // Certifications Add / Delete Handlers
-  const handleAddCertification = (e) => {
+  const handleAddCertification = async (e) => {
     e.preventDefault();
     if (!newCertForm.name) return;
     const newEntry = {
@@ -442,18 +626,37 @@ export default function CandidateProfilePage() {
     setCertificationsList(updated);
     setNewCertForm({ name: '', issuer: '', year: '' });
     updateProfile({ certificationsList: updated });
+
+    if (authService.isAuthenticated()) {
+      try {
+        const created = await candidateProfileService.addCertification(newCertForm);
+        newEntry.id = created.id;
+      } catch (err) {
+        console.warn('Add certification sync error:', err.message);
+      }
+    }
+
     toast({ type: 'success', title: 'Certification Added', message: `Added "${newEntry.name}".` });
   };
 
-  const handleDeleteCertification = (id) => {
+  const handleDeleteCertification = async (id) => {
     const updated = certificationsList.filter(c => c.id !== id);
     setCertificationsList(updated);
     updateProfile({ certificationsList: updated });
+
+    if (authService.isAuthenticated()) {
+      try {
+        await candidateProfileService.deleteCertification(id);
+      } catch (err) {
+        console.warn('Delete certification sync error:', err.message);
+      }
+    }
+
     toast({ type: 'info', title: 'Certification Removed', message: 'Certification record removed.' });
   };
 
   // Projects Add / Delete Handlers
-  const handleAddProject = (e) => {
+  const handleAddProject = async (e) => {
     e.preventDefault();
     if (!newProjForm.title) return;
     const newEntry = {
@@ -464,13 +667,32 @@ export default function CandidateProfilePage() {
     setProjectsList(updated);
     setNewProjForm({ title: '', tech: '', description: '' });
     updateProfile({ projectsList: updated });
+
+    if (authService.isAuthenticated()) {
+      try {
+        const created = await candidateProfileService.addProject(newProjForm);
+        newEntry.id = created.id;
+      } catch (err) {
+        console.warn('Add project sync error:', err.message);
+      }
+    }
+
     toast({ type: 'success', title: 'Project Added', message: `Added project "${newEntry.title}".` });
   };
 
-  const handleDeleteProject = (id) => {
+  const handleDeleteProject = async (id) => {
     const updated = projectsList.filter(p => p.id !== id);
     setProjectsList(updated);
     updateProfile({ projectsList: updated });
+
+    if (authService.isAuthenticated()) {
+      try {
+        await candidateProfileService.deleteProject(id);
+      } catch (err) {
+        console.warn('Delete project sync error:', err.message);
+      }
+    }
+
     toast({ type: 'info', title: 'Project Removed', message: 'Project record removed.' });
   };
 

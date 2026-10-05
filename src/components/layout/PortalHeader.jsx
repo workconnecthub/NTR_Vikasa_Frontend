@@ -6,6 +6,8 @@ import { DropdownMenu } from '../ui/DropdownMenu';
 import NotificationDropdown from '../ui/NotificationDropdown';
 import { useCandidate } from '../../context/CandidateContext';
 import { useRecruiter } from '../../context/RecruiterContext';
+import { useAdmin } from '../../context/AdminContext';
+import authService from '../../services/authService';
 
 /**
  * PortalHeader — sticky header for all portal layouts.
@@ -22,6 +24,7 @@ export default function PortalHeader({ title, breadcrumb, user, actions }) {
   const location = useLocation();
   const { logout: logoutCandidate } = useCandidate();
   const { logoutRecruiter } = useRecruiter();
+  const { logoutAdmin } = useAdmin();
 
   const isCandidate = location.pathname.startsWith('/candidate');
   const isRecruiter = location.pathname.startsWith('/recruiter');
@@ -40,7 +43,10 @@ export default function PortalHeader({ title, breadcrumb, user, actions }) {
       logoutCandidate();
     } else if (isRecruiter) {
       logoutRecruiter();
+    } else if (isAdmin) {
+      logoutAdmin();
     }
+    authService.logout();
     navigate('/login');
   };
 

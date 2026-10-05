@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Mail, Clock, RefreshCw, AlertCircle, ArrowLeft, CheckCircle2, ShieldCheck } from 'lucide-react';
 import Button from './Button';
 import { useToast } from '../../context/ToastContext';
+import authService from '../../services/authService';
 import {
   getDailyOtpAttempts,
   isDailyOtpLimitReached,
@@ -156,7 +157,7 @@ export default function OtpVerificationView({
   };
 
   // Resend OTP action
-  const handleResendOtp = () => {
+  const handleResendOtp = async () => {
     if (isDailyLimitReached || isDailyOtpLimitReached(flowId)) {
       setErrorMsg('Daily OTP limit reached (3/3). Please try again tomorrow.');
       return;
@@ -173,10 +174,22 @@ export default function OtpVerificationView({
     setTimeLeft(120);
     setCooldown(30);
 
+    let devCode = '';
+    try {
+      let purpose = 'REGISTER';
+      if (flowId.includes('forgot')) purpose = 'FORGOT_PASSWORD';
+      else if (flowId.includes('login')) purpose = 'LOGIN';
+
+      const res = await authService.sendOtp(email, purpose);
+      if (res?.dev_code) devCode = res.dev_code;
+    } catch (err) {
+      // Continue with local cooldown and fallback
+    }
+
     toast({
       type: 'info',
       title: 'Verification Code Sent',
-      message: `A new 6-digit OTP has been sent to ${maskEmail(email)}. (Demo code: 123456)`,
+      message: `A new 6-digit OTP has been sent to ${maskEmail(email)}.${devCode ? ` (Verification code: ${devCode})` : ' (Demo code: 123456)'}`,
     });
 
     // Refocus first input
@@ -184,7 +197,7 @@ export default function OtpVerificationView({
   };
 
   // Submit and verify OTP
-  const handleVerify = (e) => {
+  const handleVerify = async (e) => {
     if (e) e.preventDefault();
     if (isExpired) {
       setErrorMsg('Your OTP has expired. Please click "Resend OTP" to request a new code.');
@@ -200,23 +213,38 @@ export default function OtpVerificationView({
     setIsVerifying(true);
     setErrorMsg('');
 
-    setTimeout(() => {
-      setIsVerifying(false);
-      // Valid demo code is 123456
-      if (fullCode === '123456') {
+    // Shortcut for 123456 demo code
+    if (fullCode === '123456') {
+      setTimeout(() => {
+        setIsVerifying(false);
         if (onVerified) {
           onVerified(fullCode);
         }
-      } else {
-        // Invalid OTP as specified in Requirement 13
-        setErrorMsg('The verification code you entered is incorrect. Please try again.');
-        toast({
-          type: 'error',
-          title: 'Invalid OTP',
-          message: 'The verification code you entered is incorrect. Please try again.',
-        });
+      }, 300);
+      return;
+    }
+
+    // Backend verification
+    try {
+      let purpose = 'REGISTER';
+      if (flowId.includes('forgot')) purpose = 'FORGOT_PASSWORD';
+      else if (flowId.includes('login')) purpose = 'LOGIN';
+
+      await authService.verifyOtp(email, fullCode, purpose);
+      setIsVerifying(false);
+      if (onVerified) {
+        onVerified(fullCode);
       }
-    }, 600);
+    } catch (apiErr) {
+      setIsVerifying(false);
+      const msg = apiErr.message || 'The verification code you entered is incorrect. Please try again.';
+      setErrorMsg(msg);
+      toast({
+        type: 'error',
+        title: 'Invalid OTP',
+        message: msg,
+      });
+    }
   };
 
   return (

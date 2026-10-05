@@ -6,7 +6,7 @@
  * Usage:
  *   <PortalNotificationsPage portal="candidate" />
  */
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Bell, Check, Trash2, ArrowRight, Briefcase, CalendarDays,
@@ -97,8 +97,29 @@ function FilterPill({ label, active, onClick, count }) {
   );
 }
 
+const CANDIDATE_CATEGORIES = [
+  'ALL',
+  'SHORTLIST',
+  'INTERVIEW',
+  'APPLICATION',
+  'JOB_MELA',
+  'OFFER',
+  'REJECTION',
+  'ACCOUNT',
+  'SUPPORT',
+];
+
 export default function PortalNotificationsPage({ portal = 'candidate' }) {
-  const { getNotifs, getUnreadCount, markRead, markAllRead, dismiss } = useNotifications();
+  const {
+    getNotifs,
+    getUnreadCount,
+    markRead,
+    markAllRead,
+    dismiss,
+    bulkMarkRead,
+    bulkDismiss,
+    fetchCandidateNotifications,
+  } = useNotifications();
   const toast = useToast();
 
   const [readFilter, setReadFilter]   = useState('all');       // 'all' | 'unread'
@@ -107,11 +128,34 @@ export default function PortalNotificationsPage({ portal = 'candidate' }) {
   const [expanded, setExpanded]       = useState(null);         // id of expanded item
   const [selected, setSelected]       = useState(new Set());    // bulk selection
 
+  // Sync candidate notifications with backend using debounced filters
+  useEffect(() => {
+    if (portal !== 'candidate' || !fetchCandidateNotifications) return;
+
+    const timer = setTimeout(() => {
+      const params = {};
+      if (searchQuery.trim()) {
+        params.search = searchQuery.trim();
+      }
+      if (catFilter !== 'ALL') {
+        params.category = catFilter.toLowerCase();
+      }
+      if (readFilter === 'unread') {
+        params.is_read = false;
+      }
+      fetchCandidateNotifications(params);
+    }, 250);
+
+    return () => clearTimeout(timer);
+  }, [portal, searchQuery, catFilter, readFilter, fetchCandidateNotifications]);
+
   const notifications = getNotifs(portal);
   const unreadCount   = getUnreadCount(portal);
 
-  // Derived categories present in the list
-  const presentCategories = ['ALL', ...new Set(notifications.map(n => n.category))];
+  // Categories present in the list (fixed candidate categories or derived)
+  const presentCategories = portal === 'candidate'
+    ? CANDIDATE_CATEGORIES
+    : ['ALL', ...new Set(notifications.map(n => n.category))];
 
   // Filter chain
   const filtered = notifications.filter(n => {
@@ -141,13 +185,23 @@ export default function PortalNotificationsPage({ portal = 'candidate' }) {
   }
 
   function handleBulkMarkRead() {
-    selected.forEach(id => markRead(portal, id));
+    const ids = Array.from(selected);
+    if (portal === 'candidate' && bulkMarkRead) {
+      bulkMarkRead(portal, ids);
+    } else {
+      ids.forEach(id => markRead(portal, id));
+    }
     toast.success(`${selected.size} notification${selected.size > 1 ? 's' : ''} marked as read.`);
     setSelected(new Set());
   }
 
   function handleBulkDismiss() {
-    selected.forEach(id => dismiss(portal, id));
+    const ids = Array.from(selected);
+    if (portal === 'candidate' && bulkDismiss) {
+      bulkDismiss(portal, ids);
+    } else {
+      ids.forEach(id => dismiss(portal, id));
+    }
     toast.info(`${selected.size} notification${selected.size > 1 ? 's' : ''} dismissed.`);
     setSelected(new Set());
     setExpanded(null);

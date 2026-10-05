@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  Search, MapPin, DollarSign, Calendar, ArrowRight, Briefcase, X
+  Search, MapPin, DollarSign, Calendar, ArrowRight, Briefcase, X, Loader2
 } from 'lucide-react';
 import Button from '../../components/ui/Button';
 import { StatusBadge } from '../../components/ui/Badge';
@@ -11,6 +11,8 @@ import { useCandidate } from '../../context/CandidateContext';
 import { useToast } from '../../context/ToastContext';
 import ApplicationDetailsModal from '../../components/ui/ApplicationDetailsModal';
 import { formatJobId, formatInternshipId, formatMelaId, getApplicationNumber, getApplicationType, isJobMelaApplication } from '../../utils/applicationUtils';
+import authService from '../../services/authService';
+import candidateApplicationsService from '../../services/candidateApplicationsService';
 
 export default function CandidateApplicationsPage() {
   const { candidate } = useCandidate();
@@ -23,27 +25,87 @@ export default function CandidateApplicationsPage() {
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
   const [timelineModalOpen, setTimelineModalOpen] = useState(false);
 
-  const allApplications = candidate?.applications || [];
+  // ── Backend API State ────────────────────────────────────────────────────────
+  const [applicationsData, setApplicationsData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function fetchApplications() {
+      if (!authService.isAuthenticated()) {
+        setLoading(false);
+        return;
+      }
+      try {
+        const data = await candidateApplicationsService.getApplications();
+        if (!cancelled) {
+          setApplicationsData(data);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError(err.message || 'Failed to load applications.');
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    }
+
+    fetchApplications();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Candidate full name: API takes priority; CandidateContext fallback
+  const candidateName = applicationsData?.candidate?.full_name || candidate?.name || 'Priya Sharma';
+
+  // Applications list: API response takes priority; fallback to CandidateContext
+  const allApplications = useMemo(() => {
+    if (applicationsData?.applications) {
+      return applicationsData.applications;
+    }
+    return candidate?.applications || [];
+  }, [applicationsData, candidate?.applications]);
+
+  // Status counts: API response takes priority; fallback to calculation
+  const statusCounts = useMemo(() => {
+    if (applicationsData?.status_counts) {
+      return applicationsData.status_counts;
+    }
+    return {
+      all: allApplications.length,
+      applied: allApplications.filter(a => a.status === 'APPLIED').length,
+      screening: allApplications.filter(a => a.status === 'SCREENING').length,
+      shortlisted: allApplications.filter(a => a.status === 'SHORTLISTED').length,
+      interview: allApplications.filter(a => a.status === 'INTERVIEW').length,
+      selected: allApplications.filter(a => a.status === 'SELECTED').length,
+      rejected: allApplications.filter(a => a.status === 'REJECTED').length,
+    };
+  }, [applicationsData, allApplications]);
 
   const filterTabs = [
-    { key: 'ALL', label: 'All', count: allApplications.length },
-    { key: 'APPLIED', label: 'Applied', count: allApplications.filter(a => a.status === 'APPLIED').length },
-    { key: 'SCREENING', label: 'Screening', count: allApplications.filter(a => a.status === 'SCREENING').length },
-    { key: 'SHORTLISTED', label: 'Shortlisted', count: allApplications.filter(a => a.status === 'SHORTLISTED').length },
-    { key: 'INTERVIEW', label: 'Interview', count: allApplications.filter(a => a.status === 'INTERVIEW').length },
-    { key: 'SELECTED', label: 'Selected', count: allApplications.filter(a => a.status === 'SELECTED').length },
-    { key: 'REJECTED', label: 'Rejected', count: allApplications.filter(a => a.status === 'REJECTED').length },
+    { key: 'ALL', label: 'All', count: statusCounts.all ?? 0 },
+    { key: 'APPLIED', label: 'Applied', count: statusCounts.applied ?? 0 },
+    { key: 'SCREENING', label: 'Screening', count: statusCounts.screening ?? 0 },
+    { key: 'SHORTLISTED', label: 'Shortlisted', count: statusCounts.shortlisted ?? 0 },
+    { key: 'INTERVIEW', label: 'Interview', count: statusCounts.interview ?? 0 },
+    { key: 'SELECTED', label: 'Selected', count: statusCounts.selected ?? 0 },
+    { key: 'REJECTED', label: 'Rejected', count: statusCounts.rejected ?? 0 },
   ];
 
   const filteredApps = useMemo(() => {
     return allApplications.filter((app) => {
       if (search.trim()) {
         const q = search.toLowerCase();
-        const matchTitle = app.title?.toLowerCase().includes(q);
-        const matchComp = app.company?.toLowerCase().includes(q);
-        const matchAppNo = app.appNumber?.toLowerCase().includes(q);
+        const matchTitle = (app.title || app.job_title)?.toLowerCase().includes(q);
+        const matchComp = (app.company || app.company_name)?.toLowerCase().includes(q);
+        const matchAppNo = (app.appNumber || app.application_id || app.application_number)?.toLowerCase().includes(q);
         const matchLoc = app.location?.toLowerCase().includes(q);
-        const matchMela = app.melaTitle?.toLowerCase().includes(q);
+        const matchMela = (app.melaTitle || app.mela_title)?.toLowerCase().includes(q);
         if (!matchTitle && !matchComp && !matchAppNo && !matchLoc && !matchMela) return false;
       }
       if (statusFilter !== 'ALL' && app.status !== statusFilter) return false;
@@ -51,14 +113,39 @@ export default function CandidateApplicationsPage() {
     });
   }, [allApplications, search, statusFilter]);
 
-  const handleOpenDetails = (app) => {
+  const handleOpenDetails = async (app) => {
     setSelectedApp(app);
     setDetailsModalOpen(true);
+    if (authService.isAuthenticated()) {
+      try {
+        const appId = app.application_id || app.id;
+        const details = await candidateApplicationsService.getApplicationDetails(appId);
+        if (details) {
+          setSelectedApp(prev => ({ ...prev, ...details }));
+        }
+      } catch (err) {
+        console.error('Failed to load application details:', err);
+      }
+    }
   };
 
-  const handleOpenTimeline = (app) => {
+  const handleOpenTimeline = async (app) => {
     setSelectedApp(app);
     setTimelineModalOpen(true);
+    if (authService.isAuthenticated()) {
+      try {
+        const appId = app.application_id || app.id;
+        const res = await candidateApplicationsService.getApplicationTimeline(appId);
+        if (res && res.timeline) {
+          setSelectedApp(prev => ({
+            ...prev,
+            timeline: res.timeline,
+          }));
+        }
+      } catch (err) {
+        console.error('Failed to load application timeline:', err);
+      }
+    }
   };
 
   const PER_PAGE = 9;
@@ -91,7 +178,7 @@ export default function CandidateApplicationsPage() {
               <h1 style={{ fontSize: 'var(--text-2xl)', fontWeight: 800 }}>My Applications Tracker</h1>
             </div>
             <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)' }}>
-              Real-time application tracking with step-by-step recruitment milestones for {candidate.name}
+              Real-time application tracking with step-by-step recruitment milestones for {candidateName}
             </p>
           </div>
 
@@ -163,7 +250,12 @@ export default function CandidateApplicationsPage() {
       </div>
 
       {/* ── Applications Grid ── */}
-      {filteredApps.length === 0 ? (
+      {loading ? (
+        <div className="card" style={{ borderRadius: 'var(--radius-2xl)', padding: 'var(--space-10)', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 'var(--space-3)' }}>
+          <Loader2 size={24} className="animate-spin" style={{ color: 'var(--color-primary-600)' }} />
+          <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', fontWeight: 600 }}>Loading applications...</span>
+        </div>
+      ) : filteredApps.length === 0 ? (
         <div className="card" style={{ borderRadius: 'var(--radius-2xl)', padding: 'var(--space-10)' }}>
           <EmptyState
             icon="default"
@@ -179,188 +271,194 @@ export default function CandidateApplicationsPage() {
       ) : (
         <>
           <div className="recruiter-jobs-grid">
-            {paginatedApps.map((app) => (
-              <div
-                key={app.id}
-                className="card card-hoverable"
-                style={{
-                  borderRadius: 'var(--radius-2xl)',
-                  padding: 'var(--space-5)',
-                  border: '1px solid var(--color-border)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'space-between',
-                  gap: 'var(--space-4)'
-                }}
-              >
-                <div>
-                  {/* Header: Company Icon + Title + Company */}
-                  <div style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'flex-start' }}>
-                    <div style={{
-                      width: 44,
-                      height: 44,
-                      borderRadius: 'var(--radius-xl)',
-                      background: 'linear-gradient(135deg, #1e1b4b, #312e81)',
-                      color: '#fff',
-                      fontSize: 'var(--text-base)',
-                      fontWeight: 800,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      flexShrink: 0
-                    }}>
-                      {app.company?.[0] || 'C'}
-                    </div>
+            {paginatedApps.map((app) => {
+              const isMela = isJobMelaApplication(app) || Boolean(app.job_mela_id || app.mela_id || app.melaId);
+              const appNumber = app.application_id || app.application_number || app.appNumber || getApplicationNumber(app);
+              const appType = app.application_type || app.applicationType || getApplicationType(app);
+              const companyName = app.company_name || app.company || 'Company';
+              const jobTitle = app.job_title || app.title || 'Position';
+              const location = app.location || 'Andhra Pradesh';
+              const salary = app.salary || 'Not Disclosed';
+              const empType = app.employment_type || app.type || 'Full-time';
+              const workMode = app.work_mode || app.mode || 'On-site';
+              const appliedDate = app.appliedDate || app.applied_date || app.applied_at || 'Recently';
+              const isIntern = empType === 'Internship' ||
+                (jobTitle && jobTitle.toLowerCase().includes('intern'));
+              const entityId = isIntern
+                ? formatInternshipId(app.internshipId || app.job_id || app.jobId || app.id)
+                : formatJobId(app.job_id || app.jobId || app.id);
+              const melaId = isMela ? formatMelaId(app.job_mela_id || app.mela_id || app.melaId || '1') : null;
 
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <h2 style={{ fontSize: 'var(--text-sm)', fontWeight: 800, color: 'var(--color-text)', lineHeight: 1.3, marginBottom: 2 }}>
-                        {app.title}
-                      </h2>
-                      <p style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--color-primary-600)' }}>
-                        {app.company}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Meta Details: Location • Salary • Type / Mode • Applied Date */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', margin: 'var(--space-3) 0' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <MapPin size={13} style={{ flexShrink: 0 }} />
-                      <span>{app.location}</span>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <DollarSign size={13} style={{ flexShrink: 0 }} />
-                      <span>{app.salary}</span>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <Briefcase size={13} style={{ flexShrink: 0 }} />
-                      <span>{app.type} ({app.mode})</span>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
-                      <Calendar size={13} style={{ flexShrink: 0 }} />
-                      <span>Applied: {app.appliedDate}</span>
-                    </div>
-                  </div>
-
-                  {/* Application Number, Type & Identifier Details */}
-                  {(() => {
-                    const isMela = isJobMelaApplication(app);
-                    const appNumber = getApplicationNumber(app);
-                    const appType = getApplicationType(app);
-                    const isIntern = app.type === 'Internship' || (app.jobTitle && app.jobTitle.toLowerCase().includes('intern')) || (app.title && app.title.toLowerCase().includes('intern'));
-                    const entityId = isIntern
-                      ? formatInternshipId(app.internshipId || app.jobId || app.id)
-                      : formatJobId(app.jobId || app.id);
-                    const melaId = isMela ? formatMelaId(app.melaId || '1') : null;
-
-                    return (
+              return (
+                <div
+                  key={app.application_id || app.id || appNumber}
+                  className="card card-hoverable"
+                  style={{
+                    borderRadius: 'var(--radius-2xl)',
+                    padding: 'var(--space-5)',
+                    border: '1px solid var(--color-border)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between',
+                    gap: 'var(--space-4)'
+                  }}
+                >
+                  <div>
+                    {/* Header: Company Icon + Title + Company */}
+                    <div style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'flex-start' }}>
                       <div style={{
+                        width: 44,
+                        height: 44,
+                        borderRadius: 'var(--radius-xl)',
+                        background: 'linear-gradient(135deg, #1e1b4b, #312e81)',
+                        color: '#fff',
+                        fontSize: 'var(--text-base)',
+                        fontWeight: 800,
                         display: 'flex',
-                        flexDirection: 'column',
-                        gap: 4,
-                        margin: 'var(--space-2) 0',
-                        padding: '8px 10px',
-                        background: 'var(--color-bg)',
-                        borderRadius: 'var(--radius-lg)',
-                        border: '1px solid var(--color-border)'
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0
                       }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px' }}>
-                          <span style={{ color: 'var(--color-text-muted)', fontWeight: 600 }}>Application No:</span>
-                          <span style={{
-                            fontFamily: 'monospace, monospace',
-                            fontWeight: 800,
-                            color: isMela ? 'var(--color-primary-700)' : 'var(--color-text)',
-                            background: 'var(--color-surface)',
-                            border: '1px solid var(--color-border)',
-                            borderRadius: 'var(--radius-sm)',
-                            padding: '1px 6px',
-                          }}>
-                            {appNumber}
-                          </span>
-                        </div>
+                        {companyName?.[0] || 'C'}
+                      </div>
 
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px' }}>
-                          <span style={{ color: 'var(--color-text-muted)', fontWeight: 600 }}>Application Type:</span>
-                          <span style={{
-                            fontWeight: 700,
-                            fontSize: '10px',
-                            color: isMela ? 'var(--color-primary-700)' : 'var(--color-text-muted)',
-                            background: isMela ? 'var(--color-primary-50)' : 'var(--color-gray-100)',
-                            border: isMela ? '1px solid var(--color-primary-200)' : '1px solid var(--color-gray-200)',
-                            borderRadius: 'var(--radius-sm)',
-                            padding: '1px 6px',
-                          }}>
-                            {appType}
-                          </span>
-                        </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <h2 style={{ fontSize: 'var(--text-sm)', fontWeight: 800, color: 'var(--color-text)', lineHeight: 1.3, marginBottom: 2 }}>
+                          {jobTitle}
+                        </h2>
+                        <p style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--color-primary-600)' }}>
+                          {companyName}
+                        </p>
+                      </div>
+                    </div>
 
-                        {/* Job ID / Internship ID */}
+                    {/* Meta Details: Location • Salary • Type / Mode • Applied Date */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', margin: 'var(--space-3) 0' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <MapPin size={13} style={{ flexShrink: 0 }} />
+                        <span>{location}</span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <DollarSign size={13} style={{ flexShrink: 0 }} />
+                        <span>{salary}</span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <Briefcase size={13} style={{ flexShrink: 0 }} />
+                        <span>{empType} ({workMode})</span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                        <Calendar size={13} style={{ flexShrink: 0 }} />
+                        <span>Applied: {appliedDate}</span>
+                      </div>
+                    </div>
+
+                    {/* Application Number, Type & Identifier Details */}
+                    <div style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 4,
+                      margin: 'var(--space-2) 0',
+                      padding: '8px 10px',
+                      background: 'var(--color-bg)',
+                      borderRadius: 'var(--radius-lg)',
+                      border: '1px solid var(--color-border)'
+                    }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px' }}>
+                        <span style={{ color: 'var(--color-text-muted)', fontWeight: 600 }}>Application No:</span>
+                        <span style={{
+                          fontFamily: 'monospace, monospace',
+                          fontWeight: 800,
+                          color: isMela ? 'var(--color-primary-700)' : 'var(--color-text)',
+                          background: 'var(--color-surface)',
+                          border: '1px solid var(--color-border)',
+                          borderRadius: 'var(--radius-sm)',
+                          padding: '1px 6px',
+                        }}>
+                          {appNumber}
+                        </span>
+                      </div>
+
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px' }}>
+                        <span style={{ color: 'var(--color-text-muted)', fontWeight: 600 }}>Application Type:</span>
+                        <span style={{
+                          fontWeight: 700,
+                          fontSize: '10px',
+                          color: isMela ? 'var(--color-primary-700)' : 'var(--color-text-muted)',
+                          background: isMela ? 'var(--color-primary-50)' : 'var(--color-gray-100)',
+                          border: isMela ? '1px solid var(--color-primary-200)' : '1px solid var(--color-gray-200)',
+                          borderRadius: 'var(--radius-sm)',
+                          padding: '1px 6px',
+                        }}>
+                          {appType}
+                        </span>
+                      </div>
+
+                      {/* Job ID / Internship ID */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px' }}>
+                        <span style={{ color: 'var(--color-text-muted)', fontWeight: 600 }}>
+                          {isIntern ? 'Internship ID:' : 'Job ID:'}
+                        </span>
+                        <span style={{
+                          fontFamily: 'monospace, monospace',
+                          fontWeight: 700,
+                          fontSize: '10.5px',
+                          color: 'var(--color-primary-700)',
+                          background: 'var(--color-primary-50)',
+                          border: '1px solid var(--color-primary-200)',
+                          borderRadius: 'var(--radius-sm)',
+                          padding: '0 5px'
+                        }}>
+                          {entityId}
+                        </span>
+                      </div>
+
+                      {/* Job Mela ID for Job Mela applications */}
+                      {isMela && (
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px' }}>
-                          <span style={{ color: 'var(--color-text-muted)', fontWeight: 600 }}>
-                            {isIntern ? 'Internship ID:' : 'Job ID:'}
-                          </span>
+                          <span style={{ color: 'var(--color-text-muted)', fontWeight: 600 }}>Job Mela ID:</span>
                           <span style={{
                             fontFamily: 'monospace, monospace',
                             fontWeight: 700,
                             fontSize: '10.5px',
-                            color: 'var(--color-primary-700)',
-                            background: 'var(--color-primary-50)',
-                            border: '1px solid var(--color-primary-200)',
+                            color: '#7c3aed',
+                            background: '#f5f3ff',
+                            border: '1px solid #ddd6fe',
                             borderRadius: 'var(--radius-sm)',
                             padding: '0 5px'
                           }}>
-                            {entityId}
+                            {melaId}
                           </span>
                         </div>
-
-                        {/* Job Mela ID for Job Mela applications */}
-                        {isMela && (
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px' }}>
-                            <span style={{ color: 'var(--color-text-muted)', fontWeight: 600 }}>Job Mela ID:</span>
-                            <span style={{
-                              fontFamily: 'monospace, monospace',
-                              fontWeight: 700,
-                              fontSize: '10.5px',
-                              color: '#7c3aed',
-                              background: '#f5f3ff',
-                              border: '1px solid #ddd6fe',
-                              borderRadius: 'var(--radius-sm)',
-                              padding: '0 5px'
-                            }}>
-                              {melaId}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })()}
-                </div>
-
-                {/* Footer: Status + View Details & View Timeline Buttons */}
-                <div style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  borderTop: '1px solid var(--color-gray-100)',
-                  paddingTop: 'var(--space-3)',
-                  gap: 'var(--space-2)',
-                  flexWrap: 'wrap'
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <StatusBadge status={app.status} />
+                      )}
+                    </div>
                   </div>
 
-                  <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
-                    <Button size="sm" variant="primary" onClick={() => handleOpenDetails(app)}>
-                      View Details
-                    </Button>
-                    <Button size="sm" variant="outline" onClick={() => handleOpenTimeline(app)}>
-                      View Timeline
-                    </Button>
+                  {/* Footer: Status + View Details & View Timeline Buttons */}
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    borderTop: '1px solid var(--color-gray-100)',
+                    paddingTop: 'var(--space-3)',
+                    gap: 'var(--space-2)',
+                    flexWrap: 'wrap'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <StatusBadge status={app.status} />
+                    </div>
+
+                    <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+                      <Button size="sm" variant="primary" onClick={() => handleOpenDetails(app)}>
+                        View Details
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => handleOpenTimeline(app)}>
+                        View Timeline
+                      </Button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           {/* Pagination UI */}
@@ -384,11 +482,10 @@ export default function CandidateApplicationsPage() {
         isOpen={detailsModalOpen}
         onClose={() => setDetailsModalOpen(false)}
         application={selectedApp}
-        candidate={candidate}
+        candidate={{ ...candidate, name: candidateName }}
         onViewTimeline={(app) => {
           setDetailsModalOpen(false);
-          setSelectedApp(app);
-          setTimelineModalOpen(true);
+          handleOpenTimeline(app);
         }}
       />
 
@@ -436,8 +533,8 @@ export default function CandidateApplicationsPage() {
                 <span style={{ fontSize: '11px', fontWeight: 800, color: 'var(--color-primary-600)', textTransform: 'uppercase' }}>
                   Application Timeline
                 </span>
-                <h2 style={{ fontSize: 'var(--text-lg)', fontWeight: 800 }}>{selectedApp.title}</h2>
-                <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>{selectedApp.company} • {selectedApp.location}</p>
+                <h2 style={{ fontSize: 'var(--text-lg)', fontWeight: 800 }}>{selectedApp.job_title || selectedApp.title}</h2>
+                <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>{selectedApp.company_name || selectedApp.company} • {selectedApp.location}</p>
               </div>
               <button
                 type="button"
@@ -458,14 +555,16 @@ export default function CandidateApplicationsPage() {
 
               {/* Application No., Type & IDs in Timeline Modal */}
               {(() => {
-                const isMela = isJobMelaApplication(selectedApp);
-                const appNumber = getApplicationNumber(selectedApp);
-                const appType = getApplicationType(selectedApp);
-                const isIntern = selectedApp.type === 'Internship' || (selectedApp.jobTitle && selectedApp.jobTitle.toLowerCase().includes('intern')) || (selectedApp.title && selectedApp.title.toLowerCase().includes('intern'));
+                const isMela = isJobMelaApplication(selectedApp) || Boolean(selectedApp.job_mela_id || selectedApp.mela_id || selectedApp.melaId);
+                const appNumber = selectedApp.application_id || selectedApp.application_number || selectedApp.appNumber || getApplicationNumber(selectedApp);
+                const appType = selectedApp.application_type || selectedApp.applicationType || getApplicationType(selectedApp);
+                const isIntern = (selectedApp.type || selectedApp.employment_type) === 'Internship' ||
+                  (selectedApp.job_title && selectedApp.job_title.toLowerCase().includes('intern')) ||
+                  (selectedApp.title && selectedApp.title.toLowerCase().includes('intern'));
                 const entityId = isIntern
-                  ? formatInternshipId(selectedApp.internshipId || selectedApp.jobId || selectedApp.id)
-                  : formatJobId(selectedApp.jobId || selectedApp.id);
-                const melaId = isMela ? formatMelaId(selectedApp.melaId || '1') : null;
+                  ? formatInternshipId(selectedApp.internshipId || selectedApp.job_id || selectedApp.jobId || selectedApp.id)
+                  : formatJobId(selectedApp.job_id || selectedApp.jobId || selectedApp.id);
+                const melaId = isMela ? formatMelaId(selectedApp.job_mela_id || selectedApp.mela_id || selectedApp.melaId || '1') : null;
 
                 return (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 'var(--space-4)', padding: 'var(--space-3)', background: 'var(--color-gray-50)', borderRadius: 'var(--radius-lg)' }}>
@@ -497,10 +596,10 @@ export default function CandidateApplicationsPage() {
                         </span>
                       </div>
                     )}
-                    {isMela && selectedApp.melaTitle && (
+                    {isMela && (selectedApp.mela_title || selectedApp.melaTitle) && (
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>Job Mela:</span>
-                        <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--color-text)', textAlign: 'right', maxWidth: '60%' }}>{selectedApp.melaTitle}</span>
+                        <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--color-text)', textAlign: 'right', maxWidth: '60%' }}>{selectedApp.mela_title || selectedApp.melaTitle}</span>
                       </div>
                     )}
                   </div>
@@ -509,8 +608,8 @@ export default function CandidateApplicationsPage() {
 
               {/* Step by step timeline */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)', marginTop: 'var(--space-4)' }}>
-                {(selectedApp.timeline || [
-                  { stage: 'Applied', date: selectedApp.appliedDate, completed: true },
+                {(selectedApp.timeline && selectedApp.timeline.length > 0 ? selectedApp.timeline : [
+                  { stage: 'Applied', date: selectedApp.appliedDate || selectedApp.applied_date, completed: true },
                   { stage: 'Screening', date: 'In Progress', completed: selectedApp.status !== 'APPLIED' },
                   { stage: 'Shortlisted', date: 'Pending', completed: selectedApp.status === 'SHORTLISTED' || selectedApp.status === 'INTERVIEW' || selectedApp.status === 'SELECTED' },
                   { stage: 'Interview', date: 'Pending', completed: selectedApp.status === 'INTERVIEW' || selectedApp.status === 'SELECTED' },
@@ -527,7 +626,7 @@ export default function CandidateApplicationsPage() {
                     </div>
                     <div>
                       <h4 style={{ fontSize: 'var(--text-sm)', fontWeight: 700, color: step.completed ? 'var(--color-text)' : 'var(--color-text-muted)' }}>
-                        {step.stage}
+                        {step.label || step.stage}
                       </h4>
                       <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>
                         {step.date || 'Pending'}

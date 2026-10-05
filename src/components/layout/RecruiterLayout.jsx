@@ -1,4 +1,4 @@
-import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Outlet, useLocation, useNavigate, Navigate } from 'react-router-dom';
 import {
   Home, LayoutDashboard, Briefcase, FileText,
   CalendarCheck, GraduationCap, CalendarDays,
@@ -52,8 +52,13 @@ function getPageTitle(pathname) {
 
 export default function RecruiterLayout() {
   const location = useLocation();
-  const { recruiter } = useRecruiter();
+  const { recruiter, isRecruiterLoggedIn } = useRecruiter();
   const title = getPageTitle(location.pathname);
+
+  const token = localStorage.getItem('ntr_access_token');
+  if (!isRecruiterLoggedIn && !token) {
+    return <Navigate to="/login" state={{ redirectTo: location.pathname + location.search }} replace />;
+  }
 
   const currentUser = {
     name: recruiter?.name || 'Arjun Reddy',

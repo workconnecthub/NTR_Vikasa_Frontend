@@ -10,10 +10,9 @@ import Input from '../../components/ui/Input';
 import Select from '../../components/ui/Select';
 import Textarea from '../../components/ui/Textarea';
 import FileUpload from '../../components/ui/FileUpload';
-import OtpVerificationModal from '../../components/ui/OtpVerificationModal';
 import { useToast } from '../../context/ToastContext';
 import { INDUSTRIES, COMPANY_SIZES, LOCATIONS } from '../../data/mockData';
-import { isDailyOtpLimitReached, recordOtpAttempt } from '../../utils/otpUtils';
+import authService from '../../services/authService';
 
 const SECTIONS = ['Recruiter Contact', 'Company Details', 'Verification Docs'];
 
@@ -24,7 +23,11 @@ export default function RegisterRecruiterPage() {
   const [loading, setLoading] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [consentError, setConsentError] = useState(false);
-  const [otpModalOpen, setOtpModalOpen] = useState(false);
+
+  // File Upload states
+  const [coiFile, setCoiFile] = useState(null);
+  const [authLetterFile, setAuthLetterFile] = useState(null);
+  const [logoFile, setLogoFile] = useState(null);
 
   const [form, setForm] = useState({
     // Recruiter info
@@ -55,6 +58,7 @@ export default function RegisterRecruiterPage() {
       setSection((s) => s + 1);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
+      // Step 3 final submission — validate then submit directly to backend
       if (form.password && form.confirmPassword && form.password !== form.confirmPassword) {
         toast({
           type: 'error',
@@ -72,41 +76,80 @@ export default function RegisterRecruiterPage() {
         });
         return;
       }
-
-      if (isDailyOtpLimitReached('recruiter_reg')) {
+      if (!coiFile) {
         toast({
           type: 'error',
-          title: 'Daily OTP Limit Reached',
-          message: 'You have reached the maximum allowed 3 OTP requests for today. Please try again tomorrow.',
+          title: 'Document Required',
+          message: 'Certificate of Incorporation / CIN / GST Registration Proof is required.',
         });
         return;
       }
-
-      // Record OTP request attempt
-      recordOtpAttempt('recruiter_reg');
-
-      // Trigger Email OTP Verification
-      setOtpModalOpen(true);
-      toast({
-        type: 'info',
-        title: 'Verification Code Sent',
-        message: `A verification OTP has been sent to ${form.email}. (Demo code: 123456)`,
-      });
+      if (!authLetterFile) {
+        toast({
+          type: 'error',
+          title: 'Document Required',
+          message: 'Authorized Recruiter Official ID Proof / Letter of Authorization is required.',
+        });
+        return;
+      }
+      handleSubmitRegistration();
     }
   };
 
-  const handleOtpVerified = () => {
-    setOtpModalOpen(false);
+  const handleSubmitRegistration = async () => {
     setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
+
+    try {
+      const formData = new FormData();
+
+      // Step 1 — Recruiter Contact (mapped to backend field names)
+      formData.append('recruiter_name', form.recruiterName.trim());
+      formData.append('designation', form.designation.trim());
+      formData.append('work_email', form.email.trim());
+      formData.append('mobile_phone', form.phone.trim());
+      formData.append('password', form.password);
+      formData.append('confirm_password', form.confirmPassword);
+
+      // Step 2 — Company Details (mapped to backend field names)
+      formData.append('company_name', form.companyName.trim());
+      formData.append('company_website', form.website.trim());
+      if (form.companyEmail && form.companyEmail.trim()) {
+        formData.append('corporate_email', form.companyEmail.trim());
+      }
+      if (form.companyPhone && form.companyPhone.trim()) {
+        formData.append('company_phone', form.companyPhone.trim());
+      }
+      formData.append('primary_industry', form.industry);
+      formData.append('company_size', form.companySize);
+      formData.append('headquarters_city_state', form.location);
+      formData.append('registered_office_address', form.address.trim());
+      formData.append('company_description', form.description.trim());
+
+      // Step 3 — Terms & Documents
+      formData.append('terms_accepted', 'true');
+      formData.append('incorporation_document', coiFile);
+      formData.append('recruiter_authorization_document', authLetterFile);
+      if (logoFile) {
+        formData.append('company_logo', logoFile);
+      }
+
+      await authService.registerRecruiter(formData);
+
       toast({
         type: 'success',
         title: 'Registration Application Submitted!',
         message: 'Your recruiter account application has been submitted for admin verification.',
       });
       navigate('/register/recruiter/pending');
-    }, 1000);
+    } catch (err) {
+      toast({
+        type: 'error',
+        title: 'Registration Failed',
+        message: err.message || 'Could not submit recruiter application. Please try again.',
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -368,15 +411,27 @@ export default function RegisterRecruiterPage() {
                   </div>
 
                   <FormField label="1. Certificate of Incorporation / CIN / GST Registration Proof" required hint="PDF, JPG, PNG up to 5MB">
-                    <FileUpload accept=".pdf,.jpg,.jpeg,.png" maxSize="5 MB" />
+                    <FileUpload
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      maxSize="5 MB"
+                      onChange={(files) => setCoiFile(files?.[0] || null)}
+                    />
                   </FormField>
 
                   <FormField label="2. Authorized Recruiter Official ID Proof / Letter of Authorization" required hint="Company ID Card, Official Authorization Letter (PDF/JPG)">
-                    <FileUpload accept=".pdf,.jpg,.jpeg,.png" maxSize="5 MB" />
+                    <FileUpload
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      maxSize="5 MB"
+                      onChange={(files) => setAuthLetterFile(files?.[0] || null)}
+                    />
                   </FormField>
 
                   <FormField label="3. Company Official Logo" hint="PNG or SVG format (Square 500x500 recommended)">
-                    <FileUpload accept=".png,.svg,.jpg" maxSize="2 MB" />
+                    <FileUpload
+                      accept=".png,.svg,.jpg"
+                      maxSize="2 MB"
+                      onChange={(files) => setLogoFile(files?.[0] || null)}
+                    />
                   </FormField>
 
                   {/* Mandatory Terms & Conditions and Privacy Policy Consent */}
@@ -453,20 +508,6 @@ export default function RegisterRecruiterPage() {
           </form>
         </div>
       </div>
-
-      {/* Email OTP Verification Modal */}
-      <OtpVerificationModal
-        open={otpModalOpen}
-        onClose={() => setOtpModalOpen(false)}
-        email={form.email}
-        flowId="recruiter_reg"
-        onVerified={handleOtpVerified}
-        onChangeEmail={() => {
-          setOtpModalOpen(false);
-          setSection(0);
-          window.scrollTo({ top: 0, behavior: 'smooth' });
-        }}
-      />
     </div>
   );
 }

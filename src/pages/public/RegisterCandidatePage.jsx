@@ -5,12 +5,11 @@ import Button from '../../components/ui/Button';
 import FormField from '../../components/ui/FormField';
 import Input from '../../components/ui/Input';
 import Select from '../../components/ui/Select';
-import OtpVerificationModal from '../../components/ui/OtpVerificationModal';
 import { useToast } from '../../context/ToastContext';
 import { useCandidate } from '../../context/CandidateContext';
 import { REFERENCE_ADMINS, NTR_MANDALS } from '../../context/AdminContext';
 import { LOCATIONS } from '../../data/mockData';
-import { isDailyOtpLimitReached, recordOtpAttempt } from '../../utils/otpUtils';
+import authService from '../../services/authService';
 
 export default function RegisterCandidatePage() {
   const navigate = useNavigate();
@@ -20,7 +19,6 @@ export default function RegisterCandidatePage() {
   const [loading, setLoading] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [consentError, setConsentError] = useState(false);
-  const [otpModalOpen, setOtpModalOpen] = useState(false);
 
   const [form, setForm] = useState({
     fullName: '',
@@ -36,7 +34,7 @@ export default function RegisterCandidatePage() {
 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.location) {
       toast({
@@ -56,40 +54,51 @@ export default function RegisterCandidatePage() {
       return;
     }
 
-    if (isDailyOtpLimitReached('candidate_reg')) {
-      toast({
-        type: 'error',
-        title: 'Daily OTP Limit Reached',
-        message: 'You have reached the maximum allowed 3 OTP requests for today. Please try again tomorrow.',
-      });
-      return;
-    }
-
-    // Record OTP request attempt
-    recordOtpAttempt('candidate_reg');
-
-    // Trigger email OTP verification
-    setOtpModalOpen(true);
-    toast({
-      type: 'info',
-      title: 'Verification Code Sent',
-      message: `A verification OTP has been sent to ${form.email}. (Demo code: 123456)`,
-    });
-  };
-
-  const handleOtpVerified = () => {
-    setOtpModalOpen(false);
     setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
+
+    try {
+      // Connect to FastAPI Backend POST /api/v1/auth/candidate/register directly
+      const payload = {
+        name: form.fullName,
+        email: form.email,
+        phone: form.phone,
+        password: 'password123',
+        aadhaar_number: form.aadhaarNumber,
+        district: form.location,
+        mandal: form.mandal,
+        village: form.village || null,
+        qualification_level: form.qualificationLevel || '10TH',
+        reference_admin: form.referenceAdmin,
+        terms_accepted: agreedToTerms,
+      };
+
+      await authService.registerCandidate(payload);
+
+      // Sync candidate in context state
       registerCandidate({ ...form, emailVerified: true });
+
       toast({
         type: 'success',
         title: 'Account Created Successfully!',
-        message: 'Welcome to NTR VIKASA Job Portal! You can now explore jobs and complete your profile.',
+        message: 'Your candidate account has been created in NTR VIKASA! Please log in to continue.',
       });
-      navigate(location.state?.redirectTo || '/candidate/dashboard');
-    }, 500);
+
+      navigate('/login', {
+        state: {
+          email: form.email,
+          role: 'CANDIDATE',
+          message: 'Account created successfully! Please sign in with your credentials.',
+        },
+      });
+    } catch (err) {
+      toast({
+        type: 'error',
+        title: 'Registration Failed',
+        message: err.message || 'Could not complete registration. Please check your details.',
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -304,15 +313,6 @@ export default function RegisterCandidatePage() {
         </div>
       </div>
 
-      {/* Email OTP Verification Modal */}
-      <OtpVerificationModal
-        open={otpModalOpen}
-        onClose={() => setOtpModalOpen(false)}
-        email={form.email}
-        flowId="candidate_reg"
-        onVerified={handleOtpVerified}
-        onChangeEmail={() => setOtpModalOpen(false)}
-      />
     </div>
   );
 }

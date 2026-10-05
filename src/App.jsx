@@ -38,6 +38,7 @@ import RegisterCandidatePage  from './pages/public/RegisterCandidatePage';
 import RegisterRecruiterPage  from './pages/public/RegisterRecruiterPage';
 import RecruiterApprovalPage  from './pages/public/RecruiterApprovalPage';
 import ForgotPasswordPage     from './pages/public/ForgotPasswordPage';
+import ResetPasswordPage      from './pages/public/ResetPasswordPage';
 import AcceptInvitationPage   from './pages/public/AcceptInvitationPage';
 import MobileBottomNav        from './components/layout/MobileBottomNav';
 
@@ -149,6 +150,7 @@ export default function App() {
                     <Route path="/register/recruiter/pending"  element={<RecruiterApprovalPage />} />
                     <Route path="/accept-invitation/:token"    element={<AcceptInvitationPage />} />
                     <Route path="/forgot-password"             element={<ForgotPasswordPage />} />
+                    <Route path="/reset-password"              element={<ResetPasswordPage />} />
 
                     {/* ── Candidate Portal Workspace ── */}
                     <Route path="/candidate" element={<CandidateLayout />}>

@@ -9,6 +9,7 @@ import { useToast } from '../../context/ToastContext';
 import { useCandidate } from '../../context/CandidateContext';
 import { useRecruiter } from '../../context/RecruiterContext';
 import { useAdmin } from '../../context/AdminContext';
+import authService from '../../services/authService';
 
 export default function LoginPage() {
   const { addToast } = useToast();
@@ -21,92 +22,129 @@ export default function LoginPage() {
 
   const redirectTarget = location.state?.redirectTo || searchParams.get('redirect') || '/candidate/dashboard';
 
-  const [email, setEmail] = useState('candidate1@ntrvikasa.com');
+  const [email, setEmail] = useState(() => {
+    try {
+      return location.state?.email || localStorage.getItem('ntr_remember_email') || 'candidate1@ntrvikasa.com';
+    } catch (e) {
+      return 'candidate1@ntrvikasa.com';
+    }
+  });
   const [password, setPassword] = useState('password123');
   const [remember, setRemember] = useState(true);
   const [loading, setLoading] = useState(false);
 
-  const handleSignIn = (targetEmail) => {
-    const loginEmail = targetEmail || email;
+  const handleSignIn = async (targetEmail, targetPassword) => {
+    const loginEmail = (targetEmail || email).trim();
+    const loginPassword = targetPassword || password;
+
+    if (!loginEmail || !loginPassword) {
+      addToast('Please enter both email and password.', 'error');
+      return;
+    }
+
     setLoading(true);
 
-    setTimeout(() => {
-      setLoading(false);
+    // Derive role based on user email / account type
+    let role = 'CANDIDATE';
+    if (loginEmail.includes('admin')) {
+      role = 'ADMIN';
+    } else if (
+      loginEmail.includes('recruiter') ||
+      loginEmail.includes('tech') ||
+      loginEmail.includes('abc') ||
+      loginEmail.includes('company')
+    ) {
+      role = 'RECRUITER';
+    }
 
-      if (loginEmail.includes('admin')) {
-        loginAdmin(loginEmail, password);
+    try {
+      const response = await authService.login({
+        email: loginEmail,
+        password: loginPassword,
+        role,
+      });
+
+      const user = response.user;
+      const userRole = (user.role || role).toUpperCase();
+
+      if (remember) {
+        localStorage.setItem('ntr_remember_email', loginEmail);
+      } else {
+        localStorage.removeItem('ntr_remember_email');
+      }
+
+      if (userRole === 'ADMIN') {
+        loginAdmin(loginEmail, loginPassword);
         navigate('/admin/dashboard');
-        const adminName = loginEmail.includes('admin2') ? 'Super Admin' : 'Admin User';
-        addToast(`Welcome ${adminName}! Logged into NTR Vikasa Administration.`, 'success');
+        addToast(`Welcome ${user.name || 'Admin'}! Logged into NTR Vikasa Administration.`, 'success');
         return;
       }
 
-      // Check if it's a recruiter / hiring team account or candidate
-      if (
-        loginEmail.includes('recruiter') ||
-        loginEmail.includes('tech') ||
-        loginEmail.includes('abc') ||
-        loginEmail.includes('example.com') ||
-        loginEmail.includes('abctech')
-      ) {
-        const recruiterResult = loginRecruiter(loginEmail, password);
-        if (recruiterResult?.success) {
-          navigate('/recruiter/dashboard');
-          const recName = recruiterResult.user?.name || 'Recruiter';
-          const compName = recruiterResult.company?.name || 'Company Workspace';
-          addToast(`Welcome back, ${recName}! Logged into ${compName}.`, 'success');
-          return;
-        }
+      if (userRole === 'RECRUITER') {
+        loginRecruiter(loginEmail, loginPassword);
+        navigate('/recruiter/dashboard');
+        addToast(`Welcome back, ${user.name || 'Recruiter'}! Logged into Recruiter Workspace.`, 'success');
+        return;
       }
 
       // Candidate login fallback
       loginCandidate(loginEmail);
       navigate(redirectTarget);
-      const candidateName = loginEmail.includes('candidate2') || loginEmail.includes('rahul') ? 'Rahul Kumar' : 'Priya Sharma';
-      addToast(`Welcome back, ${candidateName}! Logged into Candidate Workspace.`, 'success');
-    }, 400);
+      addToast(`Welcome back, ${user.name || 'Candidate'}! Logged into Candidate Workspace.`, 'success');
+    } catch (err) {
+      const errorMsg = err.message || 'Login failed. Please check your credentials.';
+      // Check if recruiter pending administrative approval
+      if (errorMsg.toLowerCase().includes('pending') || errorMsg.toLowerCase().includes('review')) {
+        addToast(errorMsg, 'warning');
+        navigate('/register/recruiter/pending');
+        return;
+      }
+      addToast(errorMsg, 'error');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    handleSignIn(email);
+    handleSignIn(email, password);
   };
 
   // Quick Demo Buttons
   const handleDemoCandidate1 = () => {
     setEmail('candidate1@ntrvikasa.com');
     setPassword('password123');
-    handleSignIn('candidate1@ntrvikasa.com');
+    handleSignIn('candidate1@ntrvikasa.com', 'password123');
   };
 
   const handleDemoCandidate2 = () => {
     setEmail('candidate2@ntrvikasa.com');
     setPassword('password123');
-    handleSignIn('candidate2@ntrvikasa.com');
+    handleSignIn('candidate2@ntrvikasa.com', 'password123');
   };
 
   const handleDemoRecruiter1 = () => {
     setEmail('recruiter1@ntrvikasa.com');
     setPassword('password123');
-    handleSignIn('recruiter1@ntrvikasa.com');
+    handleSignIn('recruiter1@ntrvikasa.com', 'password123');
   };
 
   const handleDemoRecruiter2 = () => {
     setEmail('recruiter2@ntrvikasa.com');
     setPassword('password123');
-    handleSignIn('recruiter2@ntrvikasa.com');
+    handleSignIn('recruiter2@ntrvikasa.com', 'password123');
   };
 
   const handleDemoAdmin1 = () => {
     setEmail('admin1@ntrvikasa.com');
     setPassword('password123');
-    handleSignIn('admin1@ntrvikasa.com');
+    handleSignIn('admin1@ntrvikasa.com', 'password123');
   };
 
   const handleDemoAdmin2 = () => {
     setEmail('admin2@ntrvikasa.com');
     setPassword('password123');
-    handleSignIn('admin2@ntrvikasa.com');
+    handleSignIn('admin2@ntrvikasa.com', 'password123');
   };
 
   return (
@@ -364,7 +402,7 @@ export default function LoginPage() {
               </Link>
             </div>
 
-            <Button type="submit" variant="primary" fullWidth size="lg" loading={loading}>
+            <Button type="submit" variant="primary" fullWidth size="lg" loading={loading} disabled={loading}>
               Sign In to Workspace
             </Button>
           </form>

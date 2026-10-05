@@ -7,6 +7,9 @@ import {
 import Button from './Button';
 import { useToast } from '../../context/ToastContext';
 import { useCandidate } from '../../context/CandidateContext';
+import authService from '../../services/authService';
+import candidateApplicationsService from '../../services/candidateApplicationsService';
+
 
 export default function ApplyModal({
   isOpen,
@@ -49,8 +52,9 @@ export default function ApplyModal({
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    if (isSubmitting) return; // Prevent double-click duplicate requests
     if (isProfileIncomplete) {
       setValidationError(`Your profile is currently ${completion}% complete. Please complete at least 70% of your profile before applying for jobs.`);
       return;
@@ -62,15 +66,33 @@ export default function ApplyModal({
     setValidationError('');
     setIsSubmitting(true);
 
-    setTimeout(() => {
-      setIsSubmitting(false);
+    try {
+      let createdBackendApp = null;
+      if (authService.isAuthenticated()) {
+        createdBackendApp = await candidateApplicationsService.createApplication({
+          job_id: String(job.id),
+          job_title: job.title || job.role,
+          company_name: job.company || job.company_name,
+          location: job.location,
+          salary: job.salary,
+          employment_type: job.type || job.employment_type,
+          work_mode: job.mode || job.work_mode,
+          cover_letter: coverLetter,
+          additional_info: additionalInfo,
+          resume_name: selectedResume,
+          mela_id: job.melaId || null,
+          mela_title: job.melaTitle || null,
+        });
+      }
+
       setIsSuccess(true);
 
       // Persist in Candidate Context
       applyJob(job, {
+        appNumber: createdBackendApp?.appNumber || createdBackendApp?.application_id,
         coverLetter,
         additionalInfo,
-        resumeName: selectedResume
+        resumeName: selectedResume,
       });
 
       if (onAppliedSuccess) {
@@ -82,7 +104,25 @@ export default function ApplyModal({
         title: 'Application Submitted!',
         message: `Your application for ${job.title} at ${job.company} was submitted successfully.`,
       });
-    }, 600);
+    } catch (err) {
+      const errMsg = err.message || 'Failed to submit application. Please try again.';
+      setValidationError(errMsg);
+      if (errMsg.toLowerCase().includes('already applied')) {
+        toast({
+          type: 'warning',
+          title: 'Already Applied',
+          message: 'You have already applied for this position.',
+        });
+      } else {
+        toast({
+          type: 'error',
+          title: 'Application Failed',
+          message: errMsg,
+        });
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleClose = () => {

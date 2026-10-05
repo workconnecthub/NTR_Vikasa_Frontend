@@ -4,6 +4,7 @@
  * Ready for API integration: replace mock data with real fetch calls.
  */
 import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
+import candidateNotificationService from '../services/candidateNotificationService';
 
 const NotificationContext = createContext(null);
 
@@ -25,6 +26,17 @@ export const NOTIF_CATEGORY = {
   TEAM:         { label: 'Team',            color: '#7c3aed', bg: '#f5f3ff' },
   REPORT:       { label: 'Report',          color: '#dc2626', bg: '#fef2f2' },
   SECURITY:     { label: 'Security',        color: '#b91c1c', bg: '#fff1f2' },
+
+  // Lowercase / backend aliases
+  shortlisted:  { label: 'Shortlisted',     color: '#10b981', bg: '#f0fdf4' },
+  shortlist:    { label: 'Shortlisted',     color: '#10b981', bg: '#f0fdf4' },
+  interview:    { label: 'Interview',       color: '#8b5cf6', bg: '#f5f3ff' },
+  application:  { label: 'Application',    color: '#3b82f6', bg: '#eff6ff' },
+  job_mela:     { label: 'Job Mela',        color: '#ec4899', bg: '#fdf2f8' },
+  offer:        { label: 'Offer',           color: '#f59e0b', bg: '#fffbeb' },
+  rejection:    { label: 'Rejection',       color: '#ef4444', bg: '#fef2f2' },
+  account:      { label: 'Account',         color: '#6b7280', bg: '#f9fafb' },
+  support:      { label: 'Support',         color: '#0284c7', bg: '#e0f2fe' },
 };
 
 // ─── Portal-specific mock notification sets ────────────────────────────────
@@ -798,6 +810,43 @@ const PORTAL_NOTIFS = {
   admin:     ADMIN_NOTIFS,
 };
 
+function mapBackendNotification(item) {
+  const catUpper = (item.category || '').toUpperCase().trim();
+  const normalizedCategory = catUpper === 'SHORTLISTED' ? 'SHORTLIST' : catUpper;
+
+  // Build meta object for existing card metadata badges
+  const meta = item.meta ? { ...item.meta } : {};
+  if (item.application_id && !meta.appNumber) {
+    meta.appNumber = item.application_id;
+  }
+  if (item.job_mela_id && !meta.passId) {
+    meta.passId = item.job_mela_id;
+  }
+  if (item.interview_id && !meta.format) {
+    meta.format = 'Google Meet';
+  }
+
+  // Derive route link if not provided
+  let link = item.link;
+  if (!link) {
+    if (item.application_id) link = '/candidate/applications';
+    else if (item.interview_id) link = '/candidate/interviews';
+    else if (item.job_mela_id) link = '/candidate/job-melas';
+  }
+
+  return {
+    id: String(item.id),
+    category: normalizedCategory || 'SYSTEM',
+    title: item.title,
+    message: item.message,
+    time: item.time || 'Just now',
+    read: Boolean(item.is_read ?? item.read),
+    link: link || null,
+    meta: Object.keys(meta).length > 0 ? meta : null,
+    priority: item.priority || null,
+  };
+}
+
 const STORAGE_KEY = 'ntr_portal_notifications_v6';
 
 export function NotificationProvider({ children }) {
@@ -820,6 +869,66 @@ export function NotificationProvider({ children }) {
     return PORTAL_NOTIFS;
   });
 
+  const [candidateUnreadCount, setCandidateUnreadCount] = useState(null);
+
+  // Sync candidate notifications from backend
+  const fetchCandidateNotifications = useCallback(async (params = {}) => {
+    const token = localStorage.getItem('ntr_access_token');
+    const role = localStorage.getItem('ntr_user_role');
+    if (!token || role !== 'CANDIDATE') return;
+
+    try {
+      const res = await candidateNotificationService.getNotifications(params);
+      if (res && Array.isArray(res.items)) {
+        const mapped = res.items.map(mapBackendNotification);
+        setAllNotifs(prev => ({
+          ...prev,
+          candidate: mapped,
+        }));
+        if (typeof res.unread_count === 'number') {
+          setCandidateUnreadCount(res.unread_count);
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to fetch candidate notifications from backend:', err);
+    }
+  }, []);
+
+  /** Fetch candidate unread count directly */
+  const fetchCandidateUnreadCount = useCallback(async () => {
+    const token = localStorage.getItem('ntr_access_token');
+    const role = localStorage.getItem('ntr_user_role');
+    if (!token || role !== 'CANDIDATE') return;
+
+    try {
+      const res = await candidateNotificationService.getUnreadCount();
+      if (res && typeof res.unread_count === 'number') {
+        setCandidateUnreadCount(res.unread_count);
+      }
+    } catch (err) {
+      console.warn('Failed to fetch candidate unread count:', err);
+    }
+  }, []);
+
+  // Fetch candidate notifications on mount and when token/user changes
+  useEffect(() => {
+    const checkAndFetch = () => {
+      const token = localStorage.getItem('ntr_access_token');
+      const role = localStorage.getItem('ntr_user_role');
+      if (token && role === 'CANDIDATE') {
+        fetchCandidateNotifications();
+      }
+    };
+
+    checkAndFetch();
+    window.addEventListener('storage', checkAndFetch);
+    window.addEventListener('focus', checkAndFetch);
+    return () => {
+      window.removeEventListener('storage', checkAndFetch);
+      window.removeEventListener('focus', checkAndFetch);
+    };
+  }, [fetchCandidateNotifications]);
+
   // Persist notifications to localStorage whenever state changes
   useEffect(() => {
     try {
@@ -834,8 +943,11 @@ export function NotificationProvider({ children }) {
 
   /** Unread count for a portal */
   const getUnreadCount = useCallback((portal) => {
+    if (portal === 'candidate' && typeof candidateUnreadCount === 'number') {
+      return candidateUnreadCount;
+    }
     return (allNotifs[portal] || []).filter(n => !n.read).length;
-  }, [allNotifs]);
+  }, [allNotifs, candidateUnreadCount]);
 
   /** Mark a single notification as read */
   const markRead = useCallback((portal, id) => {
@@ -843,6 +955,12 @@ export function NotificationProvider({ children }) {
       ...prev,
       [portal]: (prev[portal] || []).map(n => n.id === id ? { ...n, read: true } : n),
     }));
+    if (portal === 'candidate') {
+      setCandidateUnreadCount(prev => (prev && prev > 0 ? prev - 1 : 0));
+      candidateNotificationService.markRead(id).catch(err => {
+        console.warn('Failed to mark read on backend:', err);
+      });
+    }
   }, []);
 
   /** Mark all as read for a portal */
@@ -851,14 +969,70 @@ export function NotificationProvider({ children }) {
       ...prev,
       [portal]: (prev[portal] || []).map(n => ({ ...n, read: true })),
     }));
+    if (portal === 'candidate') {
+      setCandidateUnreadCount(0);
+      candidateNotificationService.markMultipleRead(null).catch(err => {
+        console.warn('Failed to mark all read on backend:', err);
+      });
+    }
+  }, []);
+
+  /** Mark multiple notifications as read */
+  const bulkMarkRead = useCallback((portal, ids) => {
+    if (!ids || ids.length === 0) return;
+    const idSet = new Set(ids);
+    setAllNotifs(prev => ({
+      ...prev,
+      [portal]: (prev[portal] || []).map(n => idSet.has(n.id) ? { ...n, read: true } : n),
+    }));
+    if (portal === 'candidate') {
+      setCandidateUnreadCount(prev => (prev && prev >= ids.length ? prev - ids.length : 0));
+      candidateNotificationService.markMultipleRead(ids).catch(err => {
+        console.warn('Failed to bulk mark read on backend:', err);
+      });
+    }
   }, []);
 
   /** Dismiss / delete a notification */
   const dismiss = useCallback((portal, id) => {
-    setAllNotifs(prev => ({
-      ...prev,
-      [portal]: (prev[portal] || []).filter(n => n.id !== id),
-    }));
+    setAllNotifs(prev => {
+      const removed = (prev[portal] || []).find(n => n.id === id);
+      if (portal === 'candidate' && removed && !removed.read) {
+        setCandidateUnreadCount(c => (c && c > 0 ? c - 1 : 0));
+      }
+      return {
+        ...prev,
+        [portal]: (prev[portal] || []).filter(n => n.id !== id),
+      };
+    });
+    if (portal === 'candidate') {
+      candidateNotificationService.dismiss(id).catch(err => {
+        console.warn('Failed to dismiss notification on backend:', err);
+      });
+    }
+  }, []);
+
+  /** Bulk dismiss notifications */
+  const bulkDismiss = useCallback((portal, ids) => {
+    if (!ids || ids.length === 0) return;
+    const idSet = new Set(ids);
+    setAllNotifs(prev => {
+      if (portal === 'candidate') {
+        const unreadRemoved = (prev[portal] || []).filter(n => idSet.has(n.id) && !n.read).length;
+        if (unreadRemoved > 0) {
+          setCandidateUnreadCount(c => (c && c >= unreadRemoved ? c - unreadRemoved : 0));
+        }
+      }
+      return {
+        ...prev,
+        [portal]: (prev[portal] || []).filter(n => !idSet.has(n.id)),
+      };
+    });
+    if (portal === 'candidate') {
+      candidateNotificationService.dismissMultiple(ids).catch(err => {
+        console.warn('Failed to bulk dismiss notifications on backend:', err);
+      });
+    }
   }, []);
 
   /** Add a new notification */
@@ -886,9 +1060,24 @@ export function NotificationProvider({ children }) {
     getUnreadCount,
     markRead,
     markAllRead,
+    bulkMarkRead,
     dismiss,
+    bulkDismiss,
     addNotification,
-  }), [getNotifs, getUnreadCount, markRead, markAllRead, dismiss, addNotification]);
+    fetchCandidateNotifications,
+    fetchCandidateUnreadCount,
+  }), [
+    getNotifs,
+    getUnreadCount,
+    markRead,
+    markAllRead,
+    bulkMarkRead,
+    dismiss,
+    bulkDismiss,
+    addNotification,
+    fetchCandidateNotifications,
+    fetchCandidateUnreadCount,
+  ]);
 
   return (
     <NotificationContext.Provider value={ctx}>

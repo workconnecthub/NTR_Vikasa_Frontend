@@ -9,6 +9,7 @@ import FormField from '../../components/ui/FormField';
 import Input from '../../components/ui/Input';
 import { useRecruiter } from '../../context/RecruiterContext';
 import { useToast } from '../../context/ToastContext';
+import authService from '../../services/authService';
 
 export default function AcceptInvitationPage() {
   const { token } = useParams();
@@ -82,7 +83,18 @@ export default function AcceptInvitationPage() {
     }
 
     setSubmitting(true);
-    setTimeout(() => {
+    (async () => {
+      try {
+        // Attempt backend endpoint first
+        await authService.acceptInvitation({
+          token,
+          name: invitationState.invitation?.name || 'Recruiter Member',
+          password,
+        });
+      } catch (e) {
+        // Fallback to local recruiter context
+      }
+
       const result = acceptInvitation({
         token,
         password,
@@ -100,7 +112,7 @@ export default function AcceptInvitationPage() {
         setErrors({ general: result.error || 'Failed to complete invitation acceptance.' });
         addToast(result.error || 'Failed to accept invitation.', 'error');
       }
-    }, 600);
+    })();
   };
 
   const inv = invitationState.invitation;

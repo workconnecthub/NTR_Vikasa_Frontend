@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Settings, Lock, Bell, Eye, Shield, Trash2, Save,
   CheckCircle2, AlertTriangle, Key, Mail, Smartphone
@@ -12,8 +13,11 @@ import { useToast } from '../../context/ToastContext';
 import { useCandidate } from '../../context/CandidateContext';
 import { useNotifications } from '../../context/NotificationContext';
 import { dispatchCandidateEvent, NOTIFICATION_EVENTS } from '../../services/notificationEventService';
+import candidateSettingsService from '../../services/candidateSettingsService';
+import authService from '../../services/authService';
 
 export default function CandidateSettingsPage() {
+  const navigate = useNavigate();
   const { toast } = useToast();
   const { candidate } = useCandidate();
   const { addNotification } = useNotifications();
@@ -29,6 +33,7 @@ export default function CandidateSettingsPage() {
   const [smsAlerts, setSmsAlerts] = useState(true);
   const [interviewReminders, setInterviewReminders] = useState(true);
   const [weeklyDigest, setWeeklyDigest] = useState(false);
+  const [savingPreferences, setSavingPreferences] = useState(false);
 
   // Privacy Settings
   const [profileVisible, setProfileVisible] = useState(true);
@@ -36,9 +41,42 @@ export default function CandidateSettingsPage() {
 
   // Delete modal
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
-  const handlePasswordSubmit = (e) => {
+  // Fetch initial settings from backend on mount
+  useEffect(() => {
+    let isMounted = true;
+    const fetchSettings = async () => {
+      try {
+        const data = await candidateSettingsService.getSettings();
+        if (isMounted && data) {
+          setEmailAlerts(data.email_job_application_alerts ?? true);
+          setSmsAlerts(data.sms_whatsapp_notifications ?? true);
+          setInterviewReminders(data.upcoming_interview_reminders ?? true);
+          setWeeklyDigest(data.weekly_job_recommendation_digest ?? false);
+          setProfileVisible(data.visible_in_recruiter_talent_search ?? true);
+          setAllowDirectMessages(data.direct_recruiter_messages ?? true);
+        }
+      } catch (err) {
+        console.error('Error fetching settings:', err);
+      }
+    };
+    fetchSettings();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const handlePasswordSubmit = async (e) => {
     e.preventDefault();
+    if (!currentPassword) {
+      toast({
+        type: 'error',
+        title: 'Validation Error',
+        message: 'Please enter your current password.',
+      });
+      return;
+    }
     if (!newPassword || newPassword !== confirmPassword) {
       toast({
         type: 'error',
@@ -47,9 +85,23 @@ export default function CandidateSettingsPage() {
       });
       return;
     }
+    if (newPassword.length < 8) {
+      toast({
+        type: 'error',
+        title: 'Validation Error',
+        message: 'New password must be at least 8 characters long.',
+      });
+      return;
+    }
+
     setPasswordLoading(true);
-    setTimeout(() => {
-      setPasswordLoading(false);
+    try {
+      await candidateSettingsService.changePassword({
+        current_password: currentPassword,
+        new_password: newPassword,
+        confirm_password: confirmPassword,
+      });
+
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
@@ -66,7 +118,7 @@ export default function CandidateSettingsPage() {
           message: 'Your candidate account password was updated securely. If you did not make this change, please contact candidate support immediately.',
           time: 'Just now',
           link: '/candidate/settings',
-        }
+        },
       });
 
       toast({
@@ -74,24 +126,102 @@ export default function CandidateSettingsPage() {
         title: 'Password Updated',
         message: 'Your account password has been updated securely.',
       });
-    }, 1000);
+    } catch (err) {
+      toast({
+        type: 'error',
+        title: 'Password Update Failed',
+        message: err.message || 'Failed to update password.',
+      });
+    } finally {
+      setPasswordLoading(false);
+    }
   };
 
-  const handleSavePreferences = () => {
-    toast({
-      type: 'success',
-      title: 'Preferences Saved',
-      message: 'Your notification and privacy preferences have been updated.',
-    });
+  const handleSavePreferences = async () => {
+    setSavingPreferences(true);
+    try {
+      await candidateSettingsService.updateNotifications({
+        email_job_application_alerts: emailAlerts,
+        sms_whatsapp_notifications: smsAlerts,
+        upcoming_interview_reminders: interviewReminders,
+        weekly_job_recommendation_digest: weeklyDigest,
+      });
+      await candidateSettingsService.updatePrivacy({
+        visible_in_recruiter_talent_search: profileVisible,
+        direct_recruiter_messages: allowDirectMessages,
+      });
+
+      toast({
+        type: 'success',
+        title: 'Preferences Saved',
+        message: 'Your notification and privacy preferences have been updated.',
+      });
+    } catch (err) {
+      toast({
+        type: 'error',
+        title: 'Error Saving Preferences',
+        message: err.message || 'Failed to save preferences.',
+      });
+    } finally {
+      setSavingPreferences(false);
+    }
   };
 
-  const handleDeleteAccount = () => {
+  const handleToggleProfileVisible = async (checked) => {
+    setProfileVisible(checked);
+    try {
+      await candidateSettingsService.updatePrivacy({
+        visible_in_recruiter_talent_search: checked,
+        direct_recruiter_messages: allowDirectMessages,
+      });
+    } catch (err) {
+      setProfileVisible(!checked);
+      toast({
+        type: 'error',
+        title: 'Privacy Update Failed',
+        message: err.message || 'Failed to update profile visibility.',
+      });
+    }
+  };
+
+  const handleToggleDirectMessages = async (checked) => {
+    setAllowDirectMessages(checked);
+    try {
+      await candidateSettingsService.updatePrivacy({
+        visible_in_recruiter_talent_search: profileVisible,
+        direct_recruiter_messages: checked,
+      });
+    } catch (err) {
+      setAllowDirectMessages(!checked);
+      toast({
+        type: 'error',
+        title: 'Privacy Update Failed',
+        message: err.message || 'Failed to update direct messages setting.',
+      });
+    }
+  };
+
+  const handleDeleteAccount = async () => {
     setDeleteModalOpen(false);
-    toast({
-      type: 'info',
-      title: 'Account Deletion Requested',
-      message: 'Your account deletion request has been submitted.',
-    });
+    setDeleteLoading(true);
+    try {
+      await candidateSettingsService.deleteAccount();
+      authService.logout();
+      toast({
+        type: 'info',
+        title: 'Account Deactivated',
+        message: 'Your candidate account has been permanently deactivated.',
+      });
+      navigate('/login', { replace: true });
+    } catch (err) {
+      toast({
+        type: 'error',
+        title: 'Account Deletion Failed',
+        message: err.message || 'Failed to deactivate account.',
+      });
+    } finally {
+      setDeleteLoading(false);
+    }
   };
 
   return (
@@ -197,7 +327,7 @@ export default function CandidateSettingsPage() {
           </div>
 
           <div style={{ marginTop: 'var(--space-2)' }}>
-            <Button variant="primary" size="sm" leftIcon={<Save size={14} />} onClick={handleSavePreferences}>
+            <Button variant="primary" size="sm" loading={savingPreferences} leftIcon={<Save size={14} />} onClick={handleSavePreferences}>
               Save Preferences
             </Button>
           </div>
@@ -217,7 +347,7 @@ export default function CandidateSettingsPage() {
               <p style={{ fontWeight: 600, fontSize: 'var(--text-sm)' }}>Visible in Recruiter Talent Search</p>
               <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>Allow verified employers to discover your profile and invite you to apply</p>
             </div>
-            <Toggle checked={profileVisible} onChange={(e) => setProfileVisible(e.target.checked)} />
+            <Toggle checked={profileVisible} onChange={(e) => handleToggleProfileVisible(e.target.checked)} />
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: 'var(--space-3) 0' }}>
@@ -225,7 +355,7 @@ export default function CandidateSettingsPage() {
               <p style={{ fontWeight: 600, fontSize: 'var(--text-sm)' }}>Direct Recruiter Messages</p>
               <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>Allow hiring managers to contact you regarding relevant career openings</p>
             </div>
-            <Toggle checked={allowDirectMessages} onChange={(e) => setAllowDirectMessages(e.target.checked)} />
+            <Toggle checked={allowDirectMessages} onChange={(e) => handleToggleDirectMessages(e.target.checked)} />
           </div>
         </div>
       </div>
@@ -242,7 +372,7 @@ export default function CandidateSettingsPage() {
             </p>
           </div>
 
-          <Button variant="danger" size="sm" leftIcon={<Trash2 size={14} />} onClick={() => setDeleteModalOpen(true)}>
+          <Button variant="danger" size="sm" loading={deleteLoading} leftIcon={<Trash2 size={14} />} onClick={() => setDeleteModalOpen(true)}>
             Delete My Account
           </Button>
         </div>

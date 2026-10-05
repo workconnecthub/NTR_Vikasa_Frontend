@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Outlet, useLocation } from 'react-router-dom';
+import { Outlet, useLocation, Navigate } from 'react-router-dom';
 import {
   Home, LayoutDashboard, Users, Building2,
   UserCheck, CalendarDays, AlertTriangle,
@@ -53,8 +53,13 @@ function getPageTitle(pathname) {
 
 export default function AdminLayout() {
   const location = useLocation();
-  const { currentAdmin, pendingCounts } = useAdmin();
+  const { currentAdmin, pendingCounts, isAdminLoggedIn } = useAdmin();
   const title = getPageTitle(location.pathname);
+
+  const token = localStorage.getItem('ntr_access_token');
+  if (!isAdminLoggedIn && !token) {
+    return <Navigate to="/login" state={{ redirectTo: location.pathname + location.search }} replace />;
+  }
 
   const [customProfile, setCustomProfile] = useState(() => {
     try {

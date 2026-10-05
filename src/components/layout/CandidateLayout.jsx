@@ -57,7 +57,8 @@ export default function CandidateLayout() {
   const title = getPageTitle(location.pathname);
   const { candidate, isLoggedIn } = useCandidate();
 
-  if (!isLoggedIn) {
+  const token = localStorage.getItem('ntr_access_token');
+  if (!isLoggedIn && !token) {
     return <Navigate to="/login" state={{ redirectTo: location.pathname + location.search }} replace />;
   }
 

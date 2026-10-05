@@ -14,6 +14,8 @@ import { useToast } from '../../context/ToastContext';
 import { useCandidate } from '../../context/CandidateContext';
 import { useNotifications } from '../../context/NotificationContext';
 import { dispatchCandidateEvent, NOTIFICATION_EVENTS } from '../../services/notificationEventService';
+import authService from '../../services/authService';
+import candidateSupportService from '../../services/candidateSupportService';
 
 export default function CandidateHelpSupportPage() {
   const { candidate } = useCandidate();
@@ -26,49 +28,98 @@ export default function CandidateHelpSupportPage() {
   const [description, setDescription] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmitTicket = (e) => {
+  // Authenticated candidate identity
+  const candidateName = candidate?.name || 'Candidate';
+  const candidateEmail = candidate?.email || '';
+
+  const handleSubmitTicket = async (e) => {
     e.preventDefault();
-    if (!description.trim()) {
-      toast({ type: 'warning', title: 'Missing Information', message: 'Please describe your query before submitting.' });
+    const cleanSubject = subject.trim();
+    const cleanDescription = description.trim();
+
+    if (!cleanSubject) {
+      toast({
+        type: 'warning',
+        title: 'Missing Subject',
+        message: 'Please provide a subject or brief summary before submitting.',
+      });
       return;
     }
 
-    setSubmitting(true);
-    setTimeout(() => {
-      setSubmitting(false);
-      const ticketNum = Math.floor(100000 + Math.random() * 900000);
-      setSubject('');
-      setDescription('');
-
-      // Dispatch Candidate Notification Event
-      dispatchCandidateEvent({
-        eventType: NOTIFICATION_EVENTS.SUPPORT_TICKET_CREATED,
-        candidateEmail: candidate.email,
-        recipientName: candidate.name,
-        addNotification,
-        notification: {
-          category: 'SUPPORT',
-          title: `Support Ticket #${ticketNum} Created`,
-          message: `Your support ticket for "${issueType}" has been logged successfully. The candidate support desk will respond within 24 hours.`,
-          time: 'Just now',
-          link: '/candidate/help-support',
-          meta: {
-            ticketId: String(ticketNum),
-            status: 'Open',
-          }
-        },
-        meta: {
-          ticketId: String(ticketNum),
-          issueType,
-        }
-      });
-
+    if (!cleanDescription) {
       toast({
-        type: 'success',
-        title: 'Support Ticket Submitted',
-        message: `Ticket #${ticketNum} created. Our candidate support team will respond within 24 hours.`
+        type: 'warning',
+        title: 'Missing Information',
+        message: 'Please describe your query before submitting.',
       });
-    }, 800);
+      return;
+    }
+
+    if (submitting) return;
+
+    setSubmitting(true);
+    try {
+      if (authService.isAuthenticated()) {
+        const response = await candidateSupportService.createTicket({
+          issue_category: issueType,
+          subject: cleanSubject,
+          description: cleanDescription,
+        });
+
+        const createdTicket = response.ticket;
+        const ticketNum = createdTicket.ticket_number;
+
+        setSubject('');
+        setDescription('');
+
+        // Dispatch Candidate Notification Event with real ticket number
+        dispatchCandidateEvent({
+          eventType: NOTIFICATION_EVENTS.SUPPORT_TICKET_CREATED,
+          candidateEmail: candidateEmail || createdTicket.registered_email,
+          recipientName: candidateName || createdTicket.candidate_name,
+          addNotification,
+          notification: {
+            category: 'SUPPORT',
+            title: `Support Ticket #${ticketNum} Created`,
+            message: `Your support ticket for "${issueType}" has been logged successfully. The candidate support desk will respond within 24 hours.`,
+            time: 'Just now',
+            link: '/candidate/help-support',
+            meta: {
+              ticketId: ticketNum,
+              status: createdTicket.status || 'OPEN',
+            },
+          },
+          meta: {
+            ticketId: ticketNum,
+            issueType,
+          },
+        });
+
+        toast({
+          type: 'success',
+          title: 'Support Ticket Submitted',
+          message: `Ticket ${ticketNum} created. Our candidate support team will respond within 24 hours.`,
+        });
+      } else {
+        // Fallback for non-authenticated dev state
+        const ticketNum = `NTR-SUP-${Math.floor(100000 + Math.random() * 900000)}`;
+        setSubject('');
+        setDescription('');
+        toast({
+          type: 'success',
+          title: 'Support Ticket Submitted',
+          message: `Ticket ${ticketNum} created. Our candidate support team will respond within 24 hours.`,
+        });
+      }
+    } catch (err) {
+      toast({
+        type: 'danger',
+        title: 'Submission Failed',
+        message: err.message || 'Could not submit support ticket. Please try again.',
+      });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -81,7 +132,7 @@ export default function CandidateHelpSupportPage() {
             <LifeBuoy size={14} /> Candidate Help Desk & Support
           </div>
           <h1 style={{ fontSize: 'var(--text-3xl)', fontWeight: 800, color: '#ffffff', marginBottom: 'var(--space-2)' }}>
-            How can we help you today, {candidate.name.split(' ')[0]}?
+            How can we help you today, {(candidateName || 'Candidate').split(' ')[0]}?
           </h1>
           <p style={{ fontSize: 'var(--text-sm)', color: '#cbd5e1', lineHeight: 'var(--leading-relaxed)' }}>
             Have questions or experiencing any issues regarding your job applications, interview schedules, resume updates, or Job Mela entry passes? Submit a ticket below or reach out through our official candidate channels.
@@ -246,11 +297,11 @@ export default function CandidateHelpSupportPage() {
 
             <form onSubmit={handleSubmitTicket} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
               <FormField label="Candidate Name">
-                <Input value={candidate.name} disabled />
+                <Input value={candidateName} disabled />
               </FormField>
 
               <FormField label="Registered Email">
-                <Input value={candidate.email} disabled />
+                <Input value={candidateEmail} disabled />
               </FormField>
 
               <FormField label="Issue Category" required>
