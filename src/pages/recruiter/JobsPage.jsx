@@ -140,6 +140,18 @@ export default function JobsPage() {
     }
   };
 
+  const handleSubmitForApproval = async (jobId) => {
+    try {
+      await recruiterJobService.submitJob(jobId);
+      addToast('Job requisition submitted for Admin review. Status: PENDING.', 'success');
+      fetchJobs();
+      fetchCountsAndDepts();
+    } catch (err) {
+      addToast(err.message || 'Failed to submit job for approval.', 'error');
+    }
+  };
+
+
   const handleExportExcel = () => {
     if (jobs.length === 0) {
       addToast('No records available to export for the selected filters.', 'info');
@@ -441,6 +453,21 @@ export default function JobsPage() {
                       <Calendar size={13} style={{ color: 'var(--color-gray-400)', flexShrink: 0 }} />
                       <span>Posted: {job.createdAt || job.posted_at?.split(' ')[0] || 'Ongoing'} • Deadline: {job.deadline || 'Ongoing'}</span>
                     </div>
+
+                    {job.status === 'REJECTED' && job.rejection_reason && (
+                      <div style={{
+                        background: '#fef2f2',
+                        border: '1px solid #fecaca',
+                        color: '#991b1b',
+                        padding: '0.4rem 0.6rem',
+                        borderRadius: '6px',
+                        fontSize: '0.74rem',
+                        marginTop: '0.4rem',
+                        lineHeight: 1.35
+                      }}>
+                        <span style={{ fontWeight: 700 }}>Rejection Reason:</span> {job.rejection_reason}
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -498,11 +525,24 @@ export default function JobsPage() {
 
                 {/* Actions Footer */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--color-gray-100)', paddingTop: '0.65rem', gap: '0.5rem', marginTop: 'auto' }}>
-                  <Link to="/recruiter/applications" style={{ textDecoration: 'none', flex: 1 }}>
-                    <Button variant="primary" size="sm" style={{ width: '100%' }} icon={<Users size={13} />}>
-                      View Applicants ({job.applicantsCount ?? job.applicant_count ?? 0})
+                  {(job.status === 'DRAFT' || job.status === 'REJECTED') ? (
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      style={{ width: '100%' }}
+                      icon={<CheckCircle2 size={13} />}
+                      onClick={() => handleSubmitForApproval(job.id || job.job_id)}
+                    >
+                      Submit for Approval
                     </Button>
-                  </Link>
+                  ) : (
+                    <Link to="/recruiter/applications" style={{ textDecoration: 'none', flex: 1 }}>
+                      <Button variant="primary" size="sm" style={{ width: '100%' }} icon={<Users size={13} />}>
+                        View Applicants ({job.applicantsCount ?? job.applicant_count ?? 0})
+                      </Button>
+                    </Link>
+                  )}
+
 
                   <div>
                     {job.status === 'CLOSED' ? (

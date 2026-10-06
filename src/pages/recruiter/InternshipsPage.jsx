@@ -137,7 +137,18 @@ export default function RecruiterInternshipsPage() {
     }
   };
 
+  const handleSubmitInternship = async (id) => {
+    try {
+      await recruiterInternshipService.submitInternship(id);
+      addToast('Internship program submitted for Admin approval. Status: PENDING.', 'success');
+      fetchInternships();
+    } catch (err) {
+      addToast(err.message || 'Failed to submit internship for approval.', 'error');
+    }
+  };
+
   const filtered = useMemo(() => {
+
     return internships.filter((item) => {
       // Status filter
       if (selectedStatusTab === 'ACTIVE' && item.status !== 'PUBLISHED') return false;
@@ -408,17 +419,43 @@ export default function RecruiterInternshipsPage() {
                   <p style={{ fontSize: '0.85rem', color: 'var(--color-gray-700)', lineHeight: 1.5, margin: 0 }}>
                     {item.description}
                   </p>
+
+                  {item.status === 'REJECTED' && item.rejection_reason && (
+                    <div style={{
+                      background: '#fef2f2',
+                      border: '1px solid #fecaca',
+                      color: '#991b1b',
+                      padding: '0.4rem 0.6rem',
+                      borderRadius: '6px',
+                      fontSize: '0.74rem',
+                      marginTop: '0.6rem',
+                      lineHeight: 1.35
+                    }}>
+                      <span style={{ fontWeight: 700 }}>Rejection Reason:</span> {item.rejection_reason}
+                    </div>
+                  )}
                 </div>
 
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--color-gray-100)', paddingTop: '0.75rem', marginTop: '1rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--color-gray-100)', paddingTop: '0.75rem', marginTop: '1rem', gap: '0.5rem' }}>
                   <span style={{ fontSize: '0.8rem', color: 'var(--color-primary-600)', fontWeight: 600 }}>
                     {item.applicantsCount || 0} Candidates Applied
                   </span>
-                  <Link to="/recruiter/applications">
-                    <Button variant="outline" size="sm">
-                      View Applicants
+                  {(item.status === 'DRAFT' || item.status === 'REJECTED') ? (
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      icon={<CheckCircle2 size={13} />}
+                      onClick={() => handleSubmitInternship(item.id)}
+                    >
+                      Submit for Approval
                     </Button>
-                  </Link>
+                  ) : (
+                    <Link to="/recruiter/applications" style={{ textDecoration: 'none' }}>
+                      <Button variant="outline" size="sm">
+                        View Applicants
+                      </Button>
+                    </Link>
+                  )}
                 </div>
               </div>
             ))}

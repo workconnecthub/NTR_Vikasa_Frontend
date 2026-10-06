@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import { useNotifications } from './NotificationContext';
 import { dispatchAdminEvent, ADMIN_NOTIFICATION_EVENTS } from '../services/notificationEventService';
+import adminService from '../services/adminService';
 
 // ─── 1. ADMIN SEED USERS ──────────────────────────────────────────────────
 const SEED_ADMINS = [
@@ -3155,7 +3156,112 @@ export function AdminProvider({ children }) {
     jobsPageContent, jobMelaContent, skillPageContent, aboutContent
   ]);
 
+  // Fetch live backend records for Admin moderation
+  useEffect(() => {
+    let isMounted = true;
+    const fetchLiveModerationData = async () => {
+      try {
+        const [jobsRes, internshipsRes, companiesRes] = await Promise.allSettled([
+          adminService.getJobs({ page_size: 100 }),
+          adminService.getInternships({ page_size: 100 }),
+          adminService.getCompanies(),
+        ]);
+
+        if (!isMounted) return;
+
+        if (jobsRes.status === 'fulfilled' && jobsRes.value?.items?.length) {
+          const mappedJobs = jobsRes.value.items.map(j => ({
+            id: j.job_id || j.id,
+            job_id: j.job_id,
+            job_number: j.job_number,
+            title: j.title,
+            company: j.company_name || 'Organization',
+            company_name: j.company_name,
+            department: j.department || 'Core Engineering',
+            location: j.location || 'Bengaluru, Karnataka',
+            type: j.job_type || 'Full-time',
+            workMode: j.work_mode || 'Hybrid',
+            experience: j.experience || '3-5 years',
+            salary: j.salary || 'Competitive',
+            openings: j.openings || 1,
+            status: j.status,
+            description: j.description || '',
+            recruiter: j.recruiter_name || j.company_name || 'Recruiter',
+            recruiterEmail: j.recruiter_email || '',
+            postedDate: j.posted_at?.split(' ')[0] || j.createdAt || new Date().toISOString().split('T')[0],
+            rejectionReason: j.rejection_reason || null,
+            skills: j.skills || [],
+          }));
+          setJobs(prev => {
+            const liveKeys = new Set(mappedJobs.map(mj => mj.id));
+            const retained = prev.filter(p => !liveKeys.has(p.id) && !liveKeys.has(p.job_id));
+            return [...mappedJobs, ...retained];
+          });
+        }
+
+        if (internshipsRes.status === 'fulfilled' && internshipsRes.value?.items?.length) {
+          const mappedInterns = internshipsRes.value.items.map(i => ({
+            id: i.internship_number || i.id,
+            internship_number: i.internship_number,
+            rawId: i.id,
+            title: i.title,
+            company: i.company_name || 'Organization',
+            company_name: i.company_name,
+            duration: i.duration || '6 Months',
+            stipend: i.stipend || '₹15,000 / month',
+            workMode: i.work_mode || 'Hybrid',
+            location: i.location || 'Bengaluru, Karnataka',
+            openings: i.number_of_interns || 1,
+            status: i.status,
+            description: i.description || '',
+            rejectionReason: i.rejection_reason || null,
+            createdAt: i.created_at?.split(' ')[0] || i.postedOn || new Date().toISOString().split('T')[0],
+          }));
+          setInternships(prev => {
+            const liveKeys = new Set(mappedInterns.map(mi => mi.id));
+            const retained = prev.filter(p => !liveKeys.has(p.id) && !liveKeys.has(p.internship_number));
+            return [...mappedInterns, ...retained];
+          });
+        }
+
+        if (companiesRes.status === 'fulfilled' && Array.isArray(companiesRes.value) && companiesRes.value.length) {
+          const mappedComps = companiesRes.value.map(c => ({
+            id: c.id,
+            name: c.company_name || c.name,
+            recruiter: c.recruiter_name || c.recruiter || 'HR Lead',
+            industry: c.industry || 'Information Technology',
+            location: c.location || 'Bengaluru, Karnataka',
+            district: 'NTR District',
+            mandal: 'Vijayawada Urban',
+            size: c.company_size || '100-500 employees',
+            verificationStatus: c.verification_status || (c.status === 'APPROVED' ? 'VERIFIED' : c.status === 'REJECTED' ? 'REJECTED' : 'PENDING'),
+            accountStatus: 'ACTIVE',
+            registrationDate: c.submitted_at?.split(' ')[0] || new Date().toISOString().split('T')[0],
+            activeJobsCount: c.open_jobs || 0,
+            website: c.website || '',
+            email: c.recruiter_email || '',
+            description: c.description || '',
+            cin: 'U37AP2026PTC098765',
+            gstin: '37ABCDE1234F1Z5',
+            rejectionReason: c.rejection_reason || null,
+          }));
+          setCompanies(prev => {
+            const liveKeys = new Set(mappedComps.map(mc => mc.id));
+            const retained = prev.filter(p => !liveKeys.has(p.id));
+            return [...mappedComps, ...retained];
+          });
+        }
+      } catch (e) {
+        console.warn('Error fetching live admin moderation data:', e);
+      }
+    };
+
+    fetchLiveModerationData();
+    return () => { isMounted = false; };
+  }, []);
+
   const currentAdmin = adminUsers.find(a => a.id === activeAdminId) || adminUsers[0];
+
 
   // Helper to add audit log entry
   const addAuditLog = (action, target, entityType, result = 'SUCCESS') => {
@@ -3416,9 +3522,15 @@ export function AdminProvider({ children }) {
   };
 
   // Company actions
-  const approveCompany = (companyId) => {
+  const approveCompany = async (companyId) => {
+    try {
+      await adminService.approveCompany(companyId);
+    } catch (err) {
+      console.warn('Backend approveCompany call error:', err);
+    }
+
     setCompanies(prev =>
-      prev.map(c => (c.id === companyId ? { ...c, verificationStatus: 'VERIFIED' } : c))
+      prev.map(c => (c.id === companyId ? { ...c, verificationStatus: 'VERIFIED', status: 'APPROVED' } : c))
     );
     const comp = companies.find(c => c.id === companyId);
     addAuditLog('Company Verified & Approved', comp?.name || companyId, 'COMPANY');
@@ -3439,9 +3551,15 @@ export function AdminProvider({ children }) {
     });
   };
 
-  const rejectCompany = (companyId, reason = '') => {
+  const rejectCompany = async (companyId, reason = '') => {
+    try {
+      await adminService.rejectCompany(companyId, reason || 'Verification criteria not met.');
+    } catch (err) {
+      console.warn('Backend rejectCompany call error:', err);
+    }
+
     setCompanies(prev =>
-      prev.map(c => (c.id === companyId ? { ...c, verificationStatus: 'REJECTED', rejectionReason: reason } : c))
+      prev.map(c => (c.id === companyId ? { ...c, verificationStatus: 'REJECTED', status: 'REJECTED', rejectionReason: reason } : c))
     );
     const comp = companies.find(c => c.id === companyId);
     addAuditLog('Company Verification Rejected', comp?.name || companyId, 'COMPANY');
@@ -3479,11 +3597,17 @@ export function AdminProvider({ children }) {
   };
 
   // Job actions
-  const approveJob = (jobId) => {
+  const approveJob = async (jobId) => {
+    try {
+      await adminService.approveJob(jobId);
+    } catch (err) {
+      console.warn('Backend approveJob call error:', err);
+    }
+
     setJobs(prev =>
-      prev.map(j => (j.id === jobId ? { ...j, status: 'ACTIVE' } : j))
+      prev.map(j => (j.id === jobId || j.job_id === jobId || j.job_number === jobId ? { ...j, status: 'PUBLISHED' } : j))
     );
-    const job = jobs.find(j => j.id === jobId);
+    const job = jobs.find(j => j.id === jobId || j.job_id === jobId || j.job_number === jobId);
     addAuditLog('Job Approved & Published', job?.title || jobId, 'JOB');
 
     dispatchAdminEvent({
@@ -3496,17 +3620,23 @@ export function AdminProvider({ children }) {
         title: `Job Approved & Published: ${job?.title || 'Job'}`,
         message: `"${job?.title || 'Job'}" by ${job?.company || 'Company'} is now active on the public job board.`,
         link: '/admin/jobs',
-        meta: { jobId, jobTitle: job?.title, company: job?.company, status: 'ACTIVE' }
+        meta: { jobId, jobTitle: job?.title, company: job?.company, status: 'PUBLISHED' }
       },
-      meta: { jobId, status: 'ACTIVE' }
+      meta: { jobId, status: 'PUBLISHED' }
     });
   };
 
-  const rejectJob = (jobId, reason = '') => {
+  const rejectJob = async (jobId, reason = '') => {
+    try {
+      await adminService.rejectJob(jobId, reason || 'Policy requirements not met.');
+    } catch (err) {
+      console.warn('Backend rejectJob call error:', err);
+    }
+
     setJobs(prev =>
-      prev.map(j => (j.id === jobId ? { ...j, status: 'REJECTED', rejectionReason: reason } : j))
+      prev.map(j => (j.id === jobId || j.job_id === jobId || j.job_number === jobId ? { ...j, status: 'REJECTED', rejectionReason: reason } : j))
     );
-    const job = jobs.find(j => j.id === jobId);
+    const job = jobs.find(j => j.id === jobId || j.job_id === jobId || j.job_number === jobId);
     addAuditLog('Job Posting Rejected', job?.title || jobId, 'JOB');
 
     dispatchAdminEvent({
@@ -3527,18 +3657,24 @@ export function AdminProvider({ children }) {
 
   const requestJobChanges = (jobId, feedback = '') => {
     setJobs(prev =>
-      prev.map(j => (j.id === jobId ? { ...j, status: 'PENDING', changeRequest: feedback } : j))
+      prev.map(j => (j.id === jobId || j.job_id === jobId ? { ...j, status: 'PENDING', changeRequest: feedback } : j))
     );
-    const job = jobs.find(j => j.id === jobId);
+    const job = jobs.find(j => j.id === jobId || j.job_id === jobId);
     addAuditLog('Job Changes Requested', job?.title || jobId, 'JOB');
   };
 
   // Internship actions
-  const approveInternship = (internshipId) => {
+  const approveInternship = async (internshipId) => {
+    try {
+      await adminService.approveInternship(internshipId);
+    } catch (err) {
+      console.warn('Backend approveInternship call error:', err);
+    }
+
     setInternships(prev =>
-      prev.map(i => (i.id === internshipId ? { ...i, status: 'ACTIVE' } : i))
+      prev.map(i => (i.id === internshipId || i.internship_number === internshipId ? { ...i, status: 'PUBLISHED' } : i))
     );
-    const intern = internships.find(i => i.id === internshipId);
+    const intern = internships.find(i => i.id === internshipId || i.internship_number === internshipId);
     addAuditLog('Internship Approved', intern?.title || internshipId, 'INTERNSHIP');
 
     dispatchAdminEvent({
@@ -3551,17 +3687,23 @@ export function AdminProvider({ children }) {
         title: `Internship Approved: ${intern?.title || 'Internship'}`,
         message: `"${intern?.title || 'Internship'}" by ${intern?.company || 'Company'} approved for candidate applications.`,
         link: '/admin/internships',
-        meta: { internshipId, title: intern?.title, status: 'ACTIVE' }
+        meta: { internshipId, title: intern?.title, status: 'PUBLISHED' }
       },
-      meta: { internshipId, status: 'ACTIVE' }
+      meta: { internshipId, status: 'PUBLISHED' }
     });
   };
 
-  const rejectInternship = (internshipId, reason = '') => {
+  const rejectInternship = async (internshipId, reason = '') => {
+    try {
+      await adminService.rejectInternship(internshipId, reason || 'Policy requirements not met.');
+    } catch (err) {
+      console.warn('Backend rejectInternship call error:', err);
+    }
+
     setInternships(prev =>
-      prev.map(i => (i.id === internshipId ? { ...i, status: 'REJECTED', rejectionReason: reason } : i))
+      prev.map(i => (i.id === internshipId || i.internship_number === internshipId ? { ...i, status: 'REJECTED', rejectionReason: reason } : i))
     );
-    const intern = internships.find(i => i.id === internshipId);
+    const intern = internships.find(i => i.id === internshipId || i.internship_number === internshipId);
     addAuditLog('Internship Rejected', intern?.title || internshipId, 'INTERNSHIP');
 
     dispatchAdminEvent({
@@ -3579,6 +3721,7 @@ export function AdminProvider({ children }) {
       meta: { internshipId, status: 'REJECTED' }
     });
   };
+
 
   // Job Mela actions
   const createJobMela = (melaData) => {

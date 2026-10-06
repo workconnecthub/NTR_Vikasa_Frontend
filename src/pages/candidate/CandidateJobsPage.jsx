@@ -1,9 +1,10 @@
-import { useState, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { useState, useMemo, useEffect, useCallback } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import {
   Search, MapPin, Briefcase, Banknote, Clock, Building2,
   Bookmark, BookmarkCheck, CheckCircle2, SlidersHorizontal,
-  RotateCcw, Sparkles, Filter, ChevronRight, Zap, ArrowRight
+  RotateCcw, Sparkles, Filter, ChevronRight, Zap, ArrowRight,
+  AlertCircle
 } from 'lucide-react';
 import Button from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
@@ -13,8 +14,8 @@ import Pagination from '../../components/ui/Pagination';
 import ApplyModal from '../../components/ui/ApplyModal';
 import { useCandidate } from '../../context/CandidateContext';
 import { useToast } from '../../context/ToastContext';
+import publicService from '../../services/publicService';
 import {
-  MOCK_JOBS,
   LOCATIONS,
   JOB_TYPES,
   WORK_MODES,
@@ -27,12 +28,34 @@ import { formatJobId } from '../../utils/applicationUtils';
 
 const POPULAR_SEARCHES = ['React Developer', 'Python FastAPI', 'Fullstack Engineer', 'Data Analyst', 'DevOps', 'UI/UX Designer'];
 
+function formatRelativeTime(dateStr) {
+  if (!dateStr) return 'Posted recently';
+  try {
+    const cleanStr = String(dateStr).replace(' ', 'T');
+    const date = new Date(cleanStr);
+    const now = new Date();
+    const diffMs = now - date;
+    if (isNaN(diffMs)) return 'Posted recently';
+    const diffHrs = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffHrs / 24);
+    if (diffDays > 30) return `Posted ${Math.floor(diffDays / 30)}mo ago`;
+    if (diffDays > 0) return `Posted ${diffDays}d ago`;
+    if (diffHrs > 0) return `Posted ${diffHrs}h ago`;
+    return 'Posted today';
+  } catch {
+    return 'Posted recently';
+  }
+}
+
 export default function CandidateJobsPage() {
   const { candidate, isJobSaved, saveJob, unsaveJob } = useCandidate();
   const { toast } = useToast();
+  const [searchParams] = useSearchParams();
 
   // Search & Filter State
-  const [search, setSearch] = useState('');
+  const initialCompany = searchParams.get('company') || searchParams.get('company_name') || searchParams.get('search') || '';
+  const [search, setSearch] = useState(initialCompany);
+
   const [location, setLocation] = useState('');
   const [experience, setExperience] = useState('');
   const [salary, setSalary] = useState('');
@@ -43,21 +66,97 @@ export default function CandidateJobsPage() {
   const [sortBy, setSortBy] = useState('relevance');
   const [page, setPage] = useState(1);
 
+  // Backend Data State
+  const [jobs, setJobs] = useState([]);
+  const [totalJobs, setTotalJobs] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
+
   // Apply Modal state
   const [applyModalOpen, setApplyModalOpen] = useState(false);
   const [selectedJobForApply, setSelectedJobForApply] = useState(null);
+
+  const PER_PAGE = 9;
+
+  // Real Backend Fetch
+  const fetchJobs = useCallback(async () => {
+    setIsLoading(true);
+    setLoadError(null);
+    try {
+      const res = await publicService.getPublishedJobs({
+        search: search.trim() || undefined,
+        location: location && location !== 'All Locations' ? location : undefined,
+        experience_level: experience && experience !== 'All Experience' ? experience : undefined,
+        salary_range: salary && salary !== 'All Salaries' ? salary : undefined,
+        employment_type: jobType && jobType !== 'All Types' ? jobType : undefined,
+        work_mode: workMode && workMode !== 'All Modes' ? workMode : undefined,
+        industry_sector: industry && industry !== 'All Industries' ? industry : undefined,
+        required_skill: selectedSkill && selectedSkill !== 'All Skills' ? selectedSkill : undefined,
+        sort: sortBy,
+        page,
+        page_size: PER_PAGE,
+      });
+
+      const fetchedItems = res?.items || [];
+      setJobs(fetchedItems);
+      setTotalJobs(res?.total ?? fetchedItems.length);
+      const calcPages = res?.total_pages ?? (Math.ceil((res?.total || fetchedItems.length) / PER_PAGE) || 1);
+      setTotalPages(calcPages);
+    } catch (err) {
+      console.error('Error loading published jobs:', err);
+      setLoadError('Failed to load published jobs from the database.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [search, location, experience, salary, jobType, workMode, industry, selectedSkill, sortBy, page]);
+
+  useEffect(() => {
+    fetchJobs();
+  }, [fetchJobs]);
+
+  useEffect(() => {
+    const q = searchParams.get('company') || searchParams.get('company_name') || searchParams.get('search');
+    if (q) {
+      setSearch(q);
+      setPage(1);
+    }
+  }, [searchParams]);
+
 
   const handleOpenApply = (job) => {
     setSelectedJobForApply(job);
     setApplyModalOpen(true);
   };
 
-  const handleToggleSave = (jobId) => {
-    if (isJobSaved(jobId)) {
+  const handleAppliedSuccess = (appliedJob) => {
+    setJobs((prev) =>
+      prev.map((j) =>
+        j.id === appliedJob.id || j.job_id === appliedJob.job_id || j.job_number === appliedJob.job_number
+          ? { ...j, has_applied: true }
+          : j
+      )
+    );
+  };
+
+  const handleToggleSave = (job) => {
+    const jobId = job.job_id || job.id;
+    const isCurrentlySaved = isJobSaved(jobId) || job.is_saved;
+    if (isCurrentlySaved) {
       unsaveJob(jobId);
+      setJobs((prev) =>
+        prev.map((j) =>
+          j.id === job.id || j.job_id === jobId ? { ...j, is_saved: false } : j
+        )
+      );
       toast({ type: 'info', title: 'Removed from Saved', message: 'Job has been removed from your saved list.' });
     } else {
-      saveJob(jobId);
+      saveJob(jobId, job);
+      setJobs((prev) =>
+        prev.map((j) =>
+          j.id === job.id || j.job_id === jobId ? { ...j, is_saved: true } : j
+        )
+      );
       toast({ type: 'success', title: 'Job Saved', message: 'Job bookmarked to your Saved Jobs workspace.' });
     }
   };
@@ -74,87 +173,6 @@ export default function CandidateJobsPage() {
     setSortBy('relevance');
     setPage(1);
   };
-
-  // Filter & Sort Logic
-  const filteredJobs = useMemo(() => {
-    let result = MOCK_JOBS.filter((job) => {
-      // 1. Search Query
-      if (search.trim()) {
-        const q = search.toLowerCase();
-        const matchTitle = job.title.toLowerCase().includes(q);
-        const matchComp = job.company.toLowerCase().includes(q);
-        const matchSkills = job.tags?.some(tag => tag.toLowerCase().includes(q)) ||
-                            job.requirements?.some(r => r.toLowerCase().includes(q));
-        if (!matchTitle && !matchComp && !matchSkills) return false;
-      }
-
-      // 2. Location
-      if (location && location !== 'All Locations') {
-        if (!job.location.toLowerCase().includes(location.toLowerCase())) return false;
-      }
-
-      // 3. Experience
-      if (experience && experience !== 'All Experience') {
-        if (experience.includes('Fresher') && !job.experience.toLowerCase().includes('0') && !job.experience.toLowerCase().includes('1')) return false;
-        if (experience.includes('1-3') && !job.experience.includes('1') && !job.experience.includes('2') && !job.experience.includes('3')) return false;
-        if (experience.includes('3-5') && !job.experience.includes('3') && !job.experience.includes('4') && !job.experience.includes('5')) return false;
-        if (experience.includes('5-8') && !job.experience.includes('5') && !job.experience.includes('6') && !job.experience.includes('7') && !job.experience.includes('8')) return false;
-      }
-
-      // 4. Job Type
-      if (jobType && jobType !== 'All Types') {
-        if (job.type.toLowerCase() !== jobType.toLowerCase()) return false;
-      }
-
-      // 5. Work Mode
-      if (workMode && workMode !== 'All Modes') {
-        if (job.mode.toLowerCase() !== workMode.toLowerCase()) return false;
-      }
-
-      // 6. Industry
-      if (industry && industry !== 'All Industries') {
-        if (job.industry?.toLowerCase() !== industry.toLowerCase()) return false;
-      }
-
-      // 7. Skill
-      if (selectedSkill && selectedSkill !== 'All Skills') {
-        if (!job.tags?.some(t => t.toLowerCase() === selectedSkill.toLowerCase())) return false;
-      }
-
-      return true;
-    });
-
-    // Calculate match score based on candidate's skills
-    result = result.map((job) => {
-      const candidateSkills = candidate.skillsPreferences.skills.map(s => s.toLowerCase());
-      const jobTags = (job.tags || []).map(t => t.toLowerCase());
-      const matches = jobTags.filter(t => candidateSkills.some(cs => cs.includes(t) || t.includes(cs)));
-      let matchScore = 85;
-      if (matches.length >= 3) matchScore = 96;
-      else if (matches.length === 2) matchScore = 92;
-      else if (matches.length === 1) matchScore = 88;
-      return { ...job, matchScore };
-    });
-
-    // Sorting
-    if (sortBy === 'salaryHigh') {
-      result.sort((a, b) => (b.salaryMin || 10) - (a.salaryMin || 10));
-    } else if (sortBy === 'salaryLow') {
-      result.sort((a, b) => (a.salaryMin || 10) - (b.salaryMin || 10));
-    } else if (sortBy === 'latest') {
-      result.sort((a, b) => new Date(b.createdAt || '2026-09-01') - new Date(a.createdAt || '2026-09-01'));
-    } else {
-      // Relevance (match score)
-      result.sort((a, b) => b.matchScore - a.matchScore);
-    }
-
-    return result;
-  }, [search, location, experience, jobType, workMode, industry, selectedSkill, sortBy, candidate]);
-
-  // EXACTLY 9 jobs per page
-  const PER_PAGE = 9;
-  const totalPages = Math.ceil(filteredJobs.length / PER_PAGE);
-  const paginatedJobs = filteredJobs.slice((page - 1) * PER_PAGE, page * PER_PAGE);
 
   const activeFiltersCount = [
     location && location !== 'All Locations',
@@ -326,7 +344,10 @@ export default function CandidateJobsPage() {
             </div>
 
             {/* Search Inputs */}
-            <div className="candidate-search-grid">
+            <form
+              onSubmit={(e) => { e.preventDefault(); setPage(1); fetchJobs(); }}
+              className="candidate-search-grid"
+            >
               <div className="input-wrapper" style={{ background: '#fff', borderRadius: 'var(--radius-md)' }}>
                 <span className="input-icon-left"><Search size={15} style={{ color: 'var(--color-primary-600)' }} /></span>
                 <input
@@ -349,10 +370,14 @@ export default function CandidateJobsPage() {
                 </select>
               </div>
 
-              <Button variant="primary" style={{ background: 'var(--color-primary-500)', borderColor: 'var(--color-primary-400)', height: '36px', fontSize: '0.85rem', padding: '0 1rem' }}>
+              <Button
+                type="submit"
+                variant="primary"
+                style={{ background: 'var(--color-primary-500)', borderColor: 'var(--color-primary-400)', height: '36px', fontSize: '0.85rem', padding: '0 1rem' }}
+              >
                 Search
               </Button>
-            </div>
+            </form>
 
             {/* Popular Search Tags */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap', marginTop: '0.45rem', fontSize: '0.72rem', maxWidth: '100%' }}>
@@ -382,7 +407,7 @@ export default function CandidateJobsPage() {
           <div className="candidate-results-header">
             <div>
               <h2 style={{ fontSize: 'var(--text-base)', fontWeight: 800, margin: 0 }}>
-                {filteredJobs.length} Jobs Found
+                {totalJobs} Jobs Found
               </h2>
               <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', margin: 0 }}>
                 Showing page {page} of {totalPages || 1} • Sorted by best match for your profile
@@ -395,7 +420,7 @@ export default function CandidateJobsPage() {
                 className="select"
                 style={{ padding: '6px 12px', fontSize: 'var(--text-xs)', width: 'auto', height: '34px' }}
                 value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
+                onChange={(e) => { setSortBy(e.target.value); setPage(1); }}
               >
                 <option value="relevance">Relevance / Best Match</option>
                 <option value="latest">Latest Posted</option>
@@ -405,8 +430,57 @@ export default function CandidateJobsPage() {
             </div>
           </div>
 
-          {/* Jobs List (EXACTLY 3 Cards Per Row in Desktop Grid) */}
-          {filteredJobs.length === 0 ? (
+          {/* Error Message */}
+          {loadError && (
+            <div className="card" style={{ borderRadius: 'var(--radius-xl)', padding: '1rem', border: '1px solid var(--color-danger-200)', background: 'var(--color-danger-50)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--color-danger-700)', fontSize: '0.85rem' }}>
+                <AlertCircle size={16} />
+                <span>{loadError}</span>
+              </div>
+              <Button size="sm" variant="outline" onClick={fetchJobs} style={{ height: '30px', fontSize: '0.75rem' }}>
+                Retry
+              </Button>
+            </div>
+          )}
+
+          {/* Loading Skeleton State */}
+          {isLoading ? (
+            <div className="recruiter-jobs-grid">
+              {[1, 2, 3, 4, 5, 6].map((sk) => (
+                <div
+                  key={sk}
+                  className="card recruiter-job-card"
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between',
+                    padding: '1rem',
+                    gap: '0.65rem',
+                    borderRadius: 'var(--radius-xl)',
+                    border: '1px solid var(--color-gray-200)',
+                    background: '#fff',
+                    minHeight: '260px'
+                  }}
+                >
+                  <div>
+                    <div style={{ display: 'flex', gap: '0.55rem', alignItems: 'center', marginBottom: '0.8rem' }}>
+                      <div style={{ width: 36, height: 36, borderRadius: 'var(--radius-lg)', background: 'var(--color-gray-200)', animation: 'pulse 1.5s infinite' }} />
+                      <div style={{ flex: 1 }}>
+                        <div style={{ height: 14, width: '70%', background: 'var(--color-gray-200)', borderRadius: 4, marginBottom: 6, animation: 'pulse 1.5s infinite' }} />
+                        <div style={{ height: 10, width: '40%', background: 'var(--color-gray-100)', borderRadius: 4, animation: 'pulse 1.5s infinite' }} />
+                      </div>
+                    </div>
+                    <div style={{ height: 26, background: 'var(--color-gray-100)', borderRadius: 6, marginBottom: '0.6rem', animation: 'pulse 1.5s infinite' }} />
+                    <div style={{ height: 12, width: '80%', background: 'var(--color-gray-100)', borderRadius: 4, marginBottom: 4, animation: 'pulse 1.5s infinite' }} />
+                    <div style={{ height: 12, width: '60%', background: 'var(--color-gray-100)', borderRadius: 4, animation: 'pulse 1.5s infinite' }} />
+                  </div>
+                  <div style={{ borderTop: '1px solid var(--color-gray-100)', paddingTop: '0.5rem' }}>
+                    <div style={{ height: 28, background: 'var(--color-gray-200)', borderRadius: 6, animation: 'pulse 1.5s infinite' }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : jobs.length === 0 ? (
             <div className="card" style={{ borderRadius: 'var(--radius-xl)', padding: 'var(--space-10)' }}>
               <EmptyState
                 icon="default"
@@ -417,8 +491,17 @@ export default function CandidateJobsPage() {
             </div>
           ) : (
             <div className="recruiter-jobs-grid">
-              {paginatedJobs.map((job) => {
-                const isSaved = isJobSaved(job.id);
+              {jobs.map((job) => {
+                const jobId = job.job_id || job.id;
+                const isSaved = isJobSaved(jobId) || job.is_saved;
+                const companyName = job.company_name || job.company?.name || job.company || 'Employer';
+                const companyInitial = companyName?.[0]?.toUpperCase() || 'C';
+                const formattedId = formatJobId(job.job_number || job.job_id || job.id);
+                const displaySalary = job.salary || (job.salary_min && job.salary_max ? `₹${job.salary_min >= 100000 ? (job.salary_min / 100000) : job.salary_min} - ₹${job.salary_max >= 100000 ? (job.salary_max / 100000) : job.salary_max} LPA` : 'Competitive');
+                const displayType = job.employment_type || job.job_type || job.type || 'Full-time';
+                const displayMode = job.work_mode || job.workMode || job.mode || 'Hybrid';
+                const skillsList = job.skills || job.tags || [];
+
                 return (
                   <div
                     key={job.id}
@@ -453,11 +536,11 @@ export default function CandidateJobsPage() {
                             justifyContent: 'center',
                             flexShrink: 0
                           }}>
-                            {job.company?.[0] || 'C'}
+                            {companyInitial}
                           </div>
                           <div style={{ minWidth: 0 }}>
                             <Link
-                              to={`/candidate/jobs/${job.id}`}
+                              to={`/candidate/jobs/${job.job_id || job.id}`}
                               style={{ textDecoration: 'none', color: 'inherit' }}
                             >
                               <h3
@@ -478,7 +561,7 @@ export default function CandidateJobsPage() {
                             </Link>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginTop: 2 }}>
                               <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-primary-600)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                {job.company}
+                                {companyName}
                               </span>
                               <CheckCircle2 size={11} style={{ color: 'var(--color-success-600)', flexShrink: 0 }} />
                             </div>
@@ -487,7 +570,7 @@ export default function CandidateJobsPage() {
 
                         <button
                           type="button"
-                          onClick={() => handleToggleSave(job.id)}
+                          onClick={() => handleToggleSave(job)}
                           style={{
                             background: isSaved ? 'var(--color-primary-50)' : 'transparent',
                             border: isSaved ? '1px solid var(--color-primary-200)' : '1px solid var(--color-gray-200)',
@@ -532,28 +615,28 @@ export default function CandidateJobsPage() {
                             padding: '0.08rem 0.35rem',
                             borderRadius: '4px'
                           }}>
-                            {formatJobId(job.id)}
+                            {formattedId}
                           </span>
                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>
                             <CheckCircle2 size={11} style={{ color: 'var(--color-success-600)' }} /> Verified Employer
                           </span>
                         </div>
-                        {job.matchScore && (
+                        {job.match_score && (
                           <span style={{
                             display: 'inline-flex',
                             alignItems: 'center',
                             gap: 2,
-                            background: job.matchScore >= 90 ? '#ecfdf5' : '#eef2ff',
-                            color: job.matchScore >= 90 ? '#059669' : 'var(--color-primary-700)',
+                            background: job.match_score >= 90 ? '#ecfdf5' : '#eef2ff',
+                            color: job.match_score >= 90 ? '#059669' : 'var(--color-primary-700)',
                             fontSize: '0.68rem',
                             fontWeight: 700,
                             padding: '0.08rem 0.35rem',
                             borderRadius: '10px',
-                            border: `1px solid ${job.matchScore >= 90 ? '#a7f3d0' : '#c7d2fe'}`,
+                            border: `1px solid ${job.match_score >= 90 ? '#a7f3d0' : '#c7d2fe'}`,
                             flexShrink: 0
                           }}>
                             <Zap size={10} fill="currentColor" />
-                            {job.matchScore}% Match
+                            {job.match_score}% Match
                           </span>
                         )}
                       </div>
@@ -567,26 +650,26 @@ export default function CandidateJobsPage() {
                           </span>
                           <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontWeight: 700, color: 'var(--color-gray-800)', flexShrink: 0 }}>
                             <Banknote size={12} style={{ color: 'var(--color-gray-400)', flexShrink: 0 }} />
-                            <span>{job.salary}</span>
+                            <span>{displaySalary}</span>
                           </span>
                         </div>
 
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.35rem', flexWrap: 'wrap', color: 'var(--color-gray-500)', fontSize: '0.72rem' }}>
                           <span style={{ display: 'flex', alignItems: 'center', gap: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             <Clock size={12} style={{ color: 'var(--color-gray-400)', flexShrink: 0 }} />
-                            <span>{job.experience}</span>
+                            <span>{job.experience || job.experience_level}</span>
                           </span>
                           <span style={{ display: 'flex', alignItems: 'center', gap: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flexShrink: 0 }}>
                             <Briefcase size={12} style={{ color: 'var(--color-gray-400)', flexShrink: 0 }} />
-                            <span>{job.type} ({job.mode})</span>
+                            <span>{displayType} ({displayMode})</span>
                           </span>
                         </div>
                       </div>
 
                       {/* Skills Tags */}
-                      {job.tags && job.tags.length > 0 && (
+                      {skillsList && skillsList.length > 0 && (
                         <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap', alignItems: 'center', marginTop: '0.4rem', minHeight: '20px' }}>
-                          {job.tags.slice(0, 3).map((skill, idx) => (
+                          {skillsList.slice(0, 3).map((skill, idx) => (
                             <span
                               key={idx}
                               style={{
@@ -601,9 +684,9 @@ export default function CandidateJobsPage() {
                               {skill}
                             </span>
                           ))}
-                          {job.tags.length > 3 && (
+                          {skillsList.length > 3 && (
                             <span style={{ fontSize: '0.65rem', color: 'var(--color-gray-500)', fontWeight: 500 }}>
-                              +{job.tags.length - 3}
+                              +{skillsList.length - 3}
                             </span>
                           )}
                         </div>
@@ -618,23 +701,47 @@ export default function CandidateJobsPage() {
                     }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
                         <span style={{ fontSize: '0.7rem', color: 'var(--color-gray-500)' }}>
-                          Posted 2d ago • Active hiring
+                          {formatRelativeTime(job.posted_at || job.created_at)} • Active hiring
                         </span>
                       </div>
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr', gap: '0.35rem' }}>
-                        <Link to={`/candidate/jobs/${job.id}`} style={{ textDecoration: 'none' }}>
+                        <Link to={`/candidate/jobs/${job.job_id || job.id}`} style={{ textDecoration: 'none' }}>
                           <Button size="sm" variant="outline" style={{ width: '100%', fontSize: '0.75rem', padding: '0.25rem 0.4rem', height: '30px' }}>
                             View Job
                           </Button>
                         </Link>
-                        <Button
-                          size="sm"
-                          variant="primary"
-                          onClick={() => handleOpenApply(job)}
-                          style={{ width: '100%', fontSize: '0.75rem', padding: '0.25rem 0.4rem', height: '30px' }}
-                        >
-                          Apply Now
-                        </Button>
+                        {job.has_applied ? (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled
+                            style={{
+                              width: '100%',
+                              fontSize: '0.75rem',
+                              padding: '0.25rem 0.4rem',
+                              height: '30px',
+                              background: '#ecfdf5',
+                              color: '#059669',
+                              borderColor: '#a7f3d0',
+                              cursor: 'default',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '4px'
+                            }}
+                          >
+                            <CheckCircle2 size={12} /> Applied
+                          </Button>
+                        ) : (
+                          <Button
+                            size="sm"
+                            variant="primary"
+                            onClick={() => handleOpenApply(job)}
+                            style={{ width: '100%', fontSize: '0.75rem', padding: '0.25rem 0.4rem', height: '30px' }}
+                          >
+                            Apply Now
+                          </Button>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -643,13 +750,13 @@ export default function CandidateJobsPage() {
             </div>
           )}
 
-          {/* Pagination (9 jobs per page) */}
+          {/* Pagination */}
           {totalPages > 1 && (
             <div style={{ marginTop: 'var(--space-6)' }}>
               <Pagination
                 currentPage={page}
                 totalPages={totalPages}
-                totalItems={filteredJobs.length}
+                totalItems={totalJobs}
                 pageSize={PER_PAGE}
                 onPageChange={handlePageChange}
               />
@@ -664,9 +771,9 @@ export default function CandidateJobsPage() {
           isOpen={applyModalOpen}
           onClose={() => setApplyModalOpen(false)}
           job={selectedJobForApply}
+          onAppliedSuccess={handleAppliedSuccess}
         />
       )}
     </div>
   );
 }
-

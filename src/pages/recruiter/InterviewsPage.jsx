@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import {
   CalendarCheck, Clock, Video, Phone, Building2, User,
@@ -18,6 +18,7 @@ import ExportDropdown from '../../components/ui/ExportDropdown';
 import { exportToExcel, exportToPDF, getExportFilename } from '../../utils/exportUtils';
 import { useRecruiter } from '../../context/RecruiterContext';
 import { useToast } from '../../context/ToastContext';
+import recruiterInterviewService from '../../services/recruiterInterviewService';
 
 const PAGE_SIZE = 9;
 
@@ -35,10 +36,41 @@ export default function RecruiterInterviewsPage() {
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [currentPage, setCurrentPage] = useState(1);
 
+  // Backend API Integration States
+  const [apiInterviews, setApiInterviews] = useState([]);
+  const [apiTabCounts, setApiTabCounts] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+
   // Reset to page 1 whenever filters change
   useEffect(() => {
     setCurrentPage(1);
   }, [search, statusFilter]);
+
+  // Fetch interviews from backend API
+  const fetchInterviews = useCallback(async () => {
+    try {
+      setLoading(true);
+      const res = await recruiterInterviewService.getInterviews({
+        status: statusFilter,
+        search: search,
+      });
+      if (res && res.items) {
+        setApiInterviews(res.items);
+        if (res.tab_counts) {
+          setApiTabCounts(res.tab_counts);
+        }
+      }
+    } catch (err) {
+      console.warn('Backend interview fetch failed, using context data:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [statusFilter, search]);
+
+  useEffect(() => {
+    fetchInterviews();
+  }, [fetchInterviews]);
 
   // Reschedule Modal
   const [rescheduleTarget, setRescheduleTarget] = useState(null);
@@ -61,25 +93,44 @@ export default function RecruiterInterviewsPage() {
     notes: 'Technical discussion & evaluation.',
   });
 
-  const interviews = recruiter?.interviews || [];
   const jobs = recruiter?.jobs || [];
 
-  const tabCounts = useMemo(() => ({
-    all: interviews.length,
-    scheduled: interviews.filter(i => i.status === 'SCHEDULED').length,
-    completed: interviews.filter(i => i.status === 'COMPLETED').length,
-    rescheduled: interviews.filter(i => i.status === 'RESCHEDULED').length,
-    cancelled: interviews.filter(i => i.status === 'CANCELLED').length,
-  }), [interviews]);
+  // Use backend data if available, with resilient fallback to recruiter context
+  const interviews = useMemo(() => {
+    if (apiInterviews.length > 0 || !loading) {
+      return apiInterviews;
+    }
+    return recruiter?.interviews || [];
+  }, [apiInterviews, loading, recruiter?.interviews]);
+
+  const tabCounts = useMemo(() => {
+    if (apiTabCounts) {
+      return {
+        all: apiTabCounts.all ?? 0,
+        scheduled: apiTabCounts.scheduled ?? 0,
+        completed: apiTabCounts.completed ?? 0,
+        rescheduled: apiTabCounts.rescheduled ?? 0,
+        cancelled: apiTabCounts.cancelled ?? 0,
+      };
+    }
+    const list = interviews;
+    return {
+      all: list.length,
+      scheduled: list.filter(i => i.status === 'SCHEDULED').length,
+      completed: list.filter(i => i.status === 'COMPLETED').length,
+      rescheduled: list.filter(i => i.status === 'RESCHEDULED').length,
+      cancelled: list.filter(i => i.status === 'CANCELLED').length,
+    };
+  }, [apiTabCounts, interviews]);
 
   const filteredInterviews = useMemo(() => {
     return interviews.filter((item) => {
       if (statusFilter !== 'ALL' && item.status !== statusFilter) return false;
       if (search.trim()) {
         const q = search.toLowerCase();
-        const matchName = item.candidateName?.toLowerCase().includes(q);
-        const matchJob = item.jobTitle?.toLowerCase().includes(q);
-        const matchInterviewer = item.interviewer?.toLowerCase().includes(q);
+        const matchName = (item.candidateName || item.candidate_name)?.toLowerCase().includes(q);
+        const matchJob = (item.jobTitle || item.job_title)?.toLowerCase().includes(q);
+        const matchInterviewer = (item.interviewer || '')?.toLowerCase().includes(q);
         if (!matchName && !matchJob && !matchInterviewer) return false;
       }
       return true;
@@ -96,58 +147,142 @@ export default function RecruiterInterviewsPage() {
   const handleOpenReschedule = (item) => {
     setRescheduleTarget(item);
     setRescheduleForm({
-      date: item.date || '',
-      time: item.time || '',
-      notes: item.notes || ''
+      date: item.scheduled_date || item.date || '',
+      time: item.start_time || item.time || '',
+      notes: item.agenda_notes || item.notes || ''
     });
   };
 
-  const handleConfirmReschedule = (e) => {
+  const handleConfirmReschedule = async (e) => {
     e.preventDefault();
     if (!rescheduleTarget) return;
-    rescheduleInterview(rescheduleTarget.id, rescheduleForm.date, rescheduleForm.time, rescheduleForm.notes);
-    addToast(`Interview with ${rescheduleTarget.candidateName} rescheduled to ${rescheduleForm.date} at ${rescheduleForm.time}.`, 'success');
-    setRescheduleTarget(null);
+    try {
+      setSubmitting(true);
+      await recruiterInterviewService.rescheduleInterview(rescheduleTarget.id, {
+        scheduled_date: rescheduleForm.date,
+        start_time: rescheduleForm.time,
+        agenda_notes: rescheduleForm.notes,
+        date: rescheduleForm.date,
+        time: rescheduleForm.time,
+        notes: rescheduleForm.notes,
+      });
+
+      // Also notify local context if available
+      if (typeof rescheduleInterview === 'function') {
+        rescheduleInterview(rescheduleTarget.id, rescheduleForm.date, rescheduleForm.time, rescheduleForm.notes);
+      }
+
+      addToast(`Interview with ${rescheduleTarget.candidateName || rescheduleTarget.candidate_name} rescheduled to ${rescheduleForm.date} at ${rescheduleForm.time}.`, 'success');
+      setRescheduleTarget(null);
+      await fetchInterviews();
+    } catch (err) {
+      addToast(err.message || 'Failed to reschedule interview.', 'error');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  const handleConfirmCancel = () => {
+  const handleConfirmCancel = async () => {
     if (!cancelTarget) return;
-    cancelInterview(cancelTarget.id);
-    addToast(`Interview with ${cancelTarget.candidateName} has been cancelled.`, 'info');
-    setCancelTarget(null);
+    try {
+      setSubmitting(true);
+      await recruiterInterviewService.cancelInterview(cancelTarget.id, 'Candidate requested cancellation');
+
+      if (typeof cancelInterview === 'function') {
+        cancelInterview(cancelTarget.id);
+      }
+
+      addToast(`Interview with ${cancelTarget.candidateName || cancelTarget.candidate_name} has been cancelled.`, 'info');
+      setCancelTarget(null);
+      await fetchInterviews();
+    } catch (err) {
+      addToast(err.message || 'Failed to cancel interview.', 'error');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  const handleMarkCompleted = (item) => {
-    updateInterviewStatus(item.id, 'COMPLETED');
-    addToast(`Interview with ${item.candidateName} marked as Completed.`, 'success');
+  const handleMarkCompleted = async (item) => {
+    try {
+      await recruiterInterviewService.completeInterview(item.id, 'Interview completed with positive assessment.');
+
+      if (typeof updateInterviewStatus === 'function') {
+        updateInterviewStatus(item.id, 'COMPLETED');
+      }
+
+      addToast(`Interview with ${item.candidateName || item.candidate_name} marked as Completed.`, 'success');
+      await fetchInterviews();
+    } catch (err) {
+      addToast(err.message || 'Failed to complete interview.', 'error');
+    }
   };
 
-  const handleCreateNewInterview = (e) => {
+  const handleCreateNewInterview = async (e) => {
     e.preventDefault();
     if (!newForm.candidateName.trim() || !newForm.jobTitle.trim()) {
       addToast('Please fill all required interview details.', 'error');
       return;
     }
 
-    scheduleInterview({
-      ...newForm,
-      jobId: jobs.find(j => j.title === newForm.jobTitle)?.id || 'job-custom',
-    });
+    try {
+      setSubmitting(true);
 
-    addToast(`Interview scheduled with ${newForm.candidateName}!`, 'success');
-    setIsNewModalOpen(false);
-    setNewForm({
-      candidateName: '',
-      candidateEmail: '',
-      jobTitle: '',
-      date: '2026-09-10',
-      time: '14:00',
-      type: 'Online (Google Meet)',
-      interviewer: recruiter?.name || 'Recruiter Lead',
-      meetingLink: 'https://meet.google.com/ntr-round',
-      notes: 'Technical evaluation round.',
-    });
+      // Locate matching application from recruiter's applications
+      const matchingApp = recruiter?.applications?.find(
+        a => (a.candidateName?.toLowerCase() === newForm.candidateName.toLowerCase() ||
+              a.candidateEmail?.toLowerCase() === newForm.candidateEmail?.toLowerCase()) &&
+             (a.jobTitle === newForm.jobTitle || a.jobId === newForm.jobId)
+      );
+
+      const payload = {
+        application_id: matchingApp?.id || 'NTR-APP-501',
+        candidate_name: newForm.candidateName.trim(),
+        candidate_email: newForm.candidateEmail?.trim() || undefined,
+        job_title: newForm.jobTitle.trim(),
+        scheduled_date: newForm.date,
+        date: newForm.date,
+        start_time: newForm.time,
+        time: newForm.time,
+        format: newForm.type?.includes('Online') ? 'ONLINE' : 'OFFLINE',
+        type: newForm.type,
+        meeting_link: newForm.meetingLink || undefined,
+        interviewer: newForm.interviewer || undefined,
+        interviewer_panel: newForm.interviewer ? [newForm.interviewer] : undefined,
+        agenda_notes: newForm.notes || undefined,
+        notes: newForm.notes || undefined,
+      };
+
+      await recruiterInterviewService.scheduleInterview(payload);
+
+      // Also notify context if available
+      if (typeof scheduleInterview === 'function') {
+        scheduleInterview({
+          ...newForm,
+          jobId: jobs.find(j => j.title === newForm.jobTitle)?.id || 'job-custom',
+        });
+      }
+
+      addToast(`Interview scheduled with ${newForm.candidateName}!`, 'success');
+      setIsNewModalOpen(false);
+      setNewForm({
+        candidateName: '',
+        candidateEmail: '',
+        jobTitle: '',
+        date: '2026-09-10',
+        time: '14:00',
+        type: 'Online (Google Meet)',
+        interviewer: recruiter?.name || 'Recruiter Lead',
+        meetingLink: 'https://meet.google.com/ntr-round',
+        notes: 'Technical evaluation round.',
+      });
+      await fetchInterviews();
+    } catch (err) {
+      addToast(err.message || 'Failed to schedule interview.', 'error');
+    } finally {
+      setSubmitting(false);
+    }
   };
+
 
   const handleExportExcel = () => {
     if (filteredInterviews.length === 0) {
@@ -591,8 +726,8 @@ export default function RecruiterInterviewsPage() {
               <Button variant="outline" type="button" onClick={() => setRescheduleTarget(null)}>
                 Cancel
               </Button>
-              <Button variant="primary" type="submit">
-                Confirm Reschedule
+              <Button variant="primary" type="submit" disabled={submitting}>
+                {submitting ? 'Rescheduling...' : 'Confirm Reschedule'}
               </Button>
             </div>
           </form>
@@ -606,8 +741,8 @@ export default function RecruiterInterviewsPage() {
           onClose={() => setCancelTarget(null)}
           onConfirm={handleConfirmCancel}
           title="Cancel Interview?"
-          message={`Are you sure you want to cancel the interview with ${cancelTarget.candidateName} for the ${cancelTarget.jobTitle} role?`}
-          confirmText="Yes, Cancel Interview"
+          message={`Are you sure you want to cancel the interview with ${cancelTarget.candidateName || cancelTarget.candidate_name} for the ${cancelTarget.jobTitle || cancelTarget.job_title} role?`}
+          confirmText={submitting ? "Cancelling..." : "Yes, Cancel Interview"}
           variant="danger"
         />
       )}
@@ -715,13 +850,14 @@ export default function RecruiterInterviewsPage() {
               <Button variant="outline" type="button" onClick={() => setIsNewModalOpen(false)}>
                 Cancel
               </Button>
-              <Button variant="primary" type="submit" icon={<CalendarCheck size={16} />}>
-                Confirm & Send Invite
+              <Button variant="primary" type="submit" icon={<CalendarCheck size={16} />} disabled={submitting}>
+                {submitting ? 'Scheduling...' : 'Confirm & Send Invite'}
               </Button>
             </div>
           </form>
         </Modal>
       )}
+
     </div>
   );
 }

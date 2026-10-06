@@ -1,9 +1,9 @@
-import { useState, useMemo } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  Search, MapPin, Briefcase, Banknote, Clock, Building2,
-  GraduationCap, SlidersHorizontal, RotateCcw, CheckCircle2, Bookmark, BookmarkCheck,
-  Filter, Zap
+  Search, MapPin, Briefcase, Banknote, Clock,
+  GraduationCap, RotateCcw, CheckCircle2, Bookmark, BookmarkCheck,
+  Filter, Loader2
 } from 'lucide-react';
 import Button from '../../components/ui/Button';
 import Select from '../../components/ui/Select';
@@ -13,7 +13,6 @@ import ApplyModal from '../../components/ui/ApplyModal';
 import { useCandidate } from '../../context/CandidateContext';
 import { useToast } from '../../context/ToastContext';
 import {
-  MOCK_INTERNSHIPS,
   LOCATIONS,
   WORK_MODES,
   STIPEND_RANGES,
@@ -21,27 +20,128 @@ import {
   SKILL_OPTIONS
 } from '../../data/mockData';
 import { formatInternshipId } from '../../utils/applicationUtils';
+import publicService from '../../services/publicService';
+
+// ── Stipend range string -> { min, max } ────────────────────────────────────
+function parseStipenRange(rangeStr) {
+  if (!rangeStr || rangeStr === 'All Stipends') return { min: null, max: null };
+  if (rangeStr.includes('Unpaid')) return { min: 0, max: 0 };
+  // e.g. "₹5,000 - ₹10,000 / mo"
+  const nums = rangeStr.replace(/[₹,\s]/g, '').match(/\d+/g);
+  if (!nums) return { min: null, max: null };
+  if (rangeStr.includes('+')) return { min: parseInt(nums[0], 10), max: null };
+  return { min: parseInt(nums[0], 10), max: parseInt(nums[1], 10) };
+}
+
+const PER_PAGE = 9;
 
 export default function CandidateInternshipsPage() {
   const { isJobSaved, saveJob, unsaveJob } = useCandidate();
   const { toast } = useToast();
 
+  // ── Filters (server-side) ──────────────────────────────────────────────────
   const [search, setSearch] = useState('');
   const [location, setLocation] = useState('');
   const [workMode, setWorkMode] = useState('');
   const [stipendRange, setStipendRange] = useState('');
   const [duration, setDuration] = useState('');
-  const [selectedSkill, setSelectedSkill] = useState('');
   const [sortBy, setSortBy] = useState('latest');
   const [page, setPage] = useState(1);
 
+  // ── API state ──────────────────────────────────────────────────────────────
+  const [internships, setInternships] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // ── Apply modal ────────────────────────────────────────────────────────────
   const [applyModalOpen, setApplyModalOpen] = useState(false);
   const [selectedInternshipForApply, setSelectedInternshipForApply] = useState(null);
 
+  const searchInputRef = useRef(null);
+  const resultsRef = useRef(null);
+
+  // ── Fetch from backend ─────────────────────────────────────────────────────
+  const fetchInternships = useCallback(async (resetPage = false) => {
+    const targetPage = resetPage ? 1 : page;
+    if (resetPage) setPage(1);
+
+    setLoading(true);
+    setError(null);
+
+    const { min: stipendMin, max: stipendMax } = parseStipenRange(stipendRange);
+
+    // Map sortBy UI values to backend sort values
+    const sortMap = {
+      latest: 'latest',
+      stipendHigh: 'stipend_high',
+      stipendLow: 'stipend_low',
+    };
+
+    try {
+      const res = await publicService.getPublishedInternships({
+        page: targetPage,
+        page_size: PER_PAGE,
+        search: search.trim() || undefined,
+        location: location && location !== 'All Locations' ? location : undefined,
+        mode: workMode && workMode !== 'All Modes' ? workMode : undefined,
+        duration: duration && duration !== 'All Durations' ? duration : undefined,
+        stipend_min: stipendMin,
+        stipend_max: stipendMax,
+        sort: sortMap[sortBy] || 'latest',
+      });
+
+      const mapped = (res.items || []).map(i => ({
+        id: i.id,
+        internship_number: i.internship_number,
+        title: i.title,
+        company: i.company_name || 'Employer',
+        company_id: i.company_id,
+        location: i.location || 'Bengaluru, Karnataka',
+        duration: i.duration || '6 Months',
+        stipend: i.stipend || (i.stipend_monthly ? `₹${i.stipend_monthly.toLocaleString('en-IN')} / month` : '₹15,000 / month'),
+        stipendAmount: i.stipend_monthly || 15000,
+        mode: i.work_mode || 'Hybrid',
+        deadline: i.published_at ? null : null,
+        postedOn: i.postedOn || i.created_at,
+        description: i.description,
+        skills: [],
+        isNew: !!i.published_at && (Date.now() - new Date(i.published_at).getTime()) < 7 * 24 * 60 * 60 * 1000,
+        isFeatured: false,
+      }));
+
+      setInternships(mapped);
+      setTotal(res.total || 0);
+      setTotalPages(res.total_pages || 1);
+    } catch (err) {
+      console.error('CandidateInternshipsPage fetch error:', err);
+      setError('Failed to load internships. Please try again.');
+      setInternships([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [page, search, location, workMode, stipendRange, duration, sortBy]);
+
+  // Fetch on filter/page change
+  useEffect(() => {
+    fetchInternships();
+  }, [page, location, workMode, stipendRange, duration, sortBy]); // eslint-disable-line
+
+  // Reset page when search text changes (debounced trigger via button or Enter)
+  const handleSearch = () => {
+    fetchInternships(true);
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') handleSearch();
+  };
+
+  // ── Handlers ───────────────────────────────────────────────────────────────
   const handleOpenApply = (internship) => {
     setSelectedInternshipForApply({
       ...internship,
-      salary: internship.stipend ? `${internship.stipend}` : '₹15,000 / month'
+      salary: internship.stipend,
     });
     setApplyModalOpen(true);
   };
@@ -62,77 +162,25 @@ export default function CandidateInternshipsPage() {
     setWorkMode('');
     setStipendRange('');
     setDuration('');
-    setSelectedSkill('');
     setSortBy('latest');
     setPage(1);
   };
 
-  const filteredInternships = useMemo(() => {
-    let result = MOCK_INTERNSHIPS.filter((item) => {
-      if (search.trim()) {
-        const q = search.toLowerCase();
-        const matchTitle = item.title.toLowerCase().includes(q);
-        const matchCompany = item.company.toLowerCase().includes(q);
-        const matchSkill = item.skills?.some(s => s.toLowerCase().includes(q));
-        if (!matchTitle && !matchCompany && !matchSkill) return false;
-      }
-
-      if (location && location !== 'All Locations') {
-        if (!item.location.toLowerCase().includes(location.toLowerCase())) return false;
-      }
-
-      if (workMode && workMode !== 'All Modes') {
-        if (item.mode.toLowerCase() !== workMode.toLowerCase()) return false;
-      }
-
-      if (stipendRange && stipendRange !== 'All Stipends') {
-        if (stipendRange.includes('5,000 - ₹10,000') && (item.stipendAmount < 5000 || item.stipendAmount > 10000)) return false;
-        if (stipendRange.includes('10,000 - ₹20,000') && (item.stipendAmount < 10000 || item.stipendAmount > 20000)) return false;
-        if (stipendRange.includes('20,000 - ₹40,000') && (item.stipendAmount < 20000 || item.stipendAmount > 40000)) return false;
-      }
-
-      if (duration && duration !== 'All Durations') {
-        if (!item.duration.toLowerCase().includes(duration.toLowerCase().split(' ')[0])) return false;
-      }
-
-      if (selectedSkill && selectedSkill !== 'All Skills' && selectedSkill !== '') {
-        if (!item.skills?.some(s => s.toLowerCase() === selectedSkill.toLowerCase())) return false;
-      }
-
-      return true;
-    });
-
-    if (sortBy === 'stipendHigh') {
-      result.sort((a, b) => (b.stipendAmount || 0) - (a.stipendAmount || 0));
-    } else if (sortBy === 'stipendLow') {
-      result.sort((a, b) => (a.stipendAmount || 0) - (b.stipendAmount || 0));
-    } else {
-      result.sort((a, b) => new Date(b.startDate || '2026-09-01') - new Date(a.startDate || '2026-09-01'));
+  const handlePageChange = (p) => {
+    setPage(p);
+    if (resultsRef.current) {
+      resultsRef.current.scrollTo({ top: 0, behavior: 'smooth' });
     }
-
-    return result;
-  }, [search, location, workMode, stipendRange, duration, selectedSkill, sortBy]);
-
-  const PER_PAGE = 9;
-  const totalPages = Math.ceil(filteredInternships.length / PER_PAGE);
-  const paginated = filteredInternships.slice((page - 1) * PER_PAGE, page * PER_PAGE);
+  };
 
   const activeFiltersCount = [
     location && location !== 'All Locations',
     workMode && workMode !== 'All Modes',
     stipendRange && stipendRange !== 'All Stipends',
     duration && duration !== 'All Durations',
-    selectedSkill && selectedSkill !== 'All Skills' && selectedSkill !== ''
   ].filter(Boolean).length;
 
-  const handlePageChange = (p) => {
-    setPage(p);
-    const resultsPane = document.querySelector('.candidate-results-pane');
-    if (resultsPane) {
-      resultsPane.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-  };
-
+  // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div className="candidate-internships-page">
       
@@ -182,13 +230,6 @@ export default function CandidateInternshipsPage() {
               </label>
               <Select options={WORK_MODES} value={workMode} onChange={(e) => { setWorkMode(e.target.value); setPage(1); }} />
             </div>
-
-            <div>
-              <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '0.35rem', display: 'block' }}>
-                Key Skill
-              </label>
-              <Select options={['All Skills', ...SKILL_OPTIONS]} value={selectedSkill} onChange={(e) => { setSelectedSkill(e.target.value === 'All Skills' ? '' : e.target.value); setPage(1); }} />
-            </div>
           </div>
 
           {/* Bottom Area: Reset Filters Action */}
@@ -217,7 +258,7 @@ export default function CandidateInternshipsPage() {
         </aside>
 
         {/* Results (Right Column Dedicated Scroll Container) */}
-        <main className="candidate-results-pane">
+        <main className="candidate-results-pane" ref={resultsRef}>
           
           {/* Header Banner */}
           <div
@@ -246,11 +287,13 @@ export default function CandidateInternshipsPage() {
               <div className="input-wrapper" style={{ background: '#fff', borderRadius: 'var(--radius-md)' }}>
                 <span className="input-icon-left"><Search size={15} style={{ color: 'var(--color-primary-600)' }} /></span>
                 <input
+                  ref={searchInputRef}
                   className="input has-icon-left"
                   style={{ border: 'none', background: 'transparent', height: '36px', fontSize: '0.85rem' }}
                   placeholder="Search by role, company, or key skill..."
                   value={search}
-                  onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+                  onChange={(e) => setSearch(e.target.value)}
+                  onKeyDown={handleKeyDown}
                 />
               </div>
 
@@ -265,7 +308,11 @@ export default function CandidateInternshipsPage() {
                 </select>
               </div>
 
-              <Button variant="primary" style={{ background: 'var(--color-primary-500)', height: '36px', fontSize: '0.85rem', padding: '0 1rem' }}>
+              <Button
+                variant="primary"
+                style={{ background: 'var(--color-primary-500)', height: '36px', fontSize: '0.85rem', padding: '0 1rem' }}
+                onClick={handleSearch}
+              >
                 Search
               </Button>
             </div>
@@ -275,10 +322,10 @@ export default function CandidateInternshipsPage() {
           <div className="candidate-results-header">
             <div>
               <h2 style={{ fontSize: 'var(--text-base)', fontWeight: 800, margin: 0 }}>
-                {filteredInternships.length} Internships Found
+                {loading ? 'Loading...' : `${total} Internships Found`}
               </h2>
               <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', margin: 0 }}>
-                Showing page {page} of {totalPages || 1} • Verified paid internships with stipends & PPO
+                {loading ? 'Fetching internships...' : `Showing page ${page} of ${totalPages || 1} • Verified paid internships with stipends & PPO`}
               </p>
             </div>
 
@@ -288,7 +335,7 @@ export default function CandidateInternshipsPage() {
                 className="select"
                 style={{ padding: '6px 12px', fontSize: 'var(--text-xs)', width: 'auto', height: '34px' }}
                 value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
+                onChange={(e) => { setSortBy(e.target.value); setPage(1); }}
               >
                 <option value="latest">Latest Posted</option>
                 <option value="stipendHigh">Stipend: High to Low</option>
@@ -297,7 +344,24 @@ export default function CandidateInternshipsPage() {
             </div>
           </div>
 
-          {filteredInternships.length === 0 ? (
+          {/* Loading State */}
+          {loading ? (
+            <div className="card" style={{ borderRadius: 'var(--radius-xl)', padding: 'var(--space-10)', textAlign: 'center' }}>
+              <Loader2 size={32} style={{ color: 'var(--color-primary-500)', animation: 'spin 1s linear infinite', margin: '0 auto 1rem' }} />
+              <p style={{ color: 'var(--color-text-muted)', fontSize: '0.9rem' }}>Loading internship opportunities...</p>
+            </div>
+          ) : error ? (
+            /* Error State */
+            <div className="card" style={{ borderRadius: 'var(--radius-xl)', padding: 'var(--space-10)' }}>
+              <EmptyState
+                icon="default"
+                title="Failed to load internships"
+                description={error}
+                action={<Button variant="primary" onClick={() => fetchInternships()}>Try Again</Button>}
+              />
+            </div>
+          ) : internships.length === 0 ? (
+            /* Empty State */
             <div className="card" style={{ borderRadius: 'var(--radius-xl)', padding: 'var(--space-10)' }}>
               <EmptyState
                 icon="default"
@@ -308,7 +372,7 @@ export default function CandidateInternshipsPage() {
             </div>
           ) : (
             <div className="recruiter-jobs-grid">
-              {paginated.map((item) => {
+              {internships.map((item) => {
                 const isSaved = isJobSaved(item.id);
                 return (
                   <div
@@ -348,7 +412,7 @@ export default function CandidateInternshipsPage() {
                           </div>
                           <div style={{ minWidth: 0 }}>
                             <Link
-                              to={`/internships/${item.id}`}
+                              to={`/internships/${item.internship_number || item.id}`}
                               style={{ textDecoration: 'none', color: 'inherit' }}
                             >
                               <h3
@@ -423,7 +487,7 @@ export default function CandidateInternshipsPage() {
                             padding: '0.08rem 0.35rem',
                             borderRadius: '4px'
                           }}>
-                            {formatInternshipId(item.id)}
+                            {item.internship_number || formatInternshipId(item.id)}
                           </span>
                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>
                             <CheckCircle2 size={11} style={{ color: 'var(--color-success-600)' }} /> Verified Employer
@@ -464,6 +528,7 @@ export default function CandidateInternshipsPage() {
                           </span>
                         )}
                       </div>
+
                       {/* Metadata: Location, Stipend, Duration, Mode */}
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', fontSize: '0.75rem', color: 'var(--color-gray-600)' }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.35rem', flexWrap: 'wrap' }}>
@@ -489,7 +554,7 @@ export default function CandidateInternshipsPage() {
                         </div>
                       </div>
 
-                      {/* Skills Tags */}
+                      {/* Skills Tags (shown when available) */}
                       {item.skills && item.skills.length > 0 && (
                         <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap', alignItems: 'center', marginTop: '0.4rem', minHeight: '20px' }}>
                           {item.skills.slice(0, 3).map((skill, idx) => (
@@ -516,7 +581,7 @@ export default function CandidateInternshipsPage() {
                       )}
                     </div>
 
-                    {/* Footer: Apply by Date + View & Apply Buttons */}
+                    {/* Footer: Posted Date + View & Apply Buttons */}
                     <div style={{
                       borderTop: '1px solid var(--color-gray-100)',
                       paddingTop: '0.5rem',
@@ -524,11 +589,13 @@ export default function CandidateInternshipsPage() {
                     }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
                         <span style={{ fontSize: '0.7rem', color: 'var(--color-gray-500)' }}>
-                          Apply by {item.deadline ? new Date(item.deadline).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : '30 Sep'}
+                          {item.postedOn
+                            ? `Posted ${new Date(item.postedOn).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}`
+                            : 'Recently posted'}
                         </span>
                       </div>
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr', gap: '0.35rem' }}>
-                        <Link to={`/internships/${item.id}`} style={{ textDecoration: 'none' }}>
+                        <Link to={`/internships/${item.internship_number || item.id}`} style={{ textDecoration: 'none' }}>
                           <Button size="sm" variant="outline" style={{ width: '100%', fontSize: '0.75rem', padding: '0.25rem 0.4rem', height: '30px' }}>
                             View
                           </Button>
@@ -549,13 +616,13 @@ export default function CandidateInternshipsPage() {
             </div>
           )}
 
-          {/* Pagination (9 internships per page) */}
-          {totalPages > 1 && (
+          {/* Pagination */}
+          {!loading && totalPages > 1 && (
             <div style={{ marginTop: 'var(--space-6)' }}>
               <Pagination
                 currentPage={page}
                 totalPages={totalPages}
-                totalItems={filteredInternships.length}
+                totalItems={total}
                 pageSize={PER_PAGE}
                 onPageChange={handlePageChange}
               />
@@ -575,4 +642,3 @@ export default function CandidateInternshipsPage() {
     </div>
   );
 }
-

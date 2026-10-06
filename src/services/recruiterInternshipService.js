@@ -76,6 +76,20 @@ const recruiterInternshipService = {
       throw new Error(parseApiError(error));
     }
   },
+
+  /**
+   * Submit draft or rejected internship for Admin approval.
+   * @param {string} internshipId
+   * @returns {Promise<Object>}
+   */
+  async submitInternship(internshipId) {
+    try {
+      return await apiClient.post(`/recruiters/internships/${internshipId}/submit`);
+    } catch (error) {
+      throw new Error(parseApiError(error));
+    }
+  },
 };
 
 export default recruiterInternshipService;
+

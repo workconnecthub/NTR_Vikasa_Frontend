@@ -35,20 +35,69 @@ export default function JobDetailPage() {
   const [reportReason, setReportReason] = useState('Misleading salary or job description');
   const [reportDetails, setReportDetails] = useState('');
 
-  // Locate the job or fallback to first job
-  const job = useMemo(() => {
-    return MOCK_JOBS.find((j) => j.id === jobId) || MOCK_JOBS[0];
+  const [liveJob, setLiveJob] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+    async function fetchLiveJob() {
+      setIsLoading(true);
+      try {
+        const data = await publicService.getPublishedJob(jobId);
+        if (isMounted && data) {
+          setLiveJob(data);
+        }
+      } catch (err) {
+        console.warn('Public JobDetailPage load error:', err);
+      } finally {
+        if (isMounted) setIsLoading(false);
+      }
+    }
+    fetchLiveJob();
+    return () => { isMounted = false; };
   }, [jobId]);
+
+  // Locate the job or fallback to live job
+  const job = useMemo(() => {
+    if (liveJob) {
+      return {
+        ...liveJob,
+        id: liveJob.job_id || liveJob.id,
+        title: liveJob.title,
+        company: liveJob.company_name || liveJob.company?.name || 'Employer',
+        companyId: liveJob.company_id || 'comp-1',
+        location: liveJob.location,
+        salary: liveJob.salary || (liveJob.salary_min ? `₹${liveJob.salary_min >= 100000 ? (liveJob.salary_min / 100000) : liveJob.salary_min} - ₹${liveJob.salary_max >= 100000 ? (liveJob.salary_max / 100000) : liveJob.salary_max} LPA` : 'Competitive'),
+        experience: liveJob.experience || liveJob.experience_level || '3-5 years',
+        type: liveJob.job_type || liveJob.employment_type || 'Full-time',
+        mode: liveJob.work_mode || liveJob.workMode || 'Hybrid',
+        tags: liveJob.skills || liveJob.tags || [],
+        matchScore: liveJob.match_score || 92,
+        verified: liveJob.company_verified ?? true,
+        postedTime: liveJob.posted_at ? `Posted ${liveJob.posted_at.split(' ')[0]}` : 'Posted recently',
+        description: liveJob.description || liveJob.job_summary || '',
+        requirements: liveJob.requirements ? [liveJob.requirements] : [],
+        responsibilities: liveJob.responsibilities ? [liveJob.responsibilities] : [],
+      };
+    }
+    return null;
+  }, [liveJob]);
 
   // Locate company information
   const company = useMemo(() => {
-    return MOCK_COMPANIES.find((c) => c.id === job.companyId) || MOCK_COMPANIES[0];
+    if (!job) return null;
+    return {
+      id: job.companyId || 'comp-1',
+      name: job.company || 'Employer',
+      verified: true,
+      location: job.location || 'India',
+      industry: job.department || 'Information Technology',
+      description: 'Verified corporate employer partner on NTR Vikasa Job Portal.',
+    };
   }, [job]);
 
-  // Similar jobs (same industry or skills)
-  const similarJobs = useMemo(() => {
-    return MOCK_JOBS.filter((j) => j.id !== job.id && (j.industry === job.industry || j.type === job.type)).slice(0, 3);
-  }, [job]);
+  // Similar jobs (empty or loaded)
+  const similarJobs = useMemo(() => [], []);
 
   // If user returned from login with ?apply=true, automatically open the apply modal
   useEffect(() => {
@@ -109,6 +158,32 @@ export default function JobDetailPage() {
       });
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="job-detail-page" style={{ padding: 'var(--space-12) 0', textAlign: 'center' }}>
+        <div className="container">
+          <p style={{ color: 'var(--color-text-muted)' }}>Loading job opening details...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!job) {
+    return (
+      <div className="job-detail-page" style={{ padding: 'var(--space-12) 0', textAlign: 'center' }}>
+        <div className="container">
+          <h2 style={{ fontSize: 'var(--text-xl)', fontWeight: 800 }}>Job Not Found</h2>
+          <p style={{ color: 'var(--color-text-muted)', margin: 'var(--space-2) 0 var(--space-4)' }}>
+            The requested job opening is not available or has not been published yet.
+          </p>
+          <Link to="/jobs">
+            <Button variant="primary">Browse Jobs Directory</Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="job-detail-page" style={{ background: 'var(--color-bg)', minHeight: '100vh', paddingBottom: 'var(--space-20)' }}>

@@ -13,7 +13,9 @@ import ApplyModal from '../../components/ui/ApplyModal';
 import { useToast } from '../../context/ToastContext';
 import { useCandidate } from '../../context/CandidateContext';
 import { useAdmin, DEFAULT_JOBS_PAGE_CONTENT } from '../../context/AdminContext';
+import publicService from '../../services/publicService';
 import { INDIAN_STATES, INDIAN_UNION_TERRITORIES } from '../../data/indiaLocations';
+
 import {
   MOCK_JOBS,
   LOCATIONS,
@@ -461,7 +463,8 @@ export default function JobsPage() {
   const searchConfig = currentJobsContent.search || DEFAULT_JOBS_PAGE_CONTENT.search;
 
   // Search & Filter state
-  const [search, setSearch] = useState(searchParams.get('q') || '');
+  const initialSearch = searchParams.get('company') || searchParams.get('company_name') || searchParams.get('search') || searchParams.get('q') || '';
+  const [search, setSearch] = useState(initialSearch);
   const [location, setLocation] = useState(searchParams.get('location') || '');
   const [experience, setExperience] = useState('');
   const [salaryRange, setSalaryRange] = useState('');
@@ -473,10 +476,73 @@ export default function JobsPage() {
   const [sortBy, setSortBy] = useState('Relevance');
   const [page, setPage] = useState(1);
 
+  useEffect(() => {
+    const comp = searchParams.get('company') || searchParams.get('company_name') || searchParams.get('search') || searchParams.get('q');
+    if (comp) {
+      setSearch(comp);
+      setPage(1);
+    }
+  }, [searchParams]);
+
+
   const [savedJobIds, setSavedJobIds] = useState(['1', '3']);
   const [selectedJobToApply, setSelectedJobToApply] = useState(null);
   const [applyModalOpen, setApplyModalOpen] = useState(false);
   const [showMobileFilters, setShowMobileFilters] = useState(false);
+
+  // Live backend jobs
+  const [liveJobs, setLiveJobs] = useState([]);
+  const [isLoadingJobs, setIsLoadingJobs] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchLiveJobs = async () => {
+      setIsLoadingJobs(true);
+      try {
+        const res = await publicService.getPublishedJobs({
+          search: search.trim() || undefined,
+          location: location && location !== 'All Locations' ? location : undefined,
+          experience_level: experience && experience !== 'All Experience' ? experience : undefined,
+          salary_range: salaryRange && salaryRange !== 'All Salaries' ? salaryRange : undefined,
+          employment_type: jobType && jobType !== 'All Types' ? jobType : undefined,
+          work_mode: workMode && workMode !== 'All Modes' ? workMode : undefined,
+          industry_sector: industry && industry !== 'All Industries' ? industry : undefined,
+          required_skill: selectedSkill || undefined,
+          sort: sortBy === 'Salary: High to Low' ? 'salary_high' : (sortBy === 'Salary: Low to High' ? 'salary_low' : (sortBy === 'Latest' ? 'newest' : 'relevance')),
+          page_size: 50,
+        });
+        if (isMounted && res && res.items) {
+          const mapped = res.items.map(j => ({
+            id: j.job_id || j.id,
+            rawId: j.id,
+            title: j.title,
+            company: j.company_name || j.company?.name || 'Employer',
+            verified: j.company_verified ?? true,
+            location: j.location || 'Bengaluru, Karnataka',
+            salary: j.salary || (j.salary_min ? `₹${j.salary_min >= 100000 ? (j.salary_min / 100000) : j.salary_min} - ₹${j.salary_max >= 100000 ? (j.salary_max / 100000) : j.salary_max} LPA` : 'Competitive'),
+            salaryMin: j.salary_min || 0,
+            salaryMax: j.salary_max || 100,
+            experience: j.experience || j.experience_level || '3-5 years',
+            type: j.job_type || j.employment_type || 'Full-time',
+            workMode: j.work_mode || j.workMode || 'Hybrid',
+            industry: j.industry || j.department || 'Information Technology',
+            skills: j.skills || j.tags || [],
+            matchScore: j.match_score || 92,
+            postedTime: j.posted_at ? `Posted ${j.posted_at.split(' ')[0]}` : 'Posted recently',
+            featured: true,
+            description: j.description || j.job_summary || '',
+          }));
+          setLiveJobs(mapped);
+        }
+      } catch (err) {
+        console.warn('JobsPage public jobs fetch warning:', err);
+      } finally {
+        if (isMounted) setIsLoadingJobs(false);
+      }
+    };
+    fetchLiveJobs();
+    return () => { isMounted = false; };
+  }, [search, location, experience, salaryRange, jobType, workMode, industry, selectedSkill, sortBy]);
 
   // Sync URL query params
   useEffect(() => {
@@ -532,8 +598,10 @@ export default function JobsPage() {
   };
 
   // Filter computation
+  const baseJobs = liveJobs;
   const filteredJobs = useMemo(() => {
-    let result = EXTENDED_MOCK_JOBS.filter((job) => {
+    let result = baseJobs.filter((job) => {
+
       // 1. Search Query
       if (search.trim()) {
         const query = search.toLowerCase();
@@ -602,7 +670,8 @@ export default function JobsPage() {
     }
 
     return result;
-  }, [search, location, experience, salaryRange, jobType, workMode, industry, selectedSkill, sortBy]);
+  }, [baseJobs, search, location, experience, salaryRange, jobType, workMode, industry, selectedSkill, sortBy]);
+
 
   const PER_PAGE = 9;
   const totalPages = Math.ceil(filteredJobs.length / PER_PAGE);

@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Users, Search, Filter, Eye, CheckCircle2, XCircle, CalendarCheck,
@@ -9,6 +9,7 @@ import {
 import { useRecruiter } from '../../context/RecruiterContext';
 import { useCandidate } from '../../context/CandidateContext';
 import { useToast } from '../../context/ToastContext';
+import recruiterApplicationService from '../../services/recruiterApplicationService';
 import Button from '../../components/ui/Button';
 import { StatusBadge } from '../../components/ui/Badge';
 import { Modal } from '../../components/ui/Modal';
@@ -73,168 +74,176 @@ export default function ApplicationsPage() {
   });
   const [interviewErrors, setInterviewErrors] = useState({});
 
-  const rawApplicants = recruiter?.applicants || recruiter?.applications || [];
-  const allJobs = recruiter?.jobs || [];
+  // Backend API Integration States
+  const [backendData, setBackendData] = useState({
+    items: [],
+    pagination: { page: 1, page_size: PAGE_SIZE, total_items: 0, total_pages: 1, has_next: false, has_previous: false },
+    summary: { total_received: 0, screening: 0, shortlisted: 0, interviews: 0, selected_hired: 0, rejected: 0 },
+    job_postings: []
+  });
+  const [loading, setLoading] = useState(true);
 
-  // Merge recruiter applications with candidate applications to guarantee consistent Application No and Job Mela details
-  const allApplicants = useMemo(() => {
-    const list = [];
-    const seenIds = new Set();
-    const seenAppNumbers = new Set();
-
-    // 1. Process recruiter's native applications, enriched from allCandidateApplications
-    rawApplicants.forEach((rawApp) => {
-      const matchedCandApp = allCandidateApplications.find((ca) =>
-        ca.id === rawApp.id ||
-        (ca.candidateEmail?.toLowerCase() === rawApp.candidateEmail?.toLowerCase() &&
-         (ca.jobId === rawApp.jobId || ca.title?.toLowerCase() === rawApp.jobTitle?.toLowerCase()))
-      );
-
-      const isMela = matchedCandApp ? isJobMelaApplication(matchedCandApp) : isJobMelaApplication(rawApp);
-      const melaDetails = matchedCandApp ? getJobMelaDetails(matchedCandApp) : getJobMelaDetails(rawApp);
-      const normCand = matchedCandApp ? normalizeApplication(matchedCandApp) : null;
-      const normRaw = normalizeApplication(rawApp);
-
-      const merged = matchedCandApp
-        ? {
-            ...rawApp,
-            ...normCand,
-            appNumber: matchedCandApp.appNumber || getApplicationNumber(matchedCandApp),
-            applicationType: matchedCandApp.applicationType || getApplicationType(matchedCandApp),
-            isMela,
-            melaDetails,
-            melaTitle: matchedCandApp.melaTitle || melaDetails?.melaTitle || rawApp.melaTitle,
-            passId: matchedCandApp.passId || melaDetails?.passId || rawApp.passId || normCand.passId,
-            melaIdFormatted: normCand.melaIdFormatted || (isMela ? formatMelaId(melaDetails?.melaId || rawApp.melaId || 1) : null),
-            jobIdFormatted: normCand.jobIdFormatted || (rawApp.isIntern ? formatInternshipId(rawApp.jobId || rawApp.id) : formatJobId(rawApp.jobId || rawApp.id)),
-            company: matchedCandApp.company || rawApp.company || recruiter?.company?.name || 'ABC Technologies Pvt Ltd',
-          }
-        : {
-            ...normRaw,
-            company: rawApp.company || recruiter?.company?.name || 'ABC Technologies Pvt Ltd',
-            jobIdFormatted: normRaw.jobIdFormatted || (rawApp.isIntern ? formatInternshipId(rawApp.jobId || rawApp.id) : formatJobId(rawApp.jobId || rawApp.id)),
-            melaIdFormatted: normRaw.melaIdFormatted || (isMela ? formatMelaId(melaDetails?.melaId || rawApp.melaId || 1) : null),
-          };
-
-      list.push(merged);
-      seenIds.add(merged.id);
-      if (merged.appNumber) seenAppNumbers.add(merged.appNumber);
-    });
-
-    // 2. Include candidate applications (such as Job Mela applications NTR-01-04-0001, NTR-01-02-0024)
-    allCandidateApplications.forEach((candApp) => {
-      const norm = normalizeApplication(candApp);
-      if (!seenIds.has(norm.id) && !seenAppNumbers.has(norm.appNumber)) {
-        list.push({
-          ...norm,
-          jobIdFormatted: norm.jobIdFormatted || (candApp.type === 'Internship' ? formatInternshipId(candApp.jobId || candApp.id) : formatJobId(candApp.jobId || candApp.id)),
-          melaIdFormatted: norm.melaIdFormatted || (norm.isMela ? formatMelaId(candApp.melaId || norm.melaDetails?.melaId || 1) : null),
-          passId: norm.passId || candApp.passId || norm.melaDetails?.passId,
-          candidateHeadline: candApp.headline || candApp.candidateHeadline || `Candidate for ${norm.jobTitle}`,
-          matchScore: candApp.matchScore || 94,
-          appliedDate: candApp.appliedDate || '02 Sept 2026',
-        });
-        seenIds.add(norm.id);
-        if (norm.appNumber) seenAppNumbers.add(norm.appNumber);
-      }
-    });
-
-    return list;
-  }, [rawApplicants, allCandidateApplications, recruiter?.company?.name]);
-
-  // Filtered applicants
-  const filteredApplicants = useMemo(() => {
-    return allApplicants.filter((app) => {
-      // Job filter
-      if (selectedJobFilter !== 'ALL' && app.jobId !== selectedJobFilter) {
-        return false;
-      }
-
-      // Status filter
-      if (selectedStatusTab !== 'ALL') {
-        if (selectedStatusTab === 'SCREENING' && !(app.status === 'UNDER_REVIEW' || app.status === 'SCREENING' || app.status === 'APPLIED')) {
-          return false;
-        }
-        if (selectedStatusTab === 'SHORTLISTED' && app.status !== 'SHORTLISTED') {
-          return false;
-        }
-        if (selectedStatusTab === 'INTERVIEW' && app.status !== 'INTERVIEW') {
-          return false;
-        }
-        if (selectedStatusTab === 'SELECTED' && app.status !== 'SELECTED' && app.status !== 'HIRED') {
-          return false;
-        }
-        if (selectedStatusTab === 'REJECTED' && app.status !== 'REJECTED') {
-          return false;
-        }
-      }
-
-      // Search query
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase();
-        const matchName = app.candidateName?.toLowerCase().includes(q);
-        const matchEmail = app.candidateEmail?.toLowerCase().includes(q);
-        const matchRole = app.jobTitle?.toLowerCase().includes(q);
-        const matchJobId = (app.jobIdFormatted || app.jobId)?.toLowerCase().includes(q);
-        const matchCompany = app.company?.toLowerCase().includes(q);
-        const matchAppNo = app.appNumber?.toLowerCase().includes(q);
-        const matchType = app.applicationType?.toLowerCase().includes(q);
-        const matchMela = (app.melaTitle || app.melaDetails?.melaTitle)?.toLowerCase().includes(q);
-        const matchMelaId = (app.melaIdFormatted)?.toLowerCase().includes(q);
-        const matchPass = (app.passId || app.melaDetails?.passId)?.toLowerCase().includes(q);
-        const matchSkills = app.skills?.some(s => s.toLowerCase().includes(q));
-        if (!matchName && !matchEmail && !matchRole && !matchJobId && !matchCompany && !matchAppNo && !matchType && !matchMela && !matchMelaId && !matchPass && !matchSkills) return false;
-      }
-
-      return true;
-    }).sort((a, b) => {
-      if (sortBy === 'match') return (b.matchScore || 0) - (a.matchScore || 0);
-      if (sortBy === 'oldest') return new Date(a.appliedDate) - new Date(b.appliedDate);
-      return new Date(b.appliedDate) - new Date(a.appliedDate);
-    });
-  }, [allApplicants, selectedJobFilter, selectedStatusTab, searchQuery, sortBy]);
-
-  const totalPages = Math.max(1, Math.ceil(filteredApplicants.length / PAGE_SIZE));
-
-  const paginatedApplicants = useMemo(() => {
-    const startIndex = (currentPage - 1) * PAGE_SIZE;
-    return filteredApplicants.slice(startIndex, startIndex + PAGE_SIZE);
-  }, [filteredApplicants, currentPage]);
-
-  // Counts for tabs
-  const tabCounts = useMemo(() => {
-    const list = selectedJobFilter === 'ALL'
-      ? allApplicants
-      : allApplicants.filter(a => a.jobId === selectedJobFilter);
+  // Normalize application item to uniform UI card format
+  const normalizeBackendApplication = useCallback((item) => {
+    if (!item) return null;
+    const isMela = Boolean(item.job_mela || (item.application_type && item.application_type.includes('Mela')));
+    const passId = item.job_mela?.registration_pass_id || (isMela ? 'PASS-AP-849201' : null);
+    const melaIdFormatted = item.job_mela?.mela_id ? formatMelaId(item.job_mela.mela_id) : (isMela ? 'MELA-0001' : null);
+    const jobIdFormatted = item.job?.job_id ? formatJobId(item.job.job_id) : formatJobId(item.id);
 
     return {
-      all: list.length,
-      screening: list.filter(a => a.status === 'UNDER_REVIEW' || a.status === 'SCREENING' || a.status === 'APPLIED').length,
-      shortlisted: list.filter(a => a.status === 'SHORTLISTED').length,
-      interview: list.filter(a => a.status === 'INTERVIEW').length,
-      selected: list.filter(a => a.status === 'SELECTED' || a.status === 'HIRED').length,
-      rejected: list.filter(a => a.status === 'REJECTED').length,
+      id: item.id || item.application_id,
+      appId: item.application_id,
+      appNumber: item.application_number || item.app_number,
+      applicationType: item.application_type || (isMela ? 'Job Mela Application' : 'Direct Job Application'),
+      isMela,
+      status: item.status || 'APPLIED',
+      candidateId: item.candidate?.id,
+      candidateName: item.candidate?.name || 'Candidate',
+      candidateEmail: item.candidate?.email,
+      candidatePhone: item.candidate?.phone,
+      phone: item.candidate?.phone,
+      candidateHeadline: item.candidate?.headline || `Candidate for ${item.job?.title || 'Role'}`,
+      jobTitle: item.job?.title || 'Job Role',
+      jobId: item.job?.job_id,
+      jobIdFormatted,
+      company: item.job?.company_name || recruiter?.company?.name || 'ABC Technologies Pvt Ltd',
+      matchScore: item.match_score,
+      experience: item.candidate?.experience || (item.candidate?.experience_years ? `${item.candidate.experience_years} Years` : '3+ Years'),
+      location: item.candidate?.location || item.job?.location || 'India',
+      noticePeriod: item.candidate?.notice_period || '15 Days',
+      expectedSalary: item.candidate?.expected_salary,
+      appliedDate: item.applied_date || '02 Sept 2026',
+      skills: item.candidate?.skills || [],
+      coverNote: item.cover_letter || item.additional_info,
+      resumeName: item.resume?.file_name,
+      resumeUrl: item.resume?.file_url,
+      melaId: item.job_mela?.mela_id,
+      melaIdFormatted,
+      melaTitle: item.job_mela?.mela_name || 'AP Mega IT & ITES Job Mela 2026',
+      passId,
+      melaDetails: item.job_mela ? {
+        melaId: item.job_mela.mela_id,
+        melaTitle: item.job_mela.mela_name,
+        passId: item.job_mela.registration_pass_id,
+        company: item.job?.company_name,
+        position: item.job?.title,
+        eventNumber: item.job_mela.event_number,
+        companySequence: item.job_mela.company_sequence,
+        applicationSequence: item.job_mela.application_sequence,
+      } : null,
+      raw: item,
     };
-  }, [allApplicants, selectedJobFilter]);
+  }, [recruiter?.company?.name]);
 
-  const handleOpenReview = (applicant) => {
+  // Fetch applications from backend API
+  const fetchApplications = useCallback(async () => {
+    try {
+      setLoading(true);
+      const res = await recruiterApplicationService.getApplications({
+        page: currentPage,
+        page_size: PAGE_SIZE,
+        search: searchQuery,
+        job_id: selectedJobFilter,
+        status: selectedStatusTab,
+        sort_by: sortBy === 'match' ? 'match_score' : (sortBy === 'oldest' ? 'oldest' : 'newest'),
+        sort_order: sortBy === 'oldest' ? 'asc' : 'desc',
+      });
+      if (res) {
+        setBackendData(res);
+      }
+    } catch (err) {
+      console.error('Failed to load applications:', err);
+      addToast(err.message || 'Failed to load applications', 'error');
+    } finally {
+      setLoading(false);
+    }
+  }, [currentPage, searchQuery, selectedJobFilter, selectedStatusTab, sortBy, addToast]);
+
+  useEffect(() => {
+    fetchApplications();
+  }, [fetchApplications]);
+
+  const paginatedApplicants = useMemo(() => {
+    return (backendData.items || []).map(normalizeBackendApplication).filter(Boolean);
+  }, [backendData.items, normalizeBackendApplication]);
+
+  const filteredApplicants = paginatedApplicants;
+
+  const totalPages = backendData.pagination?.total_pages || 1;
+  const totalItems = backendData.pagination?.total_items || 0;
+
+  // Counts for tabs & summary cards
+  const tabCounts = useMemo(() => {
+    const s = backendData.summary || {};
+    return {
+      all: s.total_received ?? 0,
+      screening: s.screening ?? 0,
+      shortlisted: s.shortlisted ?? 0,
+      interview: s.interviews ?? 0,
+      selected: s.selected_hired ?? 0,
+      rejected: s.rejected ?? 0,
+    };
+  }, [backendData.summary]);
+
+  // Job postings for filter dropdown
+  const allJobs = useMemo(() => {
+    if (backendData.job_postings && backendData.job_postings.length > 0) {
+      return backendData.job_postings.map((jp) => ({
+        id: jp.job_id,
+        title: jp.title,
+        count: jp.application_count,
+      }));
+    }
+    return (recruiter?.jobs || []).map((j) => ({
+      id: j.job_id || j.id,
+      title: j.title,
+      count: 0,
+    }));
+  }, [backendData.job_postings, recruiter?.jobs]);
+
+  const handleOpenReview = async (applicant) => {
     setSelectedApplicant(applicant);
     setIsReviewModalOpen(true);
-  };
-
-  const handleShortlist = (app) => {
-    shortlistCandidate(app.id, app.jobId);
-    addToast(`${app.candidateName} moved to Shortlisted candidates!`, 'success');
-    if (selectedApplicant?.id === app.id) {
-      setSelectedApplicant({ ...selectedApplicant, status: 'SHORTLISTED' });
+    try {
+      const detail = await recruiterApplicationService.getApplication(applicant.id);
+      if (detail) {
+        setSelectedApplicant((prev) => ({
+          ...prev,
+          ...normalizeBackendApplication(detail),
+          timeline: detail.timeline || [],
+        }));
+      }
+    } catch (err) {
+      // Retain applicant from list if detail fetch fails
     }
   };
 
-  const handleReject = (app) => {
-    rejectCandidate(app.id, app.jobId);
-    addToast(`${app.candidateName} marked as Rejected.`, 'info');
-    if (selectedApplicant?.id === app.id) {
-      setSelectedApplicant({ ...selectedApplicant, status: 'REJECTED' });
+  const handleShortlist = async (app) => {
+    try {
+      await recruiterApplicationService.updateApplicationStatus(app.id, 'SHORTLISTED');
+      shortlistCandidate?.(app.id, app.jobId);
+      addToast(`${app.candidateName} moved to Shortlisted candidates!`, 'success');
+      fetchApplications();
+      if (selectedApplicant?.id === app.id) {
+        setSelectedApplicant((prev) => (prev ? { ...prev, status: 'SHORTLISTED' } : null));
+      }
+    } catch (err) {
+      addToast(err.message || 'Failed to shortlist candidate', 'error');
+    }
+  };
+
+  const handleReject = async (app) => {
+    try {
+      await recruiterApplicationService.updateApplicationStatus(app.id, 'REJECTED');
+      rejectCandidate?.(app.id, app.jobId);
+      addToast(`${app.candidateName} marked as Rejected.`, 'info');
+      fetchApplications();
+      if (selectedApplicant?.id === app.id) {
+        setSelectedApplicant((prev) => (prev ? { ...prev, status: 'REJECTED' } : null));
+      }
+    } catch (err) {
+      addToast(err.message || 'Failed to reject candidate', 'error');
     }
   };
 
@@ -394,7 +403,7 @@ export default function ApplicationsPage() {
     return errors;
   };
 
-  const handleConfirmSchedule = (e) => {
+  const handleConfirmSchedule = async (e) => {
     e.preventDefault();
     if (!interviewTarget) return;
 
@@ -415,6 +424,12 @@ export default function ApplicationsPage() {
       ? interviewForm.meetingLink.trim()
       : (interviewForm.format === 'In-Person Interview' ? interviewForm.locationAddress.trim() : (interviewForm.phoneDetails?.trim() || interviewTarget.candidatePhone || 'Candidate Phone'));
 
+    try {
+      await recruiterApplicationService.updateApplicationStatus(interviewTarget.id, 'INTERVIEW');
+    } catch (err) {
+      // Continue even if status call fails
+    }
+
     scheduleInterview({
       jobId: interviewTarget.jobId,
       jobTitle: interviewTarget.jobTitle,
@@ -433,6 +448,7 @@ export default function ApplicationsPage() {
     addToast(`Interview scheduled with ${interviewTarget.candidateName}!`, 'success');
     setIsInterviewModalOpen(false);
     setInterviewTarget(null);
+    fetchApplications();
     if (selectedApplicant?.id === interviewTarget.id) {
       setSelectedApplicant((prev) => (prev ? { ...prev, status: 'INTERVIEW' } : null));
     }
@@ -605,10 +621,10 @@ export default function ApplicationsPage() {
                 onChange={(e) => setSelectedJobFilter(e.target.value)}
                 style={{ height: '42px', borderRadius: '8px' }}
               >
-                <option value="ALL">All Job Postings ({allApplicants.length})</option>
+                <option value="ALL">All Job Postings ({tabCounts.all})</option>
                 {allJobs.map(job => (
                   <option key={job.id} value={job.id}>
-                    {job.title} ({allApplicants.filter(a => a.jobId === job.id).length})
+                    {job.title} ({job.count ?? 0})
                   </option>
                 ))}
               </select>
@@ -993,7 +1009,7 @@ export default function ApplicationsPage() {
             <Pagination
               currentPage={currentPage}
               totalPages={totalPages}
-              totalItems={filteredApplicants.length}
+              totalItems={totalItems || filteredApplicants.length}
               pageSize={PAGE_SIZE}
               itemName="applications"
               onPageChange={(p) => {

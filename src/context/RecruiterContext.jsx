@@ -2936,7 +2936,18 @@ export function RecruiterProvider({ children }) {
     }));
   };
 
+  // Update Interview Status (e.g. COMPLETED)
+  const updateInterviewStatus = (interviewId, newStatus) => {
+    updateRecruiter((prev) => ({
+      ...prev,
+      interviews: prev.interviews.map(i =>
+        i.id === interviewId ? { ...i, status: newStatus } : i
+      )
+    }));
+  };
+
   // Update Company Profile
+
   const updateCompanyProfile = (companyData) => {
     updateRecruiter((prev) => ({
       ...prev,
@@ -3018,7 +3029,9 @@ export function RecruiterProvider({ children }) {
         scheduleInterview,
         rescheduleInterview,
         cancelInterview,
+        updateInterviewStatus,
         updateCompanyProfile,
+
         registerJobMela,
         updateSettings,
         inviteTeamMember,

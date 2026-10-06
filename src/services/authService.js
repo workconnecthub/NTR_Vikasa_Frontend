@@ -141,11 +141,23 @@ export const authService = {
     try {
       const response = await apiClient.post('/auth/accept-invitation', {
         token,
-        name: name.trim(),
+        name: name?.trim(),
         password,
       });
       authService.saveAuthSession(response);
       return response;
+    } catch (error) {
+      throw new Error(parseApiError(error));
+    }
+  },
+
+  /**
+   * Validate recruiter team invitation token
+   * @param {string} token
+   */
+  async validateInvitation(token) {
+    try {
+      return await apiClient.get(`/auth/invitations/${token}/validate`);
     } catch (error) {
       throw new Error(parseApiError(error));
     }

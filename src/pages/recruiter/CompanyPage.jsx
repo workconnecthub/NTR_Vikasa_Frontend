@@ -1,7 +1,7 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
   Building2, Globe, Mail, Phone, MapPin,
-  Edit2, Save, ShieldCheck, UploadCloud, Trash2
+  Edit2, Save, ShieldCheck, UploadCloud, Trash2, Loader2
 } from 'lucide-react';
 import Button from '../../components/ui/Button';
 import FormField from '../../components/ui/FormField';
@@ -9,12 +9,26 @@ import Input from '../../components/ui/Input';
 import Textarea from '../../components/ui/Textarea';
 import { useRecruiter } from '../../context/RecruiterContext';
 import { useToast } from '../../context/ToastContext';
+import recruiterCompanyService from '../../services/recruiterCompanyService';
+
+const getFullLogoUrl = (url) => {
+  if (!url) return null;
+  if (url.startsWith('http') || url.startsWith('data:')) return url;
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api/v1';
+  const origin = baseUrl.replace(/\/api\/v1\/?$/, '');
+  return `${origin}${url.startsWith('/') ? '' : '/'}${url}`;
+};
 
 export default function RecruiterCompanyPage() {
   const { recruiter, updateCompanyProfile } = useRecruiter();
   const { addToast } = useToast();
 
-  const company = recruiter?.company || {
+  const [companyData, setCompanyData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+
+  const defaultCompany = {
     name: 'ABC Technologies Pvt Ltd',
     tagline: 'Leading enterprise cloud modernization, DevOps & digital transformation engineering.',
     description: 'ABC Technologies is a premier enterprise IT software solutions provider. With global delivery centers across Bengaluru, Hyderabad, and Vijayawada, ABC Technologies powers digital platforms for Fortune 500 enterprises across Fintech, E-Commerce, and Supply Chain.',
@@ -33,16 +47,40 @@ export default function RecruiterCompanyPage() {
     logo: null
   };
 
+  const company = companyData || recruiter?.company || defaultCompany;
+
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState({ ...company });
   const [logoError, setLogoError] = useState('');
   const logoInputRef = useRef(null);
 
-  const handleLogoChange = (e) => {
+  // Fetch real company profile from backend API on mount
+  useEffect(() => {
+    let isMounted = true;
+    const fetchProfile = async () => {
+      try {
+        setLoading(true);
+        const data = await recruiterCompanyService.getCompanyProfile();
+        if (isMounted && data) {
+          setCompanyData(data);
+          setEditForm(data);
+        }
+      } catch (err) {
+        console.warn('Failed to load company profile from backend, using current context:', err);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+    fetchProfile();
+    return () => { isMounted = false; };
+  }, []);
+
+  const handleLogoChange = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (!file.type.startsWith('image/')) {
+    const validTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/svg+xml'];
+    if (!validTypes.includes(file.type) && !file.type.startsWith('image/')) {
       setLogoError('Please upload an image file (PNG, JPG, SVG, WebP).');
       addToast('Please upload a valid image file.', 'error');
       return;
@@ -55,21 +93,29 @@ export default function RecruiterCompanyPage() {
     }
 
     setLogoError('');
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setEditForm((prev) => ({ ...prev, logo: reader.result }));
-      addToast('Company logo preview updated.', 'info');
-    };
-    reader.readAsDataURL(file);
+    try {
+      setUploadingLogo(true);
+      const res = await recruiterCompanyService.uploadCompanyLogo(file);
+      if (res?.logo_url) {
+        setEditForm((prev) => ({ ...prev, logo: res.logo_url, logo_url: res.logo_url }));
+        setCompanyData((prev) => ({ ...(prev || company), logo: res.logo_url, logo_url: res.logo_url }));
+        addToast('Company logo uploaded and saved successfully.', 'success');
+      }
+    } catch (err) {
+      setLogoError(err.message || 'Failed to upload logo.');
+      addToast(err.message || 'Failed to upload logo.', 'error');
+    } finally {
+      setUploadingLogo(false);
+    }
   };
 
   const handleRemoveLogo = () => {
-    setEditForm((prev) => ({ ...prev, logo: null }));
+    setEditForm((prev) => ({ ...prev, logo: null, logo_url: null }));
     setLogoError('');
     if (logoInputRef.current) {
       logoInputRef.current.value = '';
     }
-    addToast('Company logo removed.', 'info');
+    addToast('Company logo removed from form.', 'info');
   };
 
   const handleStartEdit = () => {
@@ -84,20 +130,48 @@ export default function RecruiterCompanyPage() {
     setIsEditing(false);
   };
 
-  const handleSave = (e) => {
+  const handleSave = async (e) => {
     e.preventDefault();
-    if (!editForm.name?.trim()) {
+    const legalName = (editForm.name || editForm.company_name || '').trim();
+    if (!legalName) {
       addToast('Company Legal Name is required.', 'error');
       return;
     }
-    if (!editForm.industry?.trim()) {
+    const industrySector = (editForm.industry || editForm.primary_industry || '').trim();
+    if (!industrySector) {
       addToast('Industry / Sector is required.', 'error');
       return;
     }
 
-    updateCompanyProfile(editForm);
-    setIsEditing(false);
-    addToast('Company Profile updated successfully.', 'success');
+    try {
+      setSaving(true);
+      const payload = {
+        company_name: legalName,
+        industry: industrySector,
+        tagline: (editForm.tagline || '').trim(),
+        official_website: (editForm.website || editForm.official_website || '').trim(),
+        careers_email: (editForm.email || editForm.careers_email || '').trim(),
+        contact_phone: (editForm.phone || editForm.contact_phone || '').trim(),
+        company_size: (editForm.size || editForm.company_size || '').trim(),
+        registered_office_address: (editForm.address || editForm.registered_office_address || '').trim(),
+        about_company: (editForm.description || editForm.about_company || '').trim(),
+        cin_number: (editForm.cinNumber || editForm.cin_number || '').trim(),
+        gst_number: (editForm.gstNumber || editForm.gst_number || '').trim(),
+      };
+
+      const updated = await recruiterCompanyService.updateCompanyProfile(payload);
+      setCompanyData(updated);
+      setEditForm(updated);
+      if (updateCompanyProfile) {
+        updateCompanyProfile(updated);
+      }
+      setIsEditing(false);
+      addToast('Company Profile updated successfully.', 'success');
+    } catch (err) {
+      addToast(err.message || 'Failed to update company profile.', 'error');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -118,8 +192,10 @@ export default function RecruiterCompanyPage() {
           <div style={{ display: 'flex', gap: '0.5rem' }}>
             {isEditing ? (
               <>
-                <Button variant="outline" size="sm" onClick={handleCancelEdit}>Cancel</Button>
-                <Button variant="primary" size="sm" icon={<Save size={14} />} onClick={handleSave}>Save Changes</Button>
+                <Button variant="outline" size="sm" onClick={handleCancelEdit} disabled={saving}>Cancel</Button>
+                <Button variant="primary" size="sm" icon={<Save size={14} />} onClick={handleSave} disabled={saving}>
+                  {saving ? 'Saving...' : 'Save Changes'}
+                </Button>
               </>
             ) : (
               <Button variant="primary" size="sm" icon={<Edit2 size={14} />} onClick={handleStartEdit}>
@@ -156,9 +232,9 @@ export default function RecruiterCompanyPage() {
                 border: '2px solid var(--color-primary-200)'
               }}>
                 {editForm.logo ? (
-                  <img src={editForm.logo} alt="Company Logo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  <img src={getFullLogoUrl(editForm.logo)} alt="Company Logo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 ) : (
-                  editForm.name?.[0]?.toUpperCase() || 'C'
+                  (editForm.name || editForm.company_name)?.[0]?.toUpperCase() || 'C'
                 )}
               </div>
 
@@ -182,10 +258,11 @@ export default function RecruiterCompanyPage() {
                     type="button"
                     variant="outline"
                     size="sm"
-                    icon={<UploadCloud size={14} />}
+                    icon={uploadingLogo ? <Loader2 size={14} className="spin" /> : <UploadCloud size={14} />}
                     onClick={() => logoInputRef.current?.click()}
+                    disabled={uploadingLogo}
                   >
-                    Change Logo
+                    {uploadingLogo ? 'Uploading...' : 'Change Logo'}
                   </Button>
 
                   {editForm.logo && (
@@ -301,11 +378,11 @@ export default function RecruiterCompanyPage() {
             </FormField>
 
             <div style={{ gridColumn: '1 / -1', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem' }}>
-              <Button variant="outline" type="button" onClick={handleCancelEdit}>
+              <Button variant="outline" type="button" onClick={handleCancelEdit} disabled={saving}>
                 Cancel
               </Button>
-              <Button variant="primary" type="submit" icon={<Save size={16} />}>
-                Save Changes
+              <Button variant="primary" type="submit" icon={<Save size={16} />} disabled={saving}>
+                {saving ? 'Saving...' : 'Save Changes'}
               </Button>
             </div>
           </form>
@@ -333,7 +410,7 @@ export default function RecruiterCompanyPage() {
               flexShrink: 0
             }}>
               {company.logo ? (
-                <img src={company.logo} alt={company.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                <img src={getFullLogoUrl(company.logo)} alt={company.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               ) : (
                 company.name?.[0]?.toUpperCase() || 'C'
               )}

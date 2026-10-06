@@ -149,6 +149,9 @@ export default function App() {
                     <Route path="/register/recruiter"          element={<RegisterRecruiterPage />} />
                     <Route path="/register/recruiter/pending"  element={<RecruiterApprovalPage />} />
                     <Route path="/accept-invitation/:token"    element={<AcceptInvitationPage />} />
+                    <Route path="/accept-invitation"           element={<AcceptInvitationPage />} />
+                    <Route path="/recruiter/invitations/accept/:token" element={<AcceptInvitationPage />} />
+                    <Route path="/recruiter/invitations/accept"        element={<AcceptInvitationPage />} />
                     <Route path="/forgot-password"             element={<ForgotPasswordPage />} />
                     <Route path="/reset-password"              element={<ResetPasswordPage />} />
 
@@ -187,6 +190,7 @@ export default function App() {
                       <Route path="shortlisted"        element={<RecruiterShortlistedPage />} />
                       <Route path="interviews"         element={<RecruiterInterviewsPage />} />
                       <Route path="company"            element={<RecruiterCompanyPage />} />
+                      <Route path="company-profile"    element={<RecruiterCompanyPage />} />
                       <Route path="internships"        element={<RecruiterInternshipsPage />} />
                       <Route path="job-melas"          element={<RecruiterJobMelaPage />} />
                       <Route path="job-mela"           element={<RecruiterJobMelaPage />} />

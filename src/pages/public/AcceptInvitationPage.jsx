@@ -43,22 +43,51 @@ export default function AcceptInvitationPage() {
       return;
     }
 
-    const check = getInvitationByToken(token);
-    if (check.valid && check.invitation) {
-      setInvitationState({
-        loading: false,
-        valid: true,
-        invitation: check.invitation,
-        error: '',
-      });
-    } else {
-      setInvitationState({
-        loading: false,
-        valid: false,
-        invitation: check.invitation || null,
-        error: check.reason || 'This invitation is invalid, has expired, or has already been accepted.',
-      });
-    }
+    let isMounted = true;
+    (async () => {
+      try {
+        const valData = await authService.validateInvitation(token);
+        if (!isMounted) return;
+        if (valData && valData.valid) {
+          setInvitationState({
+            loading: false,
+            valid: true,
+            invitation: valData,
+            error: '',
+          });
+          return;
+        } else {
+          setInvitationState({
+            loading: false,
+            valid: false,
+            invitation: valData || null,
+            error: valData?.message || 'This invitation is invalid, has expired, or has already been accepted.',
+          });
+          return;
+        }
+      } catch (err) {
+        // Fallback to local RecruiterContext check
+        const check = getInvitationByToken(token);
+        if (!isMounted) return;
+        if (check.valid && check.invitation) {
+          setInvitationState({
+            loading: false,
+            valid: true,
+            invitation: check.invitation,
+            error: '',
+          });
+        } else {
+          setInvitationState({
+            loading: false,
+            valid: false,
+            invitation: check.invitation || null,
+            error: err.message || check.reason || 'This invitation is invalid, has expired, or has already been accepted.',
+          });
+        }
+      }
+    })();
+
+    return () => { isMounted = false; };
   }, [token, getInvitationByToken]);
 
   const handleSubmit = (e) => {
@@ -85,32 +114,26 @@ export default function AcceptInvitationPage() {
     setSubmitting(true);
     (async () => {
       try {
-        // Attempt backend endpoint first
         await authService.acceptInvitation({
           token,
-          name: invitationState.invitation?.name || 'Recruiter Member',
+          name: invitationState.invitation?.name || invitationState.invitation?.full_name || 'Recruiter Member',
           password,
         });
-      } catch (e) {
-        // Fallback to local recruiter context
-      }
 
-      const result = acceptInvitation({
-        token,
-        password,
-      });
+        try {
+          acceptInvitation({ token, password });
+        } catch (_) {}
 
-      setSubmitting(false);
-
-      if (result.success) {
+        setSubmitting(false);
         setSuccess(true);
-        addToast(`Welcome to ${invitationState.invitation?.companyName || 'the team'}! Your account is now active.`, 'success');
+        addToast(`Welcome to ${invitationState.invitation?.companyName || invitationState.invitation?.company_name || 'the team'}! Your account is now active.`, 'success');
         setTimeout(() => {
           navigate('/recruiter/dashboard');
         }, 1200);
-      } else {
-        setErrors({ general: result.error || 'Failed to complete invitation acceptance.' });
-        addToast(result.error || 'Failed to accept invitation.', 'error');
+      } catch (err) {
+        setSubmitting(false);
+        setErrors({ general: err.message || 'Failed to complete invitation acceptance.' });
+        addToast(err.message || 'Failed to accept invitation.', 'error');
       }
     })();
   };

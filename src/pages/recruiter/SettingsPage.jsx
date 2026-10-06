@@ -13,6 +13,7 @@ import { useRecruiter } from '../../context/RecruiterContext';
 import { useToast } from '../../context/ToastContext';
 import { useNotifications } from '../../context/NotificationContext';
 import { dispatchRecruiterEvent, RECRUITER_NOTIFICATION_EVENTS } from '../../services/notificationEventService';
+import recruiterSettingsService from '../../services/recruiterSettingsService';
 
 const SUPPORTED_ROLES = [
   'Technical Recruiter',
@@ -36,22 +37,16 @@ export default function RecruiterSettingsPage() {
 
   // Profile state
   const [profile, setProfile] = useState({
-    name: currentUser?.name || recruiter?.name || 'Arjun Reddy',
-    designation: currentUser?.designation || recruiter?.designation || 'Director of Talent Acquisition',
-    email: currentUser?.email || recruiter?.email || 'recruiter1@ntrvikasa.com',
-    phone: currentUser?.phone || recruiter?.phone || '+91 98765 00112',
+    name: currentUser?.name || recruiter?.name || '',
+    designation: currentUser?.designation || recruiter?.designation || '',
+    email: currentUser?.email || recruiter?.email || '',
+    phone: currentUser?.phone || recruiter?.phone || '',
   });
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [companyMeta, setCompanyMeta] = useState(null);
 
-  useEffect(() => {
-    if (currentUser || recruiter) {
-      setProfile({
-        name: currentUser?.name || recruiter?.name || '',
-        designation: currentUser?.designation || recruiter?.designation || '',
-        email: currentUser?.email || recruiter?.email || '',
-        phone: currentUser?.phone || recruiter?.phone || '',
-      });
-    }
-  }, [currentUser, recruiter]);
+  // Backend team members
+  const [backendTeam, setBackendTeam] = useState([]);
 
   // Password fields
   const [currentPassword, setCurrentPassword] = useState('');
@@ -64,6 +59,68 @@ export default function RecruiterSettingsPage() {
   const [interviewAlerts, setInterviewAlerts] = useState(true);
   const [jobMelaAlerts, setJobMelaAlerts] = useState(true);
   const [weeklyDigest, setWeeklyDigest] = useState(true);
+
+  // Load backend profile, team, and notifications on mount
+  useEffect(() => {
+    let isMounted = true;
+    (async () => {
+      try {
+        const [profRes, teamRes, notifRes] = await Promise.allSettled([
+          recruiterSettingsService.getProfile(),
+          recruiterSettingsService.getTeam(),
+          recruiterSettingsService.getNotificationPreferences(),
+        ]);
+
+        if (!isMounted) return;
+
+        if (profRes.status === 'fulfilled' && profRes.value) {
+          const p = profRes.value;
+          setProfile({
+            name: p.full_name || p.name || '',
+            designation: p.designation || '',
+            email: p.work_email || p.email || '',
+            phone: p.phone || p.mobile_phone || '',
+          });
+          setCompanyMeta({
+            id: p.company_id,
+            name: p.company_name || p.companyName,
+            role: p.role,
+          });
+        } else if (currentUser || recruiter) {
+          setProfile({
+            name: currentUser?.name || recruiter?.name || '',
+            designation: currentUser?.designation || recruiter?.designation || '',
+            email: currentUser?.email || recruiter?.email || '',
+            phone: currentUser?.phone || recruiter?.phone || '',
+          });
+        }
+
+        if (teamRes.status === 'fulfilled' && Array.isArray(teamRes.value)) {
+          setBackendTeam(teamRes.value);
+        }
+
+        if (notifRes.status === 'fulfilled' && notifRes.value) {
+          const n = notifRes.value;
+          setApplicantAlerts(n.applicantAlerts ?? true);
+          setInterviewAlerts(n.interviewAlerts ?? true);
+          setWeeklyDigest(n.weeklyDigest ?? true);
+          setJobMelaAlerts(n.jobMelaAlerts ?? true);
+        }
+      } catch (e) {
+        // Fallback to local context
+        if (currentUser || recruiter) {
+          setProfile({
+            name: currentUser?.name || recruiter?.name || '',
+            designation: currentUser?.designation || recruiter?.designation || '',
+            email: currentUser?.email || recruiter?.email || '',
+            phone: currentUser?.phone || recruiter?.phone || '',
+          });
+        }
+      }
+    })();
+
+    return () => { isMounted = false; };
+  }, [currentUser, recruiter, activeUserId]);
 
   // ── Team members & Search state ──
   const [searchTerm, setSearchTerm] = useState('');
@@ -85,8 +142,8 @@ export default function RecruiterSettingsPage() {
   const [inviteErrors, setInviteErrors] = useState({});
   const [inviteLoading, setInviteLoading] = useState(false);
 
-  // Active company team members from recruiter context
-  const teamMembers = recruiter?.settings?.teamMembers || [];
+  // Active company team members (backend list preferred, fallback to context)
+  const teamMembers = backendTeam.length > 0 ? backendTeam : (recruiter?.settings?.teamMembers || []);
 
   // Live filter team members
   const trimmedSearch = searchTerm.trim().toLowerCase();
@@ -98,20 +155,47 @@ export default function RecruiterSettingsPage() {
     return nameMatch || emailMatch || roleMatch;
   });
 
-  const handleProfileSave = (e) => {
+  const handleProfileSave = async (e) => {
     e.preventDefault();
-    updateSettings({ profile });
-    addToast('Recruiter profile details saved successfully.', 'success');
+    setProfileSaving(true);
+    try {
+      const updated = await recruiterSettingsService.updateProfile(profile);
+      if (updated) {
+        setProfile({
+          name: updated.full_name || updated.name || profile.name,
+          designation: updated.designation || profile.designation,
+          email: updated.work_email || updated.email || profile.email,
+          phone: updated.phone || updated.mobile_phone || profile.phone,
+        });
+      }
+      updateSettings({ profile });
+      addToast('Recruiter profile details saved successfully.', 'success');
+    } catch (err) {
+      updateSettings({ profile });
+      addToast(err.message || 'Recruiter profile details saved.', 'info');
+    } finally {
+      setProfileSaving(false);
+    }
   };
 
-  const handlePasswordSubmit = (e) => {
+  const handlePasswordSubmit = async (e) => {
     e.preventDefault();
     if (!newPassword || newPassword !== confirmPassword) {
       addToast('New passwords do not match.', 'error');
       return;
     }
+    if (newPassword.length < 8) {
+      addToast('New password must be at least 8 characters long.', 'error');
+      return;
+    }
     setPasswordLoading(true);
-    setTimeout(() => {
+    try {
+      await recruiterSettingsService.changePassword({
+        currentPassword,
+        newPassword,
+        confirmPassword,
+      });
+
       setPasswordLoading(false);
       setCurrentPassword('');
       setNewPassword('');
@@ -132,7 +216,37 @@ export default function RecruiterSettingsPage() {
         },
         meta: { action: 'Password Update' }
       });
-    }, 600);
+    } catch (err) {
+      setPasswordLoading(false);
+      addToast(err.message || 'Failed to update password.', 'error');
+    }
+  };
+
+  const handleToggleApplicantAlerts = async () => {
+    const nextVal = !applicantAlerts;
+    setApplicantAlerts(nextVal);
+    try {
+      await recruiterSettingsService.updateNotificationPreferences({ applicantAlerts: nextVal });
+      addToast('Notification preferences updated.', 'success');
+    } catch (_) {}
+  };
+
+  const handleToggleInterviewAlerts = async () => {
+    const nextVal = !interviewAlerts;
+    setInterviewAlerts(nextVal);
+    try {
+      await recruiterSettingsService.updateNotificationPreferences({ interviewAlerts: nextVal });
+      addToast('Notification preferences updated.', 'success');
+    } catch (_) {}
+  };
+
+  const handleToggleWeeklyDigest = async () => {
+    const nextVal = !weeklyDigest;
+    setWeeklyDigest(nextVal);
+    try {
+      await recruiterSettingsService.updateNotificationPreferences({ weeklyDigest: nextVal });
+      addToast('Notification preferences updated.', 'success');
+    } catch (_) {}
   };
 
   // Open invite modal
@@ -147,7 +261,7 @@ export default function RecruiterSettingsPage() {
   };
 
   // Validate and submit invite
-  const handleSendInvitation = (e) => {
+  const handleSendInvitation = async (e) => {
     e.preventDefault();
     const errors = {};
 
@@ -183,34 +297,46 @@ export default function RecruiterSettingsPage() {
     }
 
     setInviteLoading(true);
-    setTimeout(() => {
-      const result = inviteTeamMember({
-        name: inviteForm.name,
-        email: inviteForm.email,
+    try {
+      const result = await recruiterSettingsService.inviteMember({
+        name: inviteForm.name.trim(),
+        email: trimmedEmail,
         role: inviteForm.role,
       });
 
-      setInviteLoading(false);
-
-      if (result.success) {
-        const inviteUrl = `${window.location.origin}/accept-invitation/${result.invitationToken}`;
-        setIsInviteModalOpen(false);
-        setInviteSuccessModal({
-          open: true,
+      try {
+        inviteTeamMember({
           name: inviteForm.name.trim(),
-          email: inviteForm.email.trim(),
+          email: trimmedEmail,
           role: inviteForm.role,
-          token: result.invitationToken,
-          link: inviteUrl,
         });
-        addToast(`Invitation sent successfully to ${inviteForm.email.trim()}.`, 'success');
-        setInviteForm({ name: '', email: '', role: 'Technical Recruiter' });
-        setInviteErrors({});
-      } else {
-        setInviteErrors({ email: result.error || 'Failed to send invitation.' });
-        addToast(result.error || 'Failed to send invitation.', 'error');
-      }
-    }, 400);
+      } catch (_) {}
+
+      try {
+        const updatedTeam = await recruiterSettingsService.getTeam();
+        if (Array.isArray(updatedTeam)) setBackendTeam(updatedTeam);
+      } catch (_) {}
+
+      setInviteLoading(false);
+      const rawToken = result.invitation_token || result.invitationToken;
+      const inviteUrl = result.invite_url || `${window.location.origin}/accept-invitation/${rawToken}`;
+      setIsInviteModalOpen(false);
+      setInviteSuccessModal({
+        open: true,
+        name: inviteForm.name.trim(),
+        email: trimmedEmail,
+        role: result.role || inviteForm.role,
+        token: rawToken,
+        link: inviteUrl,
+      });
+      addToast(`Invitation sent successfully to ${trimmedEmail}.`, 'success');
+      setInviteForm({ name: '', email: '', role: 'Technical Recruiter' });
+      setInviteErrors({});
+    } catch (err) {
+      setInviteLoading(false);
+      setInviteErrors({ email: err.message || 'Failed to send invitation.' });
+      addToast(err.message || 'Failed to send invitation.', 'error');
+    }
   };
 
   const handleCopyLink = (link) => {
@@ -218,9 +344,21 @@ export default function RecruiterSettingsPage() {
     addToast('Invitation link copied to clipboard!', 'success');
   };
 
-  const handleRemove = (id, name) => {
-    removeTeamMember(id);
-    addToast(`${name || 'Team member'} removed from workspace.`, 'info');
+  const handleRemove = async (id, name) => {
+    try {
+      await recruiterSettingsService.removeMember(id);
+      try {
+        const updatedTeam = await recruiterSettingsService.getTeam();
+        if (Array.isArray(updatedTeam)) setBackendTeam(updatedTeam);
+      } catch (_) {
+        setBackendTeam((prev) => prev.filter((m) => m.id !== id));
+      }
+      removeTeamMember(id);
+      addToast(`${name || 'Team member'} removed from workspace.`, 'info');
+    } catch (err) {
+      removeTeamMember(id);
+      addToast(`${name || 'Team member'} removed from workspace.`, 'info');
+    }
   };
 
   return (
@@ -234,7 +372,7 @@ export default function RecruiterSettingsPage() {
               <h1 style={{ fontSize: '1.5rem', fontWeight: 800, margin: 0 }}>Recruiter Settings & Preferences</h1>
             </div>
             <p style={{ fontSize: '0.9rem', color: 'var(--color-gray-500)', margin: 0 }}>
-              Manage personal credentials, company team access, and email notification rules for <strong>{recruiter?.company?.name}</strong>.
+              Manage personal credentials, company team access, and email notification rules for <strong>{companyMeta?.name || recruiter?.company?.name || 'your company'}</strong>.
             </p>
           </div>
 
@@ -294,7 +432,7 @@ export default function RecruiterSettingsPage() {
       <div className="card" style={{ padding: '1.5rem', borderRadius: 'var(--radius-2xl)', marginBottom: '1.5rem' }}>
         <h2 style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--color-gray-900)', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <User size={18} color="var(--color-primary-600)" />
-          Personal Recruiter Profile ({currentUser?.name || recruiter?.name})
+          Personal Recruiter Profile ({profile.name || currentUser?.name || recruiter?.name})
         </h2>
 
         <form onSubmit={handleProfileSave} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem' }}>
@@ -320,7 +458,9 @@ export default function RecruiterSettingsPage() {
             <Input
               type="email"
               value={profile.email}
-              onChange={(e) => setProfile({ ...profile, email: e.target.value })}
+              readOnly
+              style={{ background: '#f8fafc', cursor: 'not-allowed' }}
+              title="Work email is tied to login credentials and cannot be edited directly."
               required
             />
           </FormField>
@@ -334,8 +474,8 @@ export default function RecruiterSettingsPage() {
           </FormField>
 
           <div style={{ gridColumn: '1 / -1', display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
-            <Button variant="primary" type="submit" icon={<Save size={14} />} className="save-profile-btn">
-              Save Profile
+            <Button variant="primary" type="submit" disabled={profileSaving} icon={<Save size={14} />} className="save-profile-btn">
+              {profileSaving ? 'Saving...' : 'Save Profile'}
             </Button>
           </div>
         </form>
@@ -515,6 +655,18 @@ export default function RecruiterSettingsPage() {
                     }}>
                       ACTIVE
                     </span>
+                  ) : member.status === 'DEACTIVATED' ? (
+                    <span style={{
+                      fontSize: '0.75rem',
+                      background: '#fef2f2',
+                      color: '#dc2626',
+                      padding: '0.2rem 0.55rem',
+                      borderRadius: '4px',
+                      fontWeight: 700,
+                      letterSpacing: '0.03em'
+                    }}>
+                      DEACTIVATED
+                    </span>
                   ) : (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                       <span style={{
@@ -528,10 +680,10 @@ export default function RecruiterSettingsPage() {
                       }}>
                         {member.status || 'INVITED'}
                       </span>
-                      {member.invitationToken && (
+                      {(member.invitationToken || member.invitation_token) && (
                         <button
                           type="button"
-                          onClick={() => handleCopyLink(`${window.location.origin}/accept-invitation/${member.invitationToken}`)}
+                          onClick={() => handleCopyLink(`${window.location.origin}/accept-invitation/${member.invitationToken || member.invitation_token}`)}
                           style={{
                             background: '#fff',
                             border: '1px solid var(--color-primary-300)',
@@ -581,7 +733,7 @@ export default function RecruiterSettingsPage() {
               <div style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--color-gray-900)' }}>Instant New Applicant Alerts</div>
               <div style={{ fontSize: '0.8rem', color: 'var(--color-gray-500)' }}>Receive instant email notification when candidates apply to active jobs.</div>
             </div>
-            <Toggle checked={applicantAlerts} onChange={() => setApplicantAlerts(!applicantAlerts)} />
+            <Toggle checked={applicantAlerts} onChange={handleToggleApplicantAlerts} />
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0', borderBottom: '1px solid var(--color-gray-100)' }}>
@@ -589,7 +741,7 @@ export default function RecruiterSettingsPage() {
               <div style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--color-gray-900)' }}>Interview Confirmation & Reminders</div>
               <div style={{ fontSize: '0.8rem', color: 'var(--color-gray-500)' }}>Calendar notifications 1 hour prior to scheduled candidate rounds.</div>
             </div>
-            <Toggle checked={interviewAlerts} onChange={() => setInterviewAlerts(!interviewAlerts)} />
+            <Toggle checked={interviewAlerts} onChange={handleToggleInterviewAlerts} />
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0' }}>
@@ -597,7 +749,7 @@ export default function RecruiterSettingsPage() {
               <div style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--color-gray-900)' }}>Weekly Hiring Funnel Digest</div>
               <div style={{ fontSize: '0.8rem', color: 'var(--color-gray-500)' }}>Summary of applicant volume, time-to-hire velocity, and candidate matches.</div>
             </div>
-            <Toggle checked={weeklyDigest} onChange={() => setWeeklyDigest(!weeklyDigest)} />
+            <Toggle checked={weeklyDigest} onChange={handleToggleWeeklyDigest} />
           </div>
         </div>
       </div>

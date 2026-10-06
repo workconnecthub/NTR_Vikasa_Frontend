@@ -158,6 +158,20 @@ const recruiterJobService = {
       throw new Error(parseApiError(error));
     }
   },
+
+  /**
+   * Submit draft or rejected job for Admin approval.
+   * @param {string} jobId
+   * @returns {Promise<Object>}
+   */
+  async submitJob(jobId) {
+    try {
+      return await apiClient.post(`/recruiters/jobs/${jobId}/submit`);
+    } catch (error) {
+      throw new Error(parseApiError(error));
+    }
+  },
 };
 
 export default recruiterJobService;
+

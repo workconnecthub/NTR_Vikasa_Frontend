@@ -20,6 +20,71 @@ import { dispatchCandidateEvent, NOTIFICATION_EVENTS } from '../../services/noti
 import { MOCK_JOB_MELAS } from '../../data/mockData';
 import ApplicationDetailsModal from '../../components/ui/ApplicationDetailsModal';
 import { formatMelaId, formatJobId, formatRegistrationId } from '../../utils/applicationUtils';
+import candidateJobMelaService from '../../services/candidateJobMelaService';
+
+const normalizeMela = (m) => {
+  if (!m) return null;
+  const startTime = m.start_time || m.startTime || '09:00 AM';
+  const endTime = m.end_time || m.endTime || '05:00 PM';
+  const time = m.time || (m.start_time ? `${startTime} - ${endTime}` : '09:00 AM - 05:00 PM');
+  const date = m.event_date || m.date || '2026-11-15';
+  const venue = m.location || m.venue || m.address || 'Convention Hall';
+  const posterImage = m.flyer_url || m.image_url || m.posterImage || m.banner || m.image || '/hero2.jpg';
+  const companiesCount = m.participating_companies_count ?? m.companiesCount ?? (m.participatingCompanies?.length || 0);
+  const candidatesCount = m.candidate_count ?? m.appliedCandidatesCount ?? m.registeredCandidatesCount ?? 0;
+
+  return {
+    ...m,
+    id: String(m.id),
+    title: m.title || m.event || 'Mega Job Mela',
+    status: m.status || 'UPCOMING',
+    date,
+    time,
+    venue,
+    city: m.city || 'Vijayawada',
+    state: m.state || 'Andhra Pradesh',
+    posterImage,
+    flyer_url: m.flyer_url || posterImage,
+    image_url: m.image_url || posterImage,
+    participating_companies_count: companiesCount,
+    companiesCount,
+    candidate_count: candidatesCount,
+    appliedCandidatesCount: candidatesCount,
+    participatingCompanies: m.participating_companies || m.participatingCompanies || [],
+    availableJobs: m.available_jobs || m.availableJobs || [],
+  };
+};
+
+const normalizeRegistration = (reg) => {
+  if (!reg) return null;
+  const melaId = String(reg.job_mela_id || reg.melaId || reg.id);
+  const passId = reg.pass_id || reg.passId || reg.entryToken || `PASS-${melaId}`;
+  const startTime = reg.start_time || '09:00 AM';
+  const endTime = reg.end_time || '05:00 PM';
+  const time = reg.time || (reg.start_time ? `${startTime} - ${endTime}` : '09:00 AM - 05:00 PM');
+  const gateNumber = reg.entry_point || reg.gate_number || reg.gateNumber || 'Gate 2 (General Fast-Track)';
+  const qrUrl = reg.qr_code_url || reg.entryQrCode || `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(passId)}`;
+
+  return {
+    ...reg,
+    id: melaId,
+    melaId: melaId,
+    job_mela_id: melaId,
+    title: reg.event_title || reg.title || reg.event || reg.eventName || 'Mega Job Mela',
+    venue: reg.venue || reg.location || 'Main Convention Hall',
+    city: reg.city || 'Vijayawada',
+    state: reg.state || 'Andhra Pradesh',
+    date: reg.event_date || reg.date || reg.registrationDate || '2026-11-15',
+    time,
+    passId,
+    pass_id: passId,
+    registeredOn: reg.registered_at ? new Date(reg.registered_at).toLocaleDateString('en-GB') : (reg.registrationDate || 'Recently'),
+    gateNumber,
+    entry_point: gateNumber,
+    entryQrCode: qrUrl,
+    qr_code_url: qrUrl,
+  };
+};
 
 export default function CandidateJobMelaPage() {
   const navigate = useNavigate();
@@ -41,6 +106,16 @@ export default function CandidateJobMelaPage() {
   const allMelas = useMemo(() => {
     return jobMelas && jobMelas.length > 0 ? jobMelas : MOCK_JOB_MELAS;
   }, [jobMelas]);
+
+  // API State
+  const [apiMelas, setApiMelas] = useState(null);
+  const [apiCounts, setApiCounts] = useState(null);
+  const [apiTotal, setApiTotal] = useState(0);
+  const [apiTotalPages, setApiTotalPages] = useState(1);
+  const [apiRegistrations, setApiRegistrations] = useState([]);
+  const [isLoadingMelas, setIsLoadingMelas] = useState(false);
+  const [isLoadingRegistrations, setIsLoadingRegistrations] = useState(false);
+  const [isRegistering, setIsRegistering] = useState(false);
 
   // Navigation state: null = Browse/Main Listing, object = Specific Job Mela Details
   const [selectedMela, setSelectedMela] = useState(null);
@@ -97,13 +172,70 @@ export default function CandidateJobMelaPage() {
   const [submittedAppInfo, setSubmittedAppInfo] = useState(null);
   const [successModalOpen, setSuccessModalOpen] = useState(false);
 
-  // Keep selectedMela synced with live jobMelas updates
+  // Browse listing pagination: 9 per page (3 columns × 3 rows)
+  const MELAS_PER_PAGE = 9;
+  const [melaPage, setMelaPage] = useState(1);
+
+  // Fetch job melas from backend API
+  const fetchJobMelas = async () => {
+    setIsLoadingMelas(true);
+    try {
+      const res = await candidateJobMelaService.getJobMelas({
+        status: melaStatusFilter,
+        search: melaSearch,
+        page: melaPage,
+        pageSize: MELAS_PER_PAGE
+      });
+      if (res && Array.isArray(res.items)) {
+        setApiMelas(res.items.map(normalizeMela));
+        setApiTotal(res.total || res.items.length);
+        setApiTotalPages(res.total_pages || Math.max(1, Math.ceil((res.total || res.items.length) / MELAS_PER_PAGE)));
+        if (res.counts) {
+          setApiCounts(res.counts);
+        }
+      }
+    } catch (err) {
+      console.warn("Could not fetch job melas from API, using fallback:", err);
+    } finally {
+      setIsLoadingMelas(false);
+    }
+  };
+
+  // Fetch registrations from backend API
+  const fetchRegistrations = async () => {
+    if (!isLoggedIn) {
+      setApiRegistrations([]);
+      return;
+    }
+    setIsLoadingRegistrations(true);
+    try {
+      const res = await candidateJobMelaService.getMyRegistrations();
+      if (Array.isArray(res)) {
+        setApiRegistrations(res.map(normalizeRegistration));
+      }
+    } catch (err) {
+      console.warn("Could not fetch candidate registrations from API:", err);
+    } finally {
+      setIsLoadingRegistrations(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchJobMelas();
+  }, [melaStatusFilter, melaSearch, melaPage]);
+
+  useEffect(() => {
+    fetchRegistrations();
+  }, [isLoggedIn, candidate?.id]);
+
+  // Keep selectedMela synced with live updates
   useEffect(() => {
     if (selectedMela) {
-      const live = allMelas.find(m => String(m.id) === String(selectedMela.id));
-      if (live) setSelectedMela(live);
+      const pool = apiMelas || allMelas;
+      const live = pool.find(m => String(m.id) === String(selectedMela.id));
+      if (live) setSelectedMela(normalizeMela(live));
     }
-  }, [allMelas]);
+  }, [apiMelas, allMelas]);
 
   // Reset company page when search / filter changes
   useEffect(() => {
@@ -112,6 +244,9 @@ export default function CandidateJobMelaPage() {
 
   // Registered Event Passes for the current logged in candidate (purely dynamic)
   const registeredEvents = useMemo(() => {
+    if (apiRegistrations && apiRegistrations.length > 0) {
+      return apiRegistrations;
+    }
     const myEmail = (candidate.email || '').toLowerCase().trim();
     const myId = (candidate.id || '').toLowerCase().trim();
     const myName = (candidate.name || '').toLowerCase().trim();
@@ -127,23 +262,20 @@ export default function CandidateJobMelaPage() {
       const mela = allMelas.find(m => String(m.id) === String(reg.melaId) ||
         (reg.event && (m.title && reg.event.toLowerCase() === m.title.toLowerCase() || m.event && reg.event.toLowerCase() === m.event.toLowerCase()))
       );
-      return {
+      return normalizeRegistration({
         ...mela,
         ...reg,
-        id: reg.melaId || mela?.id || reg.id,
-        melaId: reg.melaId || mela?.id || reg.id,
-        title: mela?.title || mela?.event || reg.event || reg.eventName || 'Mega Job Mela',
+        job_mela_id: reg.melaId || mela?.id || reg.id,
+        event_title: mela?.title || mela?.event || reg.event || reg.eventName || 'Mega Job Mela',
         venue: mela?.venue || mela?.location || 'Main Convention Hall',
         city: mela?.city || 'Vijayawada',
         date: mela?.date || reg.registrationDate || '2026-11-15',
         time: mela?.time || '09:00 AM - 05:00 PM',
-        passId: reg.passId || reg.entryToken || reg.id,
-        registeredOn: reg.registrationDate || 'Recently',
-        gateNumber: reg.gateNumber || 'Gate 2 (General Fast-Track)',
-        entryQrCode: reg.entryQrCode || `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(reg.passId || reg.id)}`,
-      };
+        pass_id: reg.passId || reg.entryToken || reg.id,
+        entry_point: reg.gateNumber || 'Gate 2 (General Fast-Track)',
+      });
     });
-  }, [candidate, adminRegistrations, allMelas]);
+  }, [apiRegistrations, candidate, adminRegistrations, allMelas]);
 
   // Candidate applications specifically for Job Melas (purely dynamic)
   const candidateJobMelaApplications = useMemo(() => {
@@ -169,13 +301,21 @@ export default function CandidateJobMelaPage() {
 
   // Status Tabs Counts
   const melaTabs = useMemo(() => {
+    if (apiCounts) {
+      return [
+        { key: 'ALL', label: 'All', count: apiCounts.all ?? 0 },
+        { key: 'UPCOMING', label: 'Upcoming', count: apiCounts.upcoming ?? 0 },
+        { key: 'ONGOING', label: 'Ongoing', count: apiCounts.ongoing ?? 0 },
+        { key: 'COMPLETED', label: 'Completed', count: apiCounts.completed ?? 0 },
+      ];
+    }
     return [
       { key: 'ALL', label: 'All', count: allMelas.length },
       { key: 'UPCOMING', label: 'Upcoming', count: allMelas.filter(m => m.status === 'UPCOMING' || m.status === 'APPROVED' || m.status === 'REGISTRATION_OPEN').length },
       { key: 'ONGOING', label: 'Ongoing', count: allMelas.filter(m => m.status === 'ONGOING' || m.status === 'ACTIVE').length },
       { key: 'COMPLETED', label: 'Completed', count: allMelas.filter(m => m.status === 'COMPLETED' || m.status === 'CONCLUDED').length },
     ];
-  }, [allMelas]);
+  }, [apiCounts, allMelas]);
 
   // Filtered Job Melas for Listing (includes APPROVED as upcoming)
   const filteredMelas = useMemo(() => {
@@ -201,20 +341,32 @@ export default function CandidateJobMelaPage() {
     });
   }, [allMelas, melaSearch, melaStatusFilter]);
 
-  // Browse listing pagination: 9 per page (3 columns × 3 rows)
-  const MELAS_PER_PAGE = 9;
-  const [melaPage, setMelaPage] = useState(1);
-
   // Reset to page 1 when search or filter changes
   useEffect(() => {
     setMelaPage(1);
   }, [melaSearch, melaStatusFilter]);
 
-  const totalMelaPages = Math.max(1, Math.ceil(filteredMelas.length / MELAS_PER_PAGE));
+  const totalMelaPages = useMemo(() => {
+    if (apiMelas !== null) {
+      return apiTotalPages;
+    }
+    return Math.max(1, Math.ceil(filteredMelas.length / MELAS_PER_PAGE));
+  }, [apiMelas, apiTotalPages, filteredMelas.length]);
+
+  const totalMelaItems = useMemo(() => {
+    if (apiMelas !== null) {
+      return apiTotal;
+    }
+    return filteredMelas.length;
+  }, [apiMelas, apiTotal, filteredMelas.length]);
+
   const paginatedMelas = useMemo(() => {
+    if (apiMelas !== null) {
+      return apiMelas;
+    }
     const start = (melaPage - 1) * MELAS_PER_PAGE;
-    return filteredMelas.slice(start, start + MELAS_PER_PAGE);
-  }, [filteredMelas, melaPage]);
+    return filteredMelas.slice(start, start + MELAS_PER_PAGE).map(normalizeMela);
+  }, [apiMelas, filteredMelas, melaPage]);
 
   // Calculate live statistics for selected Job Mela
   const currentMelaStats = useMemo(() => {
@@ -293,6 +445,20 @@ export default function CandidateJobMelaPage() {
     return filteredCompanies.slice(start, start + COMPANIES_PER_PAGE);
   }, [filteredCompanies, companyPage, totalCompanyPages]);
 
+  // Select Mela Details Handler
+  const handleSelectMelaDetails = async (mela) => {
+    setSelectedMela(normalizeMela(mela));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    try {
+      const detail = await candidateJobMelaService.getJobMelaDetails(mela.id);
+      if (detail) {
+        setSelectedMela(normalizeMela(detail));
+      }
+    } catch (err) {
+      console.warn("Could not fetch mela detail from backend:", err);
+    }
+  };
+
   // Digital Pass Handlers
   const handleOpenPass = (event) => {
     setSelectedPass(event);
@@ -335,31 +501,63 @@ export default function CandidateJobMelaPage() {
     setEventRegModalOpen(true);
   };
 
-  const handleConfirmEventRegistration = (e) => {
+  const handleConfirmEventRegistration = async (e) => {
     e.preventDefault();
     if (!selectedMelaForReg) return;
+    setIsRegistering(true);
 
-    const newPass = registerForJobMela ? registerForJobMela({
-      melaId: selectedMelaForReg.id,
-      candidateId: candidate.id,
-      candidateName: eventRegForm.name || candidate.name,
-      candidateEmail: eventRegForm.email || candidate.email,
-      phone: eventRegForm.phone || candidate.phone,
-      location: eventRegForm.location,
-      timeSlot: eventRegForm.timeSlot,
-      event: selectedMelaForReg.title || selectedMelaForReg.event,
-      venue: selectedMelaForReg.venue || selectedMelaForReg.city,
-      city: selectedMelaForReg.city,
-      state: selectedMelaForReg.state,
-      date: selectedMelaForReg.date
-    }) : {
-      ...selectedMelaForReg,
-      passId: `PASS-AP-${Math.floor(100000 + Math.random() * 900000)}`,
-      registeredOn: 'Today',
-      gateNumber: 'Gate 2 (General Fast-Track)',
-      entryQrCode: 'https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=JOBMELA-PASS',
-    };
+    let newPass = null;
+    try {
+      const regPayload = {
+        time_slot: eventRegForm.timeSlot,
+        location: eventRegForm.location || selectedMelaForReg.city,
+        resume_url: eventRegForm.resume,
+      };
+      const apiRes = await candidateJobMelaService.registerForJobMela(selectedMelaForReg.id, regPayload);
+      if (apiRes) {
+        newPass = normalizeRegistration(apiRes);
+        await fetchRegistrations();
+        await fetchJobMelas();
+      }
+    } catch (err) {
+      console.warn("API registration failed or offline, falling back:", err);
+      if (err.message && err.message.toLowerCase().includes('already registered')) {
+        toast({
+          type: 'info',
+          title: 'Already Registered',
+          message: 'You are already registered for this Job Mela.'
+        });
+        setIsRegistering(false);
+        setEventRegModalOpen(false);
+        return;
+      }
+    }
 
+    if (!newPass) {
+      newPass = registerForJobMela ? registerForJobMela({
+        melaId: selectedMelaForReg.id,
+        candidateId: candidate.id,
+        candidateName: eventRegForm.name || candidate.name,
+        candidateEmail: eventRegForm.email || candidate.email,
+        phone: eventRegForm.phone || candidate.phone,
+        location: eventRegForm.location,
+        timeSlot: eventRegForm.timeSlot,
+        event: selectedMelaForReg.title || selectedMelaForReg.event,
+        venue: selectedMelaForReg.venue || selectedMelaForReg.city,
+        city: selectedMelaForReg.city,
+        state: selectedMelaForReg.state,
+        date: selectedMelaForReg.date
+      }) : normalizeRegistration({
+        ...selectedMelaForReg,
+        job_mela_id: selectedMelaForReg.id,
+        pass_id: `PASS-AP-${Math.floor(100000 + Math.random() * 900000)}`,
+        registered_at: new Date().toISOString(),
+        entry_point: 'Gate 2 (General Fast-Track)',
+        qr_code_url: 'https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=JOBMELA-PASS',
+      });
+    }
+
+    setIsRegistering(false);
     setEventRegModalOpen(false);
     setSelectedPass(newPass);
     setPassModalOpen(true);
@@ -372,19 +570,19 @@ export default function CandidateJobMelaPage() {
       addNotification,
       notification: {
         category: 'JOB_MELA',
-        title: `Job Mela Pass Confirmed: ${newPass.passId}`,
-        message: `Your Fast-Track QR pass (${newPass.passId}) is confirmed for ${selectedMelaForReg.title || selectedMelaForReg.event}. Event Date: ${selectedMelaForReg.date || 'Upcoming'}. Venue: ${selectedMelaForReg.venue || selectedMelaForReg.city}. Gate: ${newPass.gateNumber}.`,
+        title: `Job Mela Pass Confirmed: ${newPass.passId || newPass.pass_id}`,
+        message: `Your Fast-Track QR pass (${newPass.passId || newPass.pass_id}) is confirmed for ${selectedMelaForReg.title || selectedMelaForReg.event}. Event Date: ${selectedMelaForReg.date || 'Upcoming'}. Venue: ${selectedMelaForReg.venue || selectedMelaForReg.city}. Gate: ${newPass.gateNumber || newPass.entry_point}.`,
         time: 'Just now',
         link: '/candidate/job-melas',
         meta: {
-          passId: newPass.passId,
+          passId: newPass.passId || newPass.pass_id,
           melaTitle: selectedMelaForReg.title || selectedMelaForReg.event,
           date: selectedMelaForReg.date,
           venue: selectedMelaForReg.venue || selectedMelaForReg.city,
         }
       },
       meta: {
-        passId: newPass.passId,
+        passId: newPass.passId || newPass.pass_id,
         melaTitle: selectedMelaForReg.title || selectedMelaForReg.event,
       }
     });
@@ -447,25 +645,28 @@ export default function CandidateJobMelaPage() {
     const loc = searchParams.get('loc');
 
     if (shouldApply && melaId && company && isLoggedIn) {
-      const targetMela = allMelas.find(m => String(m.id) === String(melaId));
+      const pool = apiMelas || allMelas;
+      const targetMela = pool.find(m => String(m.id) === String(melaId));
       if (targetMela) {
-        setSelectedMela(targetMela);
+        setSelectedMela(normalizeMela(targetMela));
         handleOpenCompanyApply(targetMela, company, role, salary, loc);
         setSearchParams({}, { replace: true });
       }
     } else if (shouldRegister && melaId && isLoggedIn) {
-      const targetMela = allMelas.find(m => String(m.id) === String(melaId));
+      const pool = apiMelas || allMelas;
+      const targetMela = pool.find(m => String(m.id) === String(melaId));
       if (targetMela) {
-        setSelectedMela(targetMela);
+        setSelectedMela(normalizeMela(targetMela));
         handleOpenEventRegistration(targetMela);
         setSearchParams({}, { replace: true });
       }
     }
-  }, [searchParams, isLoggedIn, allMelas]);
+  }, [searchParams, isLoggedIn, apiMelas, allMelas]);
 
   // Generate NTR-{EVENT_NO}-{COMPANY_NO}-{APPLICATION_NO} format
   const generateNtrAppId = (melaId, companyName, currentApps) => {
-    const melaIdx = allMelas.findIndex(m => String(m.id) === String(melaId));
+    const pool = apiMelas || allMelas;
+    const melaIdx = pool.findIndex(m => String(m.id) === String(melaId));
     const eventNo = String(Math.max(1, melaIdx + 1)).padStart(2, '0');
 
     const melaApps = currentApps.filter(a => String(a.melaId) === String(melaId));
@@ -495,7 +696,7 @@ export default function CandidateJobMelaPage() {
     );
   };
 
-  const handleSubmitCompanyApplication = (e) => {
+  const handleSubmitCompanyApplication = async (e) => {
     e.preventDefault();
     if (!selectedCompanyJob) return;
 
@@ -565,6 +766,21 @@ export default function CandidateJobMelaPage() {
         { stage: 'Selected', date: 'TBD', completed: false, current: false },
       ]
     };
+
+    try {
+      await candidateJobMelaService.applyToMelaCompany(selectedCompanyJob.melaId, {
+        company_name: selectedCompanyJob.companyName,
+        role: selectedCompanyJob.role,
+        salary: selectedCompanyJob.salary,
+        location: selectedCompanyJob.location,
+        cover_note: companyApplyForm.coverNote,
+        skills: companyApplyForm.skills,
+        experience: companyApplyForm.experience,
+        education: companyApplyForm.education
+      });
+    } catch (err) {
+      console.warn("API apply to mela company non-blocking error:", err);
+    }
 
     // Save to AdminContext
     if (applyToJobMelaCompany) {
@@ -1603,10 +1819,7 @@ export default function CandidateJobMelaPage() {
                           variant="primary"
                           size="sm"
                           rightIcon={<ArrowRight size={13} />}
-                          onClick={() => {
-                            setSelectedMela(event);
-                            window.scrollTo({ top: 0, behavior: 'smooth' });
-                          }}
+                          onClick={() => handleSelectMelaDetails(event)}
                         >
                           View Details & Apply
                         </Button>
@@ -1900,10 +2113,7 @@ export default function CandidateJobMelaPage() {
                             size="sm"
                             variant="primary"
                             rightIcon={<ArrowRight size={13} />}
-                            onClick={() => {
-                              setSelectedMela(mela);
-                              window.scrollTo({ top: 0, behavior: 'smooth' });
-                            }}
+                            onClick={() => handleSelectMelaDetails(mela)}
                           >
                             View Details
                           </Button>
@@ -1916,11 +2126,11 @@ export default function CandidateJobMelaPage() {
             )}
 
             {/* Browse listing pagination */}
-            {filteredMelas.length > 0 && (
+            {totalMelaItems > 0 && (
               <Pagination
                 currentPage={melaPage}
                 totalPages={totalMelaPages}
-                totalItems={filteredMelas.length}
+                totalItems={totalMelaItems}
                 pageSize={MELAS_PER_PAGE}
                 onPageChange={(page) => {
                   setMelaPage(page);
@@ -2403,17 +2613,28 @@ export default function CandidateJobMelaPage() {
                 Candidate: <strong>{candidate.name}</strong> • Event ID: <strong style={{ fontFamily: 'monospace', color: '#7c3aed' }}>{formatMelaId(selectedPass.id)}</strong> • Registration ID: <strong style={{ fontFamily: 'monospace', color: 'var(--color-primary-600)' }}>{selectedPass.passId}</strong>
               </p>
 
-              {/* QR placeholder */}
+              {/* QR Code */}
               <div style={{
                 width: 140, height: 140,
                 background: 'var(--color-gray-100)',
                 borderRadius: 'var(--radius-xl)',
                 margin: '0 auto var(--space-4)',
                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                border: '1px solid var(--color-border)'
+                border: '1px solid var(--color-border)',
+                overflow: 'hidden'
               }}>
-                <QrCode size={80} style={{ color: 'var(--color-primary-900)' }} />
-                <span style={{ fontSize: '9px', color: 'var(--color-text-muted)', marginTop: 2 }}>Scan at Entrance</span>
+                {selectedPass.qr_code_url || selectedPass.entryQrCode ? (
+                  <img
+                    src={selectedPass.qr_code_url || selectedPass.entryQrCode}
+                    alt="QR Pass"
+                    style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                  />
+                ) : (
+                  <>
+                    <QrCode size={80} style={{ color: 'var(--color-primary-900)' }} />
+                    <span style={{ fontSize: '9px', color: 'var(--color-text-muted)', marginTop: 2 }}>Scan at Entrance</span>
+                  </>
+                )}
               </div>
 
               <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>

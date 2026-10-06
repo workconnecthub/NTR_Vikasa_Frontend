@@ -23,6 +23,8 @@ import {
 import heroImg from '../../assets/hero.jpeg';
 import GallerySection from '../../components/home/GallerySection';
 import NewsArticlesSection from '../../components/home/NewsArticlesSection';
+import publicService from '../../services/publicService';
+
 
 export default function HomePage() {
   const navigate = useNavigate();
@@ -99,14 +101,99 @@ export default function HomePage() {
     navigate(`/jobs?${params.toString()}`);
   };
 
-  const featuredJobs = MOCK_JOBS.filter(j => j.isFeatured).slice(0, 3);
-  const latestJobs = MOCK_JOBS.slice(0, 6);
-  const topCompanies = MOCK_COMPANIES.slice(0, 8);
-  const featuredInternships = MOCK_INTERNSHIPS.slice(0, 3);
-  const allJobMelas = jobMelas && jobMelas.length > 0 ? jobMelas : MOCK_JOB_MELAS;
-  const upcomingJobMelas = allJobMelas
-    .filter(m => m.status === 'REGISTRATION_OPEN' || m.status === 'UPCOMING' || m.status === 'APPROVED')
+  const [liveJobs, setLiveJobs] = useState([]);
+  const [liveCompanies, setLiveCompanies] = useState([]);
+  const [liveInternships, setLiveInternships] = useState([]);
+  const [liveJobMelas, setLiveJobMelas] = useState([]);
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchPublicData = async () => {
+      try {
+        const [jobsRes, compsRes, internsRes, melasRes] = await Promise.allSettled([
+          publicService.getPublishedJobs({ page_size: 10 }),
+          publicService.getPublishedCompanies({ page_size: 10 }),
+          publicService.getPublishedInternships({ page_size: 10 }),
+          publicService.getPublishedJobMelas(),
+        ]);
+
+        if (!isMounted) return;
+
+        if (jobsRes.status === 'fulfilled' && jobsRes.value?.items?.length) {
+          setLiveJobs(jobsRes.value.items.map(j => ({
+            id: j.job_id || j.id,
+            title: j.title,
+            company: j.company_name,
+            location: j.location,
+            type: j.job_type,
+            salary: j.salary || 'Competitive',
+            experience: j.experience,
+            tags: j.skills || [],
+            isFeatured: true,
+            isNew: true,
+            workMode: j.work_mode,
+          })));
+        }
+
+        if (compsRes.status === 'fulfilled' && compsRes.value?.items?.length) {
+          setLiveCompanies(compsRes.value.items.map(c => ({
+            id: c.id,
+            name: c.name || c.company_name,
+            industry: c.industry,
+            logo: c.logo || c.company_logo_path,
+            openJobs: c.openJobs || c.open_jobs || 0,
+            employees: c.employees || c.size || '1000+',
+          })));
+        }
+
+        if (internsRes.status === 'fulfilled' && internsRes.value?.items?.length) {
+          setLiveInternships(internsRes.value.items.map(i => ({
+            id: i.internship_number || i.id,
+            title: i.title,
+            company: i.company_name,
+            location: i.location,
+            duration: i.duration,
+            stipend: i.stipend,
+            mode: i.work_mode,
+            tags: [i.work_mode, i.duration].filter(Boolean),
+          })));
+        }
+
+        if (melasRes.status === 'fulfilled' && Array.isArray(melasRes.value) && melasRes.value.length) {
+          setLiveJobMelas(melasRes.value.map(m => ({
+            id: m.id || m.mela_number,
+            title: m.title,
+            event: m.title,
+            event_date: m.event_date,
+            date: m.event_date,
+            venue: m.venue,
+            city: m.city,
+            status: m.status,
+            participatingCompaniesCount: m.participating_companies_count || 10,
+          })));
+        }
+      } catch (e) {
+        console.warn('HomePage public data load warning:', e);
+      }
+    };
+
+    fetchPublicData();
+    return () => { isMounted = false; };
+  }, []);
+
+  const displayJobs = liveJobs.length > 0 ? liveJobs : MOCK_JOBS;
+  const displayCompanies = liveCompanies.length > 0 ? liveCompanies : MOCK_COMPANIES;
+  const displayInternships = liveInternships.length > 0 ? liveInternships : MOCK_INTERNSHIPS;
+  const displayMelas = liveJobMelas.length > 0 ? liveJobMelas : (jobMelas.length > 0 ? jobMelas : MOCK_JOB_MELAS);
+
+  const featuredJobs = displayJobs.filter(j => j.isFeatured).slice(0, 3);
+  const latestJobs = displayJobs.slice(0, 6);
+  const topCompanies = displayCompanies.slice(0, 8);
+  const featuredInternships = displayInternships.slice(0, 3);
+  const upcomingJobMelas = displayMelas
+    .filter(m => m.status === 'REGISTRATION_OPEN' || m.status === 'UPCOMING' || m.status === 'APPROVED' || m.status === 'PUBLISHED')
     .slice(0, 2);
+
 
   const iconMap24 = {
     Briefcase: <Briefcase size={24} />,

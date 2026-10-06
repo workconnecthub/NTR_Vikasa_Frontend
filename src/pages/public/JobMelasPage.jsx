@@ -13,6 +13,7 @@ import Pagination from '../../components/ui/Pagination';
 import JobMelaPosterModal, { downloadPosterImage } from '../../components/ui/JobMelaPosterModal';
 import { MOCK_JOB_MELAS } from '../../data/mockData';
 import { useAdmin, DEFAULT_JOB_MELA_CONTENT } from '../../context/AdminContext';
+import publicService from '../../services/publicService';
 
 export default function JobMelasPage() {
   const { jobMelaContent, jobMelas = [], getMelaStats } = useAdmin();
@@ -24,11 +25,34 @@ export default function JobMelasPage() {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [selectedPosterMela, setSelectedPosterMela] = useState(null);
+  const [liveMelas, setLiveMelas] = useState([]);
 
-  // Combine live admin jobMelas with fallback to mock data
+  useEffect(() => {
+    let isMounted = true;
+    const fetchPublicMelas = async () => {
+      try {
+        const data = await publicService.getPublishedJobMelas();
+        if (isMounted && Array.isArray(data) && data.length > 0) {
+          const formatted = data.map(m => ({
+            ...m,
+            date: m.date || m.event_date || '2026-10-15',
+            time: m.time || `${m.start_time || '09:00 AM'} - ${m.end_time || '05:30 PM'}`
+          }));
+          setLiveMelas(formatted);
+        }
+      } catch (err) {
+        console.warn('Failed to load published job melas from backend:', err);
+      }
+    };
+    fetchPublicMelas();
+    return () => { isMounted = false; };
+  }, []);
+
+  // Combine live backend published jobMelas with admin context or fallback mock data
   const allMelas = useMemo(() => {
+    if (liveMelas && liveMelas.length > 0) return liveMelas;
     return jobMelas && jobMelas.length > 0 ? jobMelas : MOCK_JOB_MELAS;
-  }, [jobMelas]);
+  }, [liveMelas, jobMelas]);
 
   // Dynamic unique cities list from all melas
   const uniqueCities = useMemo(() => {

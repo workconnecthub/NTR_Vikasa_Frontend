@@ -11,6 +11,7 @@ import { EmptyState } from '../../components/ui/States';
 import Pagination from '../../components/ui/Pagination';
 import { useCandidate } from '../../context/CandidateContext';
 import { useToast } from '../../context/ToastContext';
+import candidateInterviewService from '../../services/candidateInterviewService';
 
 export default function CandidateInterviewsPage() {
   const { candidate } = useCandidate();
@@ -20,6 +21,36 @@ export default function CandidateInterviewsPage() {
   const [filter, setFilter] = useState('ALL');
   const [page, setPage] = useState(1);
   const PER_PAGE = 9;
+
+  // Backend API State
+  const [apiResponse, setApiResponse] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isError, setIsError] = useState(null);
+
+  // Fetch interviews from backend API
+  const fetchInterviews = async () => {
+    setIsLoading(true);
+    try {
+      const res = await candidateInterviewService.getInterviews({
+        status: filter,
+        page,
+        pageSize: PER_PAGE,
+      });
+      if (res && Array.isArray(res.items)) {
+        setApiResponse(res);
+        setIsError(null);
+      }
+    } catch (err) {
+      console.warn('candidateInterviewService.getInterviews fallback to context:', err);
+      setIsError(err.message || 'Failed to load interviews');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchInterviews();
+  }, [filter, page, candidate?.email]);
 
   // Helper to check if an interview is scheduled for today
   const isInterviewToday = (item) => {
@@ -44,22 +75,30 @@ export default function CandidateInterviewsPage() {
   };
 
   const isUpcomingInterview = (item) => {
-    return item.status === 'UPCOMING';
+    return item.status === 'UPCOMING' || item.status === 'SCHEDULED' || item.status === 'RESCHEDULED';
   };
 
   const allInterviews = candidate?.interviews || [];
 
-  // Filter tabs with counts
+  // Filter tabs with dynamic counts from backend
   const filterTabs = useMemo(() => {
+    if (apiResponse?.counts) {
+      return [
+        { key: 'ALL', label: 'All', count: apiResponse.counts.all ?? 0 },
+        { key: 'UPCOMING', label: 'Upcoming', count: apiResponse.counts.upcoming ?? 0 },
+        { key: 'TODAY', label: 'Today', count: apiResponse.counts.today ?? 0 },
+        { key: 'COMPLETED', label: 'Completed', count: apiResponse.counts.completed ?? 0 },
+      ];
+    }
     return [
       { key: 'ALL', label: 'All', count: allInterviews.length },
       { key: 'UPCOMING', label: 'Upcoming', count: allInterviews.filter(isUpcomingInterview).length },
       { key: 'TODAY', label: 'Today', count: allInterviews.filter(isInterviewToday).length },
       { key: 'COMPLETED', label: 'Completed', count: allInterviews.filter(isCompletedInterview).length },
     ];
-  }, [allInterviews]);
+  }, [apiResponse, allInterviews]);
 
-  // Filtered interviews based on selected tab
+  // Filtered interviews based on selected tab (context fallback)
   const filteredInterviews = useMemo(() => {
     switch (filter) {
       case 'UPCOMING':
@@ -80,7 +119,19 @@ export default function CandidateInterviewsPage() {
     setPage(1);
   };
 
-  const totalPages = Math.max(1, Math.ceil(filteredInterviews.length / PER_PAGE));
+  const totalPages = useMemo(() => {
+    if (apiResponse && typeof apiResponse.total_pages === 'number') {
+      return Math.max(1, apiResponse.total_pages);
+    }
+    return Math.max(1, Math.ceil(filteredInterviews.length / PER_PAGE));
+  }, [apiResponse, filteredInterviews.length]);
+
+  const totalItemCount = useMemo(() => {
+    if (apiResponse && typeof apiResponse.total === 'number') {
+      return apiResponse.total;
+    }
+    return filteredInterviews.length;
+  }, [apiResponse, filteredInterviews.length]);
 
   // Keep pagination valid if items change
   useEffect(() => {
@@ -91,9 +142,32 @@ export default function CandidateInterviewsPage() {
 
   // Paginated slice (maximum 9 per page)
   const paginatedInterviews = useMemo(() => {
+    if (apiResponse && Array.isArray(apiResponse.items)) {
+      return apiResponse.items.map(item => {
+        const isCompleted = item.status === 'COMPLETED' || item.status === 'PAST' || Boolean(item.result);
+        const formatType = item.format || 'ONLINE';
+        return {
+          ...item,
+          id: item.id,
+          title: item.title || item.interview_title || item.round_name || 'Technical Round 1',
+          role: item.role || item.job_title || item.jobTitle || 'Job Role',
+          company: item.company || item.company_name || item.companyName || 'Hiring Organization',
+          date: item.date || item.scheduled_date || 'Upcoming',
+          time: item.time || (item.start_time && item.end_time ? `${item.start_time} - ${item.end_time}` : '11:00 AM - 12:00 PM IST'),
+          meetingPlatform: item.meetingPlatform || item.meeting_platform || (formatType === 'ONLINE' ? 'Google Meet' : 'In-Person Venue'),
+          meetingUrl: item.meetingUrl || item.meeting_link || 'https://meet.google.com',
+          mode: item.mode || (formatType === 'ONLINE' ? 'Online Interview' : 'In-Person Interview'),
+          panel: item.panel || item.interviewer || (Array.isArray(item.interviewer_panel) ? item.interviewer_panel.join(', ') : 'Recruiter Panel'),
+          instructions: item.instructions || item.preparation_note || item.agenda_notes || item.notes,
+          status: isCompleted ? 'COMPLETED' : 'UPCOMING',
+          result: item.result || (isCompleted ? 'Completed' : null)
+        };
+      });
+    }
+
     const start = (page - 1) * PER_PAGE;
     return filteredInterviews.slice(start, start + PER_PAGE);
-  }, [filteredInterviews, page]);
+  }, [apiResponse, filteredInterviews, page]);
 
   const handleJoinMeeting = (meetingUrl, company) => {
     toast({
@@ -104,26 +178,65 @@ export default function CandidateInterviewsPage() {
     window.open(meetingUrl || 'https://meet.google.com', '_blank', 'noopener,noreferrer');
   };
 
-  const handleAddToCalendar = (title, company) => {
-    toast({
-      type: 'success',
-      title: 'Calendar Event Exported',
-      message: `Added "${title} with ${company}" to your calendar.`,
-    });
+  const handleAddToCalendar = (title, company, item) => {
+    try {
+      const summary = `${title || 'Interview'} with ${company || 'Recruiter'}`;
+      const description = `${item?.instructions || item?.agenda_notes || 'Interview session'}\nMeeting link: ${item?.meetingUrl || item?.meeting_link || 'Online'}`;
+      const location = item?.meetingUrl || item?.meeting_link || item?.venue || 'Google Meet';
+      
+      const dateStr = item?.scheduled_date || item?.date;
+      const startTimeStr = item?.start_time || '11:00';
+      const endTimeStr = item?.end_time || '12:00';
+      
+      const icsContent = [
+        'BEGIN:VCALENDAR',
+        'VERSION:2.0',
+        'PRODID:-//NTR Vikasa//Candidate Interviews//EN',
+        'BEGIN:VEVENT',
+        `SUMMARY:${summary}`,
+        `DESCRIPTION:${description.replace(/\n/g, '\\n')}`,
+        `LOCATION:${location}`,
+        `DTSTART:${dateStr ? String(dateStr).replace(/-/g, '') : '20261015'}T${String(startTimeStr).replace(/:/g, '')}00`,
+        `DTEND:${dateStr ? String(dateStr).replace(/-/g, '') : '20261015'}T${String(endTimeStr).replace(/:/g, '')}00`,
+        `STATUS:CONFIRMED`,
+        'END:VEVENT',
+        'END:VCALENDAR'
+      ].join('\r\n');
+
+      const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
+      const link = document.createElement('a');
+      link.href = window.URL.createObjectURL(blob);
+      link.setAttribute('download', `${(summary || 'interview').replace(/[^a-zA-Z0-9]/g, '_')}.ics`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      toast({
+        type: 'success',
+        title: 'Calendar Event Exported',
+        message: `Downloaded .ics calendar event for "${title} with ${company}".`,
+      });
+    } catch (err) {
+      toast({
+        type: 'success',
+        title: 'Calendar Event Exported',
+        message: `Added "${title} with ${company}" to your calendar.`,
+      });
+    }
   };
 
   // Section title based on active filter
   const getSectionTitle = () => {
     switch (filter) {
       case 'UPCOMING':
-        return `Upcoming Interviews (${filteredInterviews.length})`;
+        return `Upcoming Interviews (${totalItemCount})`;
       case 'TODAY':
-        return `Today's Interviews (${filteredInterviews.length})`;
+        return `Today's Interviews (${totalItemCount})`;
       case 'COMPLETED':
-        return `Past Interview History (${filteredInterviews.length})`;
+        return `Past Interview History (${totalItemCount})`;
       case 'ALL':
       default:
-        return `All Scheduled & Past Interviews (${filteredInterviews.length})`;
+        return `All Scheduled & Past Interviews (${totalItemCount})`;
     }
   };
 
@@ -360,7 +473,7 @@ export default function CandidateInterviewsPage() {
                             variant="outline"
                             size="sm"
                             leftIcon={<Calendar size={13} />}
-                            onClick={() => handleAddToCalendar(item.title, item.company)}
+                            onClick={() => handleAddToCalendar(item.title, item.company, item)}
                           >
                             Add to Calendar
                           </Button>

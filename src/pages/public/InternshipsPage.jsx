@@ -1,23 +1,32 @@
-import { useState, useMemo, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { useState, useEffect, useCallback } from 'react';
 import {
-  Search, MapPin, SlidersHorizontal, RotateCcw, GraduationCap,
-  DollarSign, Clock, Building2, Sparkles, X
+  Search, SlidersHorizontal, GraduationCap,
+  Loader2
 } from 'lucide-react';
 import { InternshipCard } from '../../components/ui/EntityCards';
 import Select from '../../components/ui/Select';
 import Button from '../../components/ui/Button';
 import { EmptyState } from '../../components/ui/States';
 import Pagination from '../../components/ui/Pagination';
+import publicService from '../../services/publicService';
 import {
-  MOCK_INTERNSHIPS,
   LOCATIONS,
   WORK_MODES,
   STIPEND_RANGES,
   INTERNSHIP_DURATIONS,
-  SKILL_OPTIONS,
-  INDUSTRIES
 } from '../../data/mockData';
+
+// ── Parse stipend range string -> { min, max } ───────────────────────────────
+function parseStipenRange(rangeStr) {
+  if (!rangeStr || rangeStr === 'All Stipends') return { min: null, max: null };
+  if (rangeStr.includes('Unpaid')) return { min: 0, max: 0 };
+  const nums = rangeStr.replace(/[₹,\s]/g, '').match(/\d+/g);
+  if (!nums) return { min: null, max: null };
+  if (rangeStr.includes('+')) return { min: parseInt(nums[0], 10), max: null };
+  return { min: parseInt(nums[0], 10), max: parseInt(nums[1], 10) };
+}
+
+const PER_PAGE = 9;
 
 export default function InternshipsPage() {
   const [search, setSearch] = useState('');
@@ -25,14 +34,72 @@ export default function InternshipsPage() {
   const [workMode, setWorkMode] = useState('');
   const [stipendRange, setStipendRange] = useState('');
   const [duration, setDuration] = useState('');
-  const [selectedSkill, setSelectedSkill] = useState('');
-  const [industry, setIndustry] = useState('');
   const [page, setPage] = useState(1);
 
-  // Reset pagination to page 1 whenever filters or search query change
+  // API state
+  const [internships, setInternships] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const fetchInternships = useCallback(async (resetPage = false) => {
+    const targetPage = resetPage ? 1 : page;
+    if (resetPage) setPage(1);
+
+    setLoading(true);
+    setError(null);
+
+    const { min: stipendMin, max: stipendMax } = parseStipenRange(stipendRange);
+
+    try {
+      const res = await publicService.getPublishedInternships({
+        page: targetPage,
+        page_size: PER_PAGE,
+        search: search.trim() || undefined,
+        location: location && location !== 'All Locations' ? location : undefined,
+        mode: workMode && workMode !== 'All Modes' ? workMode : undefined,
+        duration: duration && duration !== 'All Durations' ? duration : undefined,
+        stipend_min: stipendMin,
+        stipend_max: stipendMax,
+        sort: 'latest',
+      });
+
+      const mapped = (res.items || []).map(i => ({
+        id: i.internship_number || i.id,
+        title: i.title,
+        company: i.company_name || 'Employer',
+        companyLogo: null,
+        location: i.location || 'Bengaluru, Karnataka',
+        duration: i.duration || '6 Months',
+        stipend: i.stipend || (i.stipend_monthly ? `₹${i.stipend_monthly.toLocaleString('en-IN')} / month` : '₹15,000 / month'),
+        mode: i.work_mode || 'Hybrid',
+        deadline: 'Ongoing',
+        tags: [i.work_mode, i.duration].filter(Boolean),
+        skills: [],
+        industry: 'Information Technology',
+      }));
+
+      setInternships(mapped);
+      setTotal(res.total || 0);
+      setTotalPages(res.total_pages || 1);
+    } catch (err) {
+      console.error('InternshipsPage fetch error:', err);
+      setError('Failed to load internships. Please try again.');
+      setInternships([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [page, search, location, workMode, stipendRange, duration]);
+
+  // Fetch when page or filters change
   useEffect(() => {
-    setPage(1);
-  }, [search, location, workMode, stipendRange, duration, selectedSkill, industry]);
+    fetchInternships();
+  }, [page, location, workMode, stipendRange, duration]); // eslint-disable-line
+
+  const handleSearch = () => {
+    fetchInternships(true);
+  };
 
   const handleReset = () => {
     setSearch('');
@@ -40,70 +107,14 @@ export default function InternshipsPage() {
     setWorkMode('');
     setStipendRange('');
     setDuration('');
-    setSelectedSkill('');
-    setIndustry('');
     setPage(1);
   };
-
-  const filteredInternships = useMemo(() => {
-    return MOCK_INTERNSHIPS.filter((item) => {
-      // 1. Search Query
-      if (search.trim()) {
-        const q = search.toLowerCase();
-        const matchTitle = item.title.toLowerCase().includes(q);
-        const matchCompany = item.company.toLowerCase().includes(q);
-        const matchSkill = item.skills?.some(s => s.toLowerCase().includes(q));
-        if (!matchTitle && !matchCompany && !matchSkill) return false;
-      }
-
-      // 2. Location
-      if (location && location !== 'All Locations') {
-        if (!item.location.toLowerCase().includes(location.toLowerCase())) return false;
-      }
-
-      // 3. Work Mode
-      if (workMode && workMode !== 'All Modes') {
-        if (item.mode.toLowerCase() !== workMode.toLowerCase()) return false;
-      }
-
-      // 4. Stipend Range
-      if (stipendRange && stipendRange !== 'All Stipends') {
-        if (stipendRange.includes('5,000 - ₹10,000') && (item.stipendAmount < 5000 || item.stipendAmount > 10000)) return false;
-        if (stipendRange.includes('10,000 - ₹20,000') && (item.stipendAmount < 10000 || item.stipendAmount > 20000)) return false;
-        if (stipendRange.includes('20,000 - ₹40,000') && (item.stipendAmount < 20000 || item.stipendAmount > 40000)) return false;
-        if (stipendRange.includes('40,000+') && item.stipendAmount < 40000) return false;
-      }
-
-      // 5. Duration
-      if (duration && duration !== 'All Durations') {
-        if (!item.duration.toLowerCase().includes(duration.toLowerCase().split(' ')[0])) return false;
-      }
-
-      // 6. Skill
-      if (selectedSkill && selectedSkill !== '') {
-        if (!item.skills?.some(s => s.toLowerCase() === selectedSkill.toLowerCase())) return false;
-      }
-
-      // 7. Industry
-      if (industry && industry !== 'All Industries') {
-        if (item.industry.toLowerCase() !== industry.toLowerCase()) return false;
-      }
-
-      return true;
-    });
-  }, [search, location, workMode, stipendRange, duration, selectedSkill, industry]);
-
-  const PER_PAGE = 9;
-  const totalPages = Math.ceil(filteredInternships.length / PER_PAGE);
-  const paginatedInternships = filteredInternships.slice((page - 1) * PER_PAGE, page * PER_PAGE);
 
   const activeFiltersCount = [
     location && location !== 'All Locations',
     workMode && workMode !== 'All Modes',
     stipendRange && stipendRange !== 'All Stipends',
     duration && duration !== 'All Durations',
-    selectedSkill,
-    industry && industry !== 'All Industries'
   ].filter(Boolean).length;
 
   return (
@@ -131,7 +142,8 @@ export default function InternshipsPage() {
                 className="input has-icon-left"
                 placeholder="Search internships by role, company, skill or stipend..."
                 value={search}
-                onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+                onChange={(e) => setSearch(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
               />
             </div>
 
@@ -152,6 +164,8 @@ export default function InternshipsPage() {
                 onChange={(e) => { setWorkMode(e.target.value); setPage(1); }}
               />
             </div>
+
+            <Button variant="primary" onClick={handleSearch}>Search</Button>
           </div>
         </div>
       </div>
@@ -160,7 +174,7 @@ export default function InternshipsPage() {
       <div className="container" style={{ padding: 'var(--space-8) var(--space-6)' }}>
         <div className="responsive-split-sidebar">
 
-          {/* ── Filters Sidebar (All required filters: location, work mode, stipend, duration, skills, industry) ── */}
+          {/* ── Filters Sidebar ── */}
           <aside className="sticky-filter-sidebar">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--color-border)', paddingBottom: 'var(--space-3)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
@@ -213,51 +227,42 @@ export default function InternshipsPage() {
                 onChange={(e) => { setWorkMode(e.target.value); setPage(1); }}
               />
             </div>
-
-            {/* Required Skill */}
-            <div>
-              <label style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: 'var(--space-2)', display: 'block' }}>
-                Key Skill
-              </label>
-              <Select
-                options={['All Skills', ...SKILL_OPTIONS]}
-                value={selectedSkill}
-                onChange={(e) => { setSelectedSkill(e.target.value === 'All Skills' ? '' : e.target.value); setPage(1); }}
-              />
-            </div>
-
-            {/* Industry */}
-            <div>
-              <label style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: 'var(--space-2)', display: 'block' }}>
-                Industry
-              </label>
-              <Select
-                options={INDUSTRIES}
-                value={industry}
-                onChange={(e) => { setIndustry(e.target.value); setPage(1); }}
-              />
-            </div>
           </aside>
 
           {/* ── Main Results ── */}
           <main style={{ minWidth: 0 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-6)' }}>
               <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)' }}>
-                Showing <strong style={{ color: 'var(--color-text)' }}>{filteredInternships.length}</strong> available internships
+                {loading
+                  ? 'Loading internships...'
+                  : <>Showing <strong style={{ color: 'var(--color-text)' }}>{total}</strong> available internships</>
+                }
               </p>
             </div>
 
-            {filteredInternships.length === 0 ? (
+            {loading ? (
+              <div style={{ textAlign: 'center', padding: 'var(--space-16) 0' }}>
+                <Loader2 size={36} style={{ color: 'var(--color-primary-500)', animation: 'spin 1s linear infinite', margin: '0 auto 1rem' }} />
+                <p style={{ color: 'var(--color-text-muted)' }}>Loading internship opportunities...</p>
+              </div>
+            ) : error ? (
+              <EmptyState
+                icon="default"
+                title="Failed to load internships"
+                description={error}
+                action={<Button variant="primary" onClick={() => fetchInternships()}>Try Again</Button>}
+              />
+            ) : internships.length === 0 ? (
               <EmptyState
                 icon="default"
                 title="No internships match your filter criteria"
-                description="Try lowering stipend requirements, clearing skills or switching location filters."
+                description="Try lowering stipend requirements, clearing duration or switching location filters."
                 action={<Button variant="primary" onClick={handleReset}>Clear All Filters</Button>}
               />
             ) : (
               <>
                 <div className="responsive-card-grid">
-                  {paginatedInternships.map((internship) => (
+                  {internships.map((internship) => (
                     <InternshipCard key={internship.id} internship={internship} />
                   ))}
                 </div>
@@ -267,7 +272,7 @@ export default function InternshipsPage() {
                     <Pagination
                       currentPage={page}
                       totalPages={totalPages}
-                      totalItems={filteredInternships.length}
+                      totalItems={total}
                       pageSize={PER_PAGE}
                       itemName="internships"
                       onPageChange={setPage}

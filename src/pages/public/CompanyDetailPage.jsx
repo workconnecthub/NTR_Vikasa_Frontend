@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import {
   Building2, MapPin, Users, Globe, Mail, Phone, Calendar,
@@ -10,23 +10,84 @@ import Button from '../../components/ui/Button';
 import { JobCard, InternshipCard } from '../../components/ui/EntityCards';
 import { Tabs, TabsList, Tab, TabPanel } from '../../components/ui/Tabs';
 import { EmptyState } from '../../components/ui/States';
-import { MOCK_COMPANIES, MOCK_JOBS, MOCK_INTERNSHIPS } from '../../data/mockData';
+import publicService from '../../services/publicService';
+
+const resolveLogoUrl = (url) => {
+  if (!url) return null;
+  if (url.startsWith('http') || url.startsWith('data:')) return url;
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api/v1';
+  const origin = baseUrl.replace(/\/api\/v1\/?$/, '');
+  return `${origin}${url.startsWith('/') ? '' : '/'}${url}`;
+};
 
 export default function CompanyDetailPage() {
   const { id } = useParams();
   const [activeTab, setActiveTab] = useState('jobs');
+  const [company, setCompany] = useState(null);
+  const [openJobs, setOpenJobs] = useState([]);
+  const [internships, setInternships] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
 
-  const company = useMemo(() => {
-    return MOCK_COMPANIES.find((c) => c.id === id) || MOCK_COMPANIES[0];
+  useEffect(() => {
+    let isMounted = true;
+    const fetchCompanyData = async () => {
+      setIsLoading(true);
+      setLoadError(null);
+      try {
+        const c = await publicService.getPublishedCompany(id);
+        if (isMounted && c) {
+          setCompany(c);
+          // Fetch company jobs
+          try {
+            const jobsRes = await publicService.getPublishedJobs({ search: c.name || c.company_name, page_size: 50 });
+            if (isMounted) setOpenJobs(jobsRes?.items || []);
+          } catch (e) {
+            console.warn('Failed to load company jobs:', e);
+          }
+          // Fetch company internships
+          try {
+            const internRes = await publicService.getPublishedInternships({ search: c.name || c.company_name, page_size: 50 });
+            if (isMounted) setInternships(internRes?.items || []);
+          } catch (e) {
+            console.warn('Failed to load company internships:', e);
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching company detail:', err);
+        if (isMounted) setLoadError('Company not found or has not been verified.');
+      } finally {
+        if (isMounted) setIsLoading(false);
+      }
+    };
+    fetchCompanyData();
+    return () => { isMounted = false; };
   }, [id]);
 
-  const openJobs = useMemo(() => {
-    return MOCK_JOBS.filter((j) => j.companyId === company.id || j.company.toLowerCase() === company.name.toLowerCase());
-  }, [company]);
+  if (isLoading) {
+    return (
+      <div style={{ minHeight: '80vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div className="spinner" />
+      </div>
+    );
+  }
 
-  const internships = useMemo(() => {
-    return MOCK_INTERNSHIPS.filter((i) => i.companyId === company.id || i.company.toLowerCase() === company.name.toLowerCase());
-  }, [company]);
+  if (loadError || !company) {
+    return (
+      <div className="container" style={{ padding: 'var(--space-16) 0' }}>
+        <EmptyState
+          icon="companies"
+          title="Company Not Found"
+          description={loadError || "The requested organization does not exist or has not been verified."}
+          action={<Link to="/companies"><Button variant="primary">Browse All Companies</Button></Link>}
+        />
+      </div>
+    );
+  }
+
+  const logoSrc = resolveLogoUrl(company.logo || company.logo_url || company.company_logo_path);
+  const companyName = company.name || company.company_name;
+
 
   return (
     <div className="company-detail-page" style={{ background: 'var(--color-bg)', minHeight: '100vh', paddingBottom: 'var(--space-16)' }}>
@@ -70,9 +131,19 @@ export default function CompanyDetailPage() {
                 justifyContent: 'center',
                 fontSize: 'var(--text-4xl)',
                 fontWeight: 800,
-                color: 'var(--color-primary-600)'
+                color: 'var(--color-primary-600)',
+                overflow: 'hidden'
               }}>
-                {company.name?.[0] || 'C'}
+                {logoSrc ? (
+                  <img
+                    src={logoSrc}
+                    alt={companyName}
+                    style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                    onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                  />
+                ) : (
+                  companyName?.[0] || 'C'
+                )}
               </div>
 
               <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
@@ -89,25 +160,31 @@ export default function CompanyDetailPage() {
             {/* Title & Tagline */}
             <div style={{ marginBottom: 'var(--space-6)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', flexWrap: 'wrap', marginBottom: 'var(--space-2)' }}>
-                <h1 style={{ fontSize: 'var(--text-3xl)', fontWeight: 800 }}>{company.name}</h1>
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 4,
-                  background: 'var(--color-warning-50)',
-                  color: 'var(--color-warning-700)',
-                  padding: '4px 10px',
-                  borderRadius: 'var(--radius-full)',
-                  fontSize: 'var(--text-xs)',
-                  fontWeight: 700
-                }}>
-                  <Star size={13} fill="currentColor" /> {company.rating || 4.5} rating
-                </div>
+                <h1 style={{ fontSize: 'var(--text-3xl)', fontWeight: 800 }}>{companyName}</h1>
+                {company.verified && (
+                  <CheckCircle2 size={24} style={{ color: 'var(--color-success-600)' }} />
+                )}
+                {company.rating ? (
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    background: 'var(--color-warning-50)',
+                    color: 'var(--color-warning-700)',
+                    padding: '4px 10px',
+                    borderRadius: 'var(--radius-full)',
+                    fontSize: 'var(--text-xs)',
+                    fontWeight: 700
+                  }}>
+                    <Star size={13} fill="currentColor" /> {company.rating} rating
+                  </div>
+                ) : null}
               </div>
               <p style={{ fontSize: 'var(--text-base)', color: 'var(--color-text-muted)', maxWidth: 800 }}>
                 {company.tagline || company.description}
               </p>
             </div>
+
 
             {/* Meta tags bar */}
             <div style={{
