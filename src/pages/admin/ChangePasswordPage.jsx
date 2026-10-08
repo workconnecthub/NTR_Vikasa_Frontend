@@ -7,18 +7,23 @@ import FormField from '../../components/ui/FormField';
 import Input from '../../components/ui/Input';
 import { useAdmin } from '../../context/AdminContext';
 import { useNotifications } from '../../context/NotificationContext';
+import { useToast } from '../../context/ToastContext';
+import authService from '../../services/authService';
 import { dispatchAdminEvent, ADMIN_NOTIFICATION_EVENTS } from '../../services/notificationEventService';
 
 export default function AdminChangePasswordPage() {
   const { currentAdmin } = useAdmin();
   const { addNotification } = useNotifications();
+  const toast = useToast();
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
-  // Form error messages
+  // Loading and feedback states
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
   const [submittedMessage, setSubmittedMessage] = useState('');
+  const [submittedMessageType, setSubmittedMessageType] = useState('info'); // 'info' | 'success' | 'error'
 
   const validateForm = () => {
     const errs = {};
@@ -30,21 +35,30 @@ export default function AdminChangePasswordPage() {
     if (!newPassword.trim()) {
       errs.newPassword = 'New password is required.';
     } else if (newPassword.length < 8) {
-      errs.newPassword = 'New password must be at least 8 characters long.';
+      errs.newPassword = 'Password must be at least 8 characters.';
+    } else if (!/[0-9]/.test(newPassword)) {
+      errs.newPassword = 'Password must contain at least one number.';
+    } else if (!/[a-zA-Z]/.test(newPassword)) {
+      errs.newPassword = 'Password must contain at least one letter.';
     }
 
     if (!confirmPassword.trim()) {
       errs.confirmPassword = 'Confirm new password is required.';
     } else if (newPassword && confirmPassword && newPassword !== confirmPassword) {
-      errs.confirmPassword = 'New Password and Confirm New Password do not match.';
+      errs.confirmPassword = 'New password and confirmation password do not match.';
+    }
+
+    if (currentPassword && newPassword && currentPassword === newPassword) {
+      errs.newPassword = 'New password must be different from the current password.';
     }
 
     return errs;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmittedMessage('');
+    setSubmittedMessageType('info');
 
     const validationErrors = validateForm();
     if (Object.keys(validationErrors).length > 0) {
@@ -54,27 +68,58 @@ export default function AdminChangePasswordPage() {
 
     // Clear validation errors
     setErrors({});
+    setIsSubmitting(true);
 
-    dispatchAdminEvent({
-      eventType: ADMIN_NOTIFICATION_EVENTS.ADMIN_PASSWORD_CHANGED,
-      adminEmail: currentAdmin?.email || 'admin1@ntrvikasa.com',
-      recipientName: currentAdmin?.name || 'Platform Administrator',
-      addNotification,
-      notification: {
-        category: 'SECURITY',
-        priority: 'HIGH',
-        title: 'Security Alert: Admin Password Updated',
-        message: 'Your administrator account credentials were updated. If this was not initiated by you, alert cybersecurity operations immediately.',
-        link: '/admin/change-password',
-        meta: { action: 'Admin Password Change', date: new Date().toISOString() }
-      },
-      meta: { action: 'Admin Password Change' }
-    });
+    try {
+      const response = await authService.changePassword({
+        current_password: currentPassword,
+        new_password: newPassword,
+        confirm_password: confirmPassword,
+      });
 
-    // Frontend validation succeeded. Since backend is not designed yet,
-    // show a clean info notice that the UI is prepared for future backend integration
-    // without displaying a fake "Password changed successfully" message.
-    setSubmittedMessage('Frontend validation passed. The password change form is prepared for future backend API integration.');
+      // Dispatch audit notification event
+      dispatchAdminEvent({
+        eventType: ADMIN_NOTIFICATION_EVENTS.ADMIN_PASSWORD_CHANGED,
+        adminEmail: currentAdmin?.email || 'admin1@ntrvikasa.com',
+        recipientName: currentAdmin?.name || 'Platform Administrator',
+        addNotification,
+        notification: {
+          category: 'SECURITY',
+          priority: 'HIGH',
+          title: 'Security Alert: Admin Password Updated',
+          message: 'Your administrator account credentials were updated. If this was not initiated by you, alert cybersecurity operations immediately.',
+          link: '/admin/change-password',
+          meta: { action: 'Admin Password Change', date: new Date().toISOString() }
+        },
+        meta: { action: 'Admin Password Change' }
+      });
+
+      const successMsg = response?.message || 'Password changed successfully.';
+      setSubmittedMessage(successMsg);
+      setSubmittedMessageType('success');
+      toast.success(successMsg);
+
+      // Clear password fields on success
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (err) {
+      const errorMsg = err.message || 'Failed to change password. Please verify your current credentials.';
+      setSubmittedMessage(errorMsg);
+      setSubmittedMessageType('error');
+      toast.error(errorMsg);
+
+      // Highlight field if relevant
+      if (errorMsg.toLowerCase().includes('current password')) {
+        setErrors(prev => ({ ...prev, currentPassword: errorMsg }));
+      } else if (errorMsg.toLowerCase().includes('match')) {
+        setErrors(prev => ({ ...prev, confirmPassword: errorMsg }));
+      } else if (errorMsg.toLowerCase().includes('different')) {
+        setErrors(prev => ({ ...prev, newPassword: errorMsg }));
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleInputChange = (setter, field) => (e) => {
@@ -130,13 +175,19 @@ export default function AdminChangePasswordPage() {
                   alignItems: 'flex-start',
                   gap: 'var(--space-2)',
                   padding: 'var(--space-3) var(--space-4)',
-                  backgroundColor: 'var(--color-primary-50)',
+                  backgroundColor: submittedMessageType === 'error' ? 'var(--color-danger-50)' : submittedMessageType === 'success' ? 'var(--color-success-50, #f0fdf4)' : 'var(--color-primary-50)',
                   borderRadius: 'var(--radius-lg)',
-                  border: '1px solid var(--color-primary-200)',
+                  border: `1px solid ${submittedMessageType === 'error' ? 'var(--color-danger-200)' : submittedMessageType === 'success' ? 'var(--color-success-200, #bbf7d0)' : 'var(--color-primary-200)'}`,
                   fontSize: 'var(--text-xs)',
-                  color: 'var(--color-primary-800)'
+                  color: submittedMessageType === 'error' ? 'var(--color-danger-800)' : submittedMessageType === 'success' ? 'var(--color-success-800, #166534)' : 'var(--color-primary-800)'
                 }}>
-                  <Info size={16} style={{ flexShrink: 0, marginTop: 1 }} />
+                  {submittedMessageType === 'error' ? (
+                    <AlertCircle size={16} style={{ flexShrink: 0, marginTop: 1, color: 'var(--color-danger-600)' }} />
+                  ) : submittedMessageType === 'success' ? (
+                    <CheckCircle2 size={16} style={{ flexShrink: 0, marginTop: 1, color: 'var(--color-success-600)' }} />
+                  ) : (
+                    <Info size={16} style={{ flexShrink: 0, marginTop: 1, color: 'var(--color-primary-600)' }} />
+                  )}
                   <span>{submittedMessage}</span>
                 </div>
               )}
@@ -193,6 +244,8 @@ export default function AdminChangePasswordPage() {
                   variant="primary"
                   size="md"
                   leftIcon={<Key size={16} />}
+                  loading={isSubmitting}
+                  disabled={isSubmitting}
                   className="admin-change-password-btn"
                 >
                   Change Password

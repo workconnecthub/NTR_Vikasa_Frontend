@@ -1,66 +1,88 @@
-import { useState, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import {
   TrendingUp, Users, Building2, Briefcase, FileText,
-  GraduationCap, CalendarDays, Award, BarChart3, PieChart,
-  ArrowUpRight, Download, Filter, RefreshCw, Calendar
+  GraduationCap, CalendarDays, BarChart3, Download, Loader2
 } from 'lucide-react';
 import StatCard from '../../components/ui/StatCard';
 import { Card, CardHeader, CardBody } from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
-import { useAdmin } from '../../context/AdminContext';
 import { useToast } from '../../context/ToastContext';
+import adminAnalyticsService from '../../services/adminAnalyticsService';
 
 export default function AdminAnalyticsPage() {
-  const { candidates, recruiters, companies, jobs, internships, applications, jobMelas, registrations } = useAdmin();
   const { addToast } = useToast();
-  
+
   const [timeRange, setTimeRange] = useState('30D');
-  const [customFrom, setCustomFrom] = useState('2026-08-01');
-  const [customTo, setCustomTo] = useState('2026-08-31');
+  const [customFrom, setCustomFrom] = useState('');
+  const [customTo, setCustomTo] = useState('');
   const [appliedCustomRange, setAppliedCustomRange] = useState(null);
   const [dateError, setDateError] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [isExporting, setIsExporting] = useState(false);
 
-  // Active date boundary calculation
-  const activeDateRange = useMemo(() => {
-    const now = new Date('2026-09-09T23:59:59.999Z');
-    if (timeRange === '7D') {
-      const from = new Date(now);
-      from.setDate(from.getDate() - 7);
-      return { from, to: now, label: 'Last 7 Days' };
+  // Analytics data state
+  const [analyticsData, setAnalyticsData] = useState({
+    period: {
+      type: '30d',
+      start_date: '',
+      end_date: '',
+      label: 'Last 30 Days',
+    },
+    kpis: {
+      total_platform_users: 0,
+      active_candidates: 0,
+      verified_recruiters: 0,
+      registered_companies: 0,
+      live_posted_jobs: 0,
+      submitted_applications: 0,
+      active_internships: 0,
+      mela_registrations: 0,
+    },
+    hiring_demand_by_sector: [],
+    monthly_placement_trajectory: [],
+  });
+
+  // Fetch analytics from API on timeRange or custom date change
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadAnalytics() {
+      setIsLoading(true);
+      try {
+        const params = {};
+        if (timeRange === 'CUSTOM') {
+          if (!appliedCustomRange) {
+            setIsLoading(false);
+            return;
+          }
+          params.period = 'custom';
+          params.start_date = appliedCustomRange.from;
+          params.end_date = appliedCustomRange.to;
+        } else {
+          params.period = timeRange.toLowerCase();
+        }
+
+        const data = await adminAnalyticsService.getAnalytics(params);
+        if (isMounted && data) {
+          setAnalyticsData(data);
+        }
+      } catch (err) {
+        console.warn('Failed to load platform analytics:', err);
+        if (isMounted) {
+          addToast(err.message || 'Failed to load platform analytics from server.', 'error');
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
     }
-    if (timeRange === '30D') {
-      const from = new Date(now);
-      from.setDate(from.getDate() - 30);
-      return { from, to: now, label: 'Last 30 Days' };
-    }
-    if (timeRange === '90D') {
-      const from = new Date(now);
-      from.setDate(from.getDate() - 90);
-      return { from, to: now, label: 'Last 90 Days' };
-    }
-    if (timeRange === '1Y') {
-      const from = new Date(now);
-      from.setFullYear(from.getFullYear() - 1);
-      return { from, to: now, label: 'Last 1 Year' };
-    }
-    if (timeRange === 'CUSTOM' && appliedCustomRange) {
-      const from = new Date(appliedCustomRange.from);
-      from.setHours(0, 0, 0, 0);
-      const to = new Date(appliedCustomRange.to);
-      to.setHours(23, 59, 59, 999);
-      const label = `${from.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })} – ${to.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}`;
-      return { from, to, label };
-    }
-    return null;
+
+    loadAnalytics();
+    return () => {
+      isMounted = false;
+    };
   }, [timeRange, appliedCustomRange]);
-
-  const isWithinRange = (dateStr) => {
-    if (!activeDateRange) return true;
-    if (!dateStr) return true;
-    const d = new Date(dateStr);
-    if (isNaN(d.getTime())) return true;
-    return d >= activeDateRange.from && d <= activeDateRange.to;
-  };
 
   const handleApplyCustomDate = (e) => {
     if (e) e.preventDefault();
@@ -93,92 +115,53 @@ export default function AdminAnalyticsPage() {
     );
   };
 
-  // Filter existing collections by active date range
-  const filteredCandidates = useMemo(() => {
-    if (!activeDateRange) return candidates;
-    return candidates.filter(c => isWithinRange(c.createdAt || c.registeredDate || c.joinedDate));
-  }, [candidates, activeDateRange]);
+  const handleExport = async () => {
+    setIsExporting(true);
+    try {
+      const params = {};
+      if (timeRange === 'CUSTOM' && appliedCustomRange) {
+        params.period = 'custom';
+        params.start_date = appliedCustomRange.from;
+        params.end_date = appliedCustomRange.to;
+      } else {
+        params.period = timeRange.toLowerCase();
+      }
 
-  const filteredRecruiters = useMemo(() => {
-    if (!activeDateRange) return recruiters;
-    return recruiters.filter(r => isWithinRange(r.createdAt || r.joinedDate));
-  }, [recruiters, activeDateRange]);
+      await adminAnalyticsService.exportAnalyticsCsv(params);
+      addToast(`Platform analytics report (${analyticsData.period?.label || timeRange}) exported to CSV successfully.`, 'success');
+    } catch (err) {
+      console.warn('Failed to export analytics report:', err);
+      addToast(err.message || 'Failed to export analytics report CSV.', 'error');
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
-  const filteredCompanies = useMemo(() => {
-    if (!activeDateRange) return companies;
-    return companies.filter(c => isWithinRange(c.createdAt || c.joinedDate));
-  }, [companies, activeDateRange]);
-
-  const filteredJobs = useMemo(() => {
-    if (!activeDateRange) return jobs;
-    return jobs.filter(j => isWithinRange(j.postedDate || j.createdAt));
-  }, [jobs, activeDateRange]);
-
-  const filteredInternships = useMemo(() => {
-    if (!activeDateRange) return internships;
-    return internships.filter(i => isWithinRange(i.postedDate || i.createdAt));
-  }, [internships, activeDateRange]);
-
-  const filteredApplications = useMemo(() => {
-    if (!activeDateRange) return applications;
-    return applications.filter(a => isWithinRange(a.appliedDate || a.createdAt));
-  }, [applications, activeDateRange]);
-
-  const filteredRegistrations = useMemo(() => {
-    if (!activeDateRange) return registrations;
-    return registrations.filter(r => isWithinRange(r.registrationDate || r.registeredDate || r.createdAt));
-  }, [registrations, activeDateRange]);
-
-  const totalUsersCount = filteredCandidates.length + filteredRecruiters.length;
+  const kpis = analyticsData.kpis || {};
+  const isCustomRange = timeRange === 'CUSTOM';
 
   const CORE_METRICS = [
-    { label: 'Total Platform Users',  value: `${totalUsersCount + 12840}`, change: timeRange === 'CUSTOM' ? 'in selected range' : '+320 this week', positive: true, icon: <Users size={20} />, iconBg: '#eef2ff', iconColor: '#4f46e5' },
-    { label: 'Active Candidates',     value: `${filteredCandidates.length + 11200}`, change: timeRange === 'CUSTOM' ? 'in selected range' : '+240 today', positive: true, icon: <Users size={20} />, iconBg: '#f0fdf4', iconColor: '#16a34a' },
-    { label: 'Verified Recruiters',   value: `${filteredRecruiters.length + 1240}`, change: timeRange === 'CUSTOM' ? 'in selected range' : '+18 this week', positive: true, icon: <Building2 size={20} />, iconBg: '#fdf4ff', iconColor: '#c026d3' },
-    { label: 'Registered Companies',  value: `${filteredCompanies.length + 830}`, change: timeRange === 'CUSTOM' ? 'in selected range' : '+14 this month', positive: true, icon: <Building2 size={20} />, iconBg: '#eff6ff', iconColor: '#2563eb' },
-    { label: 'Live Posted Jobs',      value: `${filteredJobs.length + 4310}`, change: timeRange === 'CUSTOM' ? 'in selected range' : '+85 new', positive: true, icon: <Briefcase size={20} />, iconBg: '#fffbeb', iconColor: '#d97706' },
-    { label: 'Submitted Applications',value: `${filteredApplications.length + 48850}`, change: timeRange === 'CUSTOM' ? 'in selected range' : '+1.4k this week', positive: true, icon: <FileText size={20} />, iconBg: '#f8fafc', iconColor: '#475569' },
-    { label: 'Active Internships',    value: `${filteredInternships.length + 940}`, change: timeRange === 'CUSTOM' ? 'in selected range' : '+32 campus', positive: true, icon: <GraduationCap size={20} />, iconBg: '#ecfdf5', iconColor: '#059669' },
-    { label: 'Mela Registrations',    value: `${filteredRegistrations.length + 15190}`, change: timeRange === 'CUSTOM' ? 'in selected range' : '+850 recent', positive: true, icon: <CalendarDays size={20} />, iconBg: '#fff1f2', iconColor: '#e11d48' },
+    { label: 'Total Platform Users',  value: `${(kpis.total_platform_users || 0).toLocaleString()}`, change: isCustomRange ? 'in selected range' : '+320 this week', positive: true, icon: <Users size={20} />, iconBg: '#eef2ff', iconColor: '#4f46e5' },
+    { label: 'Active Candidates',     value: `${(kpis.active_candidates || 0).toLocaleString()}`, change: isCustomRange ? 'in selected range' : '+240 today', positive: true, icon: <Users size={20} />, iconBg: '#f0fdf4', iconColor: '#16a34a' },
+    { label: 'Verified Recruiters',   value: `${(kpis.verified_recruiters || 0).toLocaleString()}`, change: isCustomRange ? 'in selected range' : '+18 this week', positive: true, icon: <Building2 size={20} />, iconBg: '#fdf4ff', iconColor: '#c026d3' },
+    { label: 'Registered Companies',  value: `${(kpis.registered_companies || 0).toLocaleString()}`, change: isCustomRange ? 'in selected range' : '+14 this month', positive: true, icon: <Building2 size={20} />, iconBg: '#eff6ff', iconColor: '#2563eb' },
+    { label: 'Live Posted Jobs',      value: `${(kpis.live_posted_jobs || 0).toLocaleString()}`, change: isCustomRange ? 'in selected range' : '+85 new', positive: true, icon: <Briefcase size={20} />, iconBg: '#fffbeb', iconColor: '#d97706' },
+    { label: 'Submitted Applications',value: `${(kpis.submitted_applications || 0).toLocaleString()}`, change: isCustomRange ? 'in selected range' : '+1.4k this week', positive: true, icon: <FileText size={20} />, iconBg: '#f8fafc', iconColor: '#475569' },
+    { label: 'Active Internships',    value: `${(kpis.active_internships || 0).toLocaleString()}`, change: isCustomRange ? 'in selected range' : '+32 campus', positive: true, icon: <GraduationCap size={20} />, iconBg: '#ecfdf5', iconColor: '#059669' },
+    { label: 'Mela Registrations',    value: `${(kpis.mela_registrations || 0).toLocaleString()}`, change: isCustomRange ? 'in selected range' : '+850 recent', positive: true, icon: <CalendarDays size={20} />, iconBg: '#fff1f2', iconColor: '#e11d48' },
   ];
 
-  const SECTOR_DISTRIBUTION = [
-    { name: 'Information Technology & Software', share: '48.5%', count: '2,140 Jobs', color: '#3b82f6' },
-    { name: 'Banking, Financial Services & Insurance', share: '21.0%', count: '920 Jobs', color: '#10b981' },
-    { name: 'Healthcare Diagnostics & Pharma', share: '12.5%', count: '550 Jobs', color: '#8b5cf6' },
-    { name: 'E-Commerce, Logistics & Retail', share: '10.5%', count: '460 Jobs', color: '#f59e0b' },
-    { name: 'Core Engineering & Manufacturing', share: '7.5%', count: '330 Jobs', color: '#ec4899' },
-  ];
+  const SECTOR_DISTRIBUTION = analyticsData.hiring_demand_by_sector?.length > 0
+    ? analyticsData.hiring_demand_by_sector
+    : [
+        { name: 'Information Technology & Software', share: '0%', count: '0 Jobs', color: '#3b82f6' },
+        { name: 'Banking, Financial Services & Insurance', share: '0%', count: '0 Jobs', color: '#10b981' },
+        { name: 'Healthcare Diagnostics & Pharma', share: '0%', count: '0 Jobs', color: '#8b5cf6' },
+        { name: 'E-Commerce, Logistics & Retail', share: '0%', count: '0 Jobs', color: '#f59e0b' },
+        { name: 'Core Engineering & Manufacturing', share: '0%', count: '0 Jobs', color: '#ec4899' },
+      ];
 
-  const ALL_MONTHLY_GROWTH = [
-    { month: 'Apr 2026', date: new Date('2026-04-01'), candidates: 7400, jobs: 2800, placements: 1240 },
-    { month: 'May 2026', date: new Date('2026-05-01'), candidates: 8900, jobs: 3200, placements: 1480 },
-    { month: 'Jun 2026', date: new Date('2026-06-01'), candidates: 10200, jobs: 3650, placements: 1820 },
-    { month: 'Jul 2026', date: new Date('2026-07-01'), candidates: 11500, jobs: 4050, placements: 2150 },
-    { month: 'Aug 2026', date: new Date('2026-08-01'), candidates: 12450, jobs: 4320, placements: 2420 },
-  ];
-
-  const displayedMonthlyGrowth = useMemo(() => {
-    if (timeRange === 'CUSTOM' && activeDateRange) {
-      const filtered = ALL_MONTHLY_GROWTH.filter(m => {
-        const mEnd = new Date(m.date.getFullYear(), m.date.getMonth() + 1, 0, 23, 59, 59);
-        return mEnd >= activeDateRange.from && m.date <= activeDateRange.to;
-      });
-      return filtered.length > 0 ? filtered : ALL_MONTHLY_GROWTH;
-    }
-    if (timeRange === '7D' || timeRange === '30D') {
-      return ALL_MONTHLY_GROWTH.slice(-2);
-    }
-    if (timeRange === '90D') {
-      return ALL_MONTHLY_GROWTH.slice(-3);
-    }
-    return ALL_MONTHLY_GROWTH;
-  }, [timeRange, activeDateRange]);
-
-  const handleExport = () => {
-    const rangeLabel = activeDateRange?.label || timeRange;
-    addToast(`Platform analytics report (${rangeLabel}) exported to CSV successfully.`, 'success');
-  };
+  const displayedMonthlyGrowth = analyticsData.monthly_placement_trajectory || [];
 
   return (
     <div className="portal-page" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -232,8 +215,14 @@ export default function AdminAnalyticsPage() {
               })}
             </div>
 
-            <Button variant="outline" size="sm" icon={<Download size={14} />} onClick={handleExport}>
-              Export Report
+            <Button
+              variant="outline"
+              size="sm"
+              icon={isExporting ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+              onClick={handleExport}
+              disabled={isExporting || isLoading}
+            >
+              {isExporting ? 'Exporting...' : 'Export Report'}
             </Button>
           </div>
         </div>
@@ -339,6 +328,8 @@ export default function AdminAnalyticsPage() {
                   setTimeRange('30D');
                   setAppliedCustomRange(null);
                   setDateError('');
+                  setCustomFrom('');
+                  setCustomTo('');
                 }}
               >
                 Reset to 30D
@@ -360,9 +351,9 @@ export default function AdminAnalyticsPage() {
           <h2 style={{ fontSize: '0.85rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--color-gray-500)', margin: 0, letterSpacing: '0.05em' }}>
             Platform Scale KPIs
           </h2>
-          {activeDateRange && (
+          {analyticsData.period?.label && (
             <span style={{ fontSize: '11px', color: 'var(--color-text-muted)', fontWeight: 600 }}>
-              Period: {activeDateRange.label}
+              Period: {analyticsData.period.label}
             </span>
           )}
         </div>
@@ -375,7 +366,7 @@ export default function AdminAnalyticsPage() {
 
       {/* ── 2. Visual Distribution & Funnel Analysis ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '1.5rem' }}>
-        
+
         {/* Industry Sector Demand */}
         <Card style={{ borderRadius: 'var(--radius-2xl)' }}>
           <CardHeader>
@@ -388,13 +379,21 @@ export default function AdminAnalyticsPage() {
           </CardHeader>
           <CardBody style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             {SECTOR_DISTRIBUTION.map((sector) => (
-              <div key={sector.name}>
+              <div key={sector.name || sector.sector}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '4px' }}>
-                  <span style={{ fontWeight: 600, color: 'var(--color-gray-900)' }}>{sector.name}</span>
-                  <span style={{ color: 'var(--color-gray-500)', fontWeight: 500 }}>{sector.count} ({sector.share})</span>
+                  <span style={{ fontWeight: 600, color: 'var(--color-gray-900)' }}>{sector.name || sector.sector}</span>
+                  <span style={{ color: 'var(--color-gray-500)', fontWeight: 500 }}>{sector.count || `${sector.job_count || 0} Jobs`} ({sector.share || `${sector.percentage || 0}%`})</span>
                 </div>
                 <div style={{ height: '8px', background: 'var(--color-gray-100)', borderRadius: '4px', overflow: 'hidden' }}>
-                  <div style={{ width: sector.share, height: '100%', background: sector.color, borderRadius: '4px' }} />
+                  <div
+                    style={{
+                      width: sector.share || `${sector.percentage || 0}%`,
+                      height: '100%',
+                      background: sector.color || '#3b82f6',
+                      borderRadius: '4px',
+                      transition: 'width 300ms ease'
+                    }}
+                  />
                 </div>
               </div>
             ))}
@@ -423,14 +422,22 @@ export default function AdminAnalyticsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {displayedMonthlyGrowth.map((row) => (
-                    <tr key={row.month} style={{ borderBottom: '1px solid var(--color-gray-100)' }}>
-                      <td style={{ padding: '0.75rem 1rem', fontWeight: 600, color: 'var(--color-gray-900)' }}>{row.month}</td>
-                      <td style={{ padding: '0.75rem 1rem', color: 'var(--color-gray-700)' }}>{row.candidates.toLocaleString()}</td>
-                      <td style={{ padding: '0.75rem 1rem', color: 'var(--color-gray-700)' }}>{row.jobs.toLocaleString()}</td>
-                      <td style={{ padding: '0.75rem 1rem', color: '#16a34a', fontWeight: 700 }}>{row.placements.toLocaleString()}</td>
+                  {displayedMonthlyGrowth.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
+                        No monthly placement records available for this period.
+                      </td>
                     </tr>
-                  ))}
+                  ) : (
+                    displayedMonthlyGrowth.map((row) => (
+                      <tr key={row.month} style={{ borderBottom: '1px solid var(--color-gray-100)' }}>
+                        <td style={{ padding: '0.75rem 1rem', fontWeight: 600, color: 'var(--color-gray-900)' }}>{row.month}</td>
+                        <td style={{ padding: '0.75rem 1rem', color: 'var(--color-gray-700)' }}>{(row.candidates || 0).toLocaleString()}</td>
+                        <td style={{ padding: '0.75rem 1rem', color: 'var(--color-gray-700)' }}>{(row.active_jobs || 0).toLocaleString()}</td>
+                        <td style={{ padding: '0.75rem 1rem', color: '#16a34a', fontWeight: 700 }}>{(row.placements || 0).toLocaleString()}</td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>

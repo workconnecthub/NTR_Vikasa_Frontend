@@ -2,18 +2,33 @@ import { useState, useEffect, useRef } from 'react';
 import {
   User, Mail, ShieldCheck, Camera, Trash2, UploadCloud,
   CheckCircle2, AlertCircle, Info, Building2, BadgeCheck,
-  Edit2, Save, X, Phone
+  Edit2, Save, X, Phone, Loader2
 } from 'lucide-react';
 import Button from '../../components/ui/Button';
 import FormField from '../../components/ui/FormField';
 import Input from '../../components/ui/Input';
 import { useAdmin } from '../../context/AdminContext';
 import { useToast } from '../../context/ToastContext';
+import adminProfileService from '../../services/adminProfileService';
+
+const BACKEND_BASE = (import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api/v1').replace(/\/api\/v1\/?$/, '');
+
+const resolveImageUrl = (path) => {
+  if (!path) return null;
+  if (path.startsWith('data:') || path.startsWith('http://') || path.startsWith('https://')) {
+    return path;
+  }
+  return `${BACKEND_BASE}${path.startsWith('/') ? '' : '/'}${path}`;
+};
 
 export default function AdminProfilePage() {
   const { currentAdmin } = useAdmin();
   const { addToast } = useToast();
   const fileInputRef = useRef(null);
+
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
 
   // Local state for profile data
   const [profileData, setProfileData] = useState(() => {
@@ -30,6 +45,7 @@ export default function AdminProfilePage() {
       designation: currentAdmin?.designation || 'State Operations Lead',
       phone: '+91 98765 43210',
       department: 'State Employment & Skill Development Authority',
+      status: 'ACTIVE',
     };
   });
 
@@ -48,20 +64,69 @@ export default function AdminProfilePage() {
 
   const [imageError, setImageError] = useState('');
 
+  // ── Fetch Profile from Real Backend on Mount ──
+  useEffect(() => {
+    let isMounted = true;
+    const fetchAdminProfile = async () => {
+      try {
+        setIsLoading(true);
+        const data = await adminProfileService.getProfile();
+        if (!isMounted) return;
+
+        const resolved = {
+          name: data.full_name || 'Admin User',
+          role: data.role || 'Platform Administrator',
+          email: data.email || 'admin1@ntrvikasa.com',
+          designation: data.designation || 'State Operations Lead',
+          phone: data.contact_phone || '+91 98765 43210',
+          department: data.department || 'State Employment & Skill Development Authority',
+          status: data.status || 'ACTIVE',
+        };
+
+        setProfileData(resolved);
+        setFormData(resolved);
+
+        try {
+          localStorage.setItem('ntr_admin_custom_profile', JSON.stringify(resolved));
+          window.dispatchEvent(new Event('admin_profile_updated'));
+        } catch (e) {}
+
+        if (data.profile_image_url) {
+          const fullImgUrl = resolveImageUrl(data.profile_image_url);
+          setAvatarImage(fullImgUrl);
+          try {
+            localStorage.setItem('ntr_admin_custom_avatar', fullImgUrl);
+            window.dispatchEvent(new Event('admin_avatar_updated'));
+          } catch (e) {}
+        }
+      } catch (err) {
+        console.warn('Failed to load admin profile from backend:', err);
+      } finally {
+        if (isMounted) setIsLoading(false);
+      }
+    };
+
+    fetchAdminProfile();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   const adminName = profileData.name;
   const adminRole = profileData.role;
   const adminEmail = profileData.email;
   const adminDesignation = profileData.designation;
   const initialLetter = currentAdmin?.avatar || adminName[0]?.toUpperCase() || 'A';
 
-  // Handle image file selection
-  const handleImageChange = (e) => {
+  // Handle image file selection & upload
+  const handleImageChange = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (!file.type.startsWith('image/')) {
-      setImageError('Please select a valid image file (JPG, PNG, GIF, WEBP).');
-      addToast('Invalid file format. Please upload an image file.', 'error');
+    const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
+    if (!allowedTypes.includes(file.type) && !file.type.startsWith('image/')) {
+      setImageError('Please select a valid image file (PNG, JPG, JPEG, WEBP).');
+      addToast('Invalid file format. Allowed formats: PNG, JPG, WEBP.', 'error');
       return;
     }
 
@@ -72,19 +137,30 @@ export default function AdminProfilePage() {
     }
 
     setImageError('');
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const result = reader.result;
-      setAvatarImage(result);
+    setIsUploadingImage(true);
+
+    try {
+      const resp = await adminProfileService.uploadProfileImage(file);
+      const fullUrl = resolveImageUrl(resp.profile_image_url);
+      setAvatarImage(fullUrl);
+
       try {
-        localStorage.setItem('ntr_admin_custom_avatar', result);
+        localStorage.setItem('ntr_admin_custom_avatar', fullUrl);
         window.dispatchEvent(new Event('admin_avatar_updated'));
       } catch (err) {
-        // Handle localStorage quota or private browsing
+        // Handle localStorage quota
       }
-      addToast('Profile image preview updated.', 'info');
-    };
-    reader.readAsDataURL(file);
+
+      addToast(resp.message || 'Profile image updated successfully.', 'success');
+    } catch (err) {
+      setImageError(err.message || 'Failed to upload profile image.');
+      addToast(err.message || 'Failed to upload profile image.', 'error');
+    } finally {
+      setIsUploadingImage(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
   };
 
   // Handle remove photo
@@ -115,16 +191,16 @@ export default function AdminProfilePage() {
     setIsEditing(false);
   };
 
-  const handleSaveProfile = (e) => {
+  const handleSaveProfile = async (e) => {
     e.preventDefault();
     const errs = {};
 
-    if (!formData.name.trim()) {
+    if (!formData.name || !formData.name.trim()) {
       errs.name = 'Full name is required.';
     }
-    if (!formData.email.trim()) {
+    if (!formData.email || !formData.email.trim()) {
       errs.email = 'Email address is required.';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
       errs.email = 'Please enter a valid email address.';
     }
 
@@ -133,17 +209,45 @@ export default function AdminProfilePage() {
       return;
     }
 
-    setProfileData(formData);
+    setIsSaving(true);
     try {
-      localStorage.setItem('ntr_admin_custom_profile', JSON.stringify(formData));
-      window.dispatchEvent(new Event('admin_profile_updated'));
-    } catch (err) {
-      // Ignore
-    }
+      const payload = {
+        full_name: formData.name.trim(),
+        email: formData.email.trim(),
+        designation: formData.designation ? formData.designation.trim() : null,
+        contact_phone: formData.phone ? formData.phone.trim() : null,
+      };
 
-    setIsEditing(false);
-    setFormErrors({});
-    addToast('Administrator profile updated successfully.', 'success');
+      const updated = await adminProfileService.updateProfile(payload);
+
+      const resolved = {
+        name: updated.full_name,
+        role: updated.role,
+        email: updated.email,
+        designation: updated.designation || '',
+        phone: updated.contact_phone || '',
+        department: updated.department || profileData.department,
+        status: updated.status || 'ACTIVE',
+      };
+
+      setProfileData(resolved);
+      setFormData(resolved);
+
+      try {
+        localStorage.setItem('ntr_admin_custom_profile', JSON.stringify(resolved));
+        window.dispatchEvent(new Event('admin_profile_updated'));
+      } catch (err) {
+        // Ignore
+      }
+
+      setIsEditing(false);
+      setFormErrors({});
+      addToast('Profile updated successfully.', 'success');
+    } catch (err) {
+      addToast(err.message || 'Failed to update administrator profile.', 'error');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -259,7 +363,7 @@ export default function AdminProfilePage() {
                 <FormField label="Full Name" required={isEditing} error={formErrors.name}>
                   <Input
                     value={isEditing ? formData.name : adminName}
-                    disabled={!isEditing}
+                    disabled={!isEditing || isSaving}
                     onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
                     style={{ backgroundColor: isEditing ? '#fff' : 'var(--color-gray-50)' }}
                   />
@@ -267,9 +371,9 @@ export default function AdminProfilePage() {
                 <FormField label="Role / Control Level">
                   <Input
                     value={isEditing ? formData.role : adminRole}
-                    disabled={!isEditing}
+                    disabled={true}
                     onChange={(e) => setFormData(prev => ({ ...prev, role: e.target.value }))}
-                    style={{ backgroundColor: isEditing ? '#fff' : 'var(--color-gray-50)' }}
+                    style={{ backgroundColor: 'var(--color-gray-50)' }}
                   />
                 </FormField>
               </div>
@@ -278,7 +382,7 @@ export default function AdminProfilePage() {
                 <FormField label="Official Email Address" required={isEditing} error={formErrors.email}>
                   <Input
                     value={isEditing ? formData.email : adminEmail}
-                    disabled={!isEditing}
+                    disabled={!isEditing || isSaving}
                     onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
                     style={{ backgroundColor: isEditing ? '#fff' : 'var(--color-gray-50)' }}
                   />
@@ -286,7 +390,7 @@ export default function AdminProfilePage() {
                 <FormField label="Designation">
                   <Input
                     value={isEditing ? formData.designation : adminDesignation}
-                    disabled={!isEditing}
+                    disabled={!isEditing || isSaving}
                     onChange={(e) => setFormData(prev => ({ ...prev, designation: e.target.value }))}
                     style={{ backgroundColor: isEditing ? '#fff' : 'var(--color-gray-50)' }}
                   />
@@ -297,7 +401,7 @@ export default function AdminProfilePage() {
                 <FormField label="Contact Phone">
                   <Input
                     value={isEditing ? formData.phone : profileData.phone}
-                    disabled={!isEditing}
+                    disabled={!isEditing || isSaving}
                     onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
                     style={{ backgroundColor: isEditing ? '#fff' : 'var(--color-gray-50)' }}
                   />
@@ -305,20 +409,33 @@ export default function AdminProfilePage() {
                 <FormField label="Department / Authority">
                   <Input
                     value={isEditing ? formData.department : profileData.department}
-                    disabled={!isEditing}
+                    disabled={true}
                     onChange={(e) => setFormData(prev => ({ ...prev, department: e.target.value }))}
-                    style={{ backgroundColor: isEditing ? '#fff' : 'var(--color-gray-50)' }}
+                    style={{ backgroundColor: 'var(--color-gray-50)' }}
                   />
                 </FormField>
               </div>
 
               {isEditing ? (
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-3)', marginTop: 'var(--space-2)' }}>
-                  <Button type="button" variant="outline" size="sm" leftIcon={<X size={14} />} onClick={handleCancelEdit}>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    leftIcon={<X size={14} />}
+                    onClick={handleCancelEdit}
+                    disabled={isSaving}
+                  >
                     Cancel
                   </Button>
-                  <Button type="submit" variant="primary" size="sm" leftIcon={<Save size={14} />}>
-                    Save Changes
+                  <Button
+                    type="submit"
+                    variant="primary"
+                    size="sm"
+                    leftIcon={isSaving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                    disabled={isSaving}
+                  >
+                    {isSaving ? 'Saving...' : 'Save Changes'}
                   </Button>
                 </div>
               ) : (
@@ -418,7 +535,7 @@ export default function AdminProfilePage() {
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/png, image/jpeg, image/webp, image/gif"
+                accept="image/png, image/jpeg, image/webp"
                 onChange={handleImageChange}
                 style={{ display: 'none' }}
                 id="admin-profile-photo-input"
@@ -430,10 +547,11 @@ export default function AdminProfilePage() {
                   variant="primary"
                   size="md"
                   style={{ flex: '1 1 140px' }}
-                  leftIcon={<UploadCloud size={16} />}
+                  leftIcon={isUploadingImage ? <Loader2 size={16} className="animate-spin" /> : <UploadCloud size={16} />}
                   onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploadingImage}
                 >
-                  {avatarImage ? 'Change Photo' : 'Upload Photo'}
+                  {isUploadingImage ? 'Uploading...' : avatarImage ? 'Change Photo' : 'Upload Photo'}
                 </Button>
 
                 {avatarImage && (
@@ -444,6 +562,7 @@ export default function AdminProfilePage() {
                     style={{ flex: '1 1 120px' }}
                     leftIcon={<Trash2 size={16} />}
                     onClick={handleRemoveImage}
+                    disabled={isUploadingImage}
                   >
                     Remove Photo
                   </Button>
@@ -451,7 +570,7 @@ export default function AdminProfilePage() {
               </div>
 
               <span style={{ fontSize: '11px', color: 'var(--color-text-muted)', textAlign: 'center' }}>
-                PNG, JPG, or WEBP up to 2MB. Stored locally in your session.
+                PNG, JPG, or WEBP up to 2MB.
               </span>
             </div>
           </div>

@@ -1,7 +1,7 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import {
   AlertTriangle, Search, Filter, Eye, CheckCircle2, XCircle,
-  ShieldAlert, ShieldCheck, FileText, User, Building2, Download
+  ShieldAlert, ShieldCheck, FileText, User, Building2, Download, Loader2
 } from 'lucide-react';
 import Button from '../../components/ui/Button';
 import { StatusBadge } from '../../components/ui/Badge';
@@ -14,21 +14,29 @@ import Pagination from '../../components/ui/Pagination';
 import ExportDropdown from '../../components/ui/ExportDropdown';
 import { exportToExcel, exportToPDF, getExportFilename } from '../../utils/exportUtils';
 import { useToast } from '../../context/ToastContext';
-import { useAdmin } from '../../context/AdminContext';
+import adminReportService from '../../services/adminReportService';
 
 // Helper to determine whether a report is related to a Candidate or Recruiter
 export const getReportUserType = (r) => {
   if (!r) return 'RECRUITER';
-  const explicit = (r.reportedUserType || r.userType || r.targetType || r.entityType || '').toUpperCase();
+  const explicit = (
+    r.reported_user_type ||
+    r.reportedUserType ||
+    r.userType ||
+    r.targetType ||
+    r.entityType ||
+    r.reported_entity?.type ||
+    ''
+  ).toUpperCase();
   if (explicit === 'CANDIDATE' || explicit === 'CANDIDATES') return 'CANDIDATE';
   if (explicit === 'RECRUITER' || explicit === 'RECRUITERS' || explicit === 'EMPLOYER' || explicit === 'COMPANY') return 'RECRUITER';
 
-  const entity = (r.reportedEntity || '').toLowerCase();
+  const entity = (r.reportedEntity || r.reported_entity?.name || '').toLowerCase();
   if (entity.includes('candidate')) return 'CANDIDATE';
   if (entity.includes('recruiter') || entity.includes('company') || entity.includes('technologies') || entity.includes('enterprises') || entity.includes('pvt ltd') || entity.includes('techglobal')) return 'RECRUITER';
 
-  const reportType = (r.reportType || r.type || '').toLowerCase();
-  const reason = (r.details || r.reason || '').toLowerCase();
+  const reportType = (r.report_type_label || r.reportType || r.type || r.report_type || '').toLowerCase();
+  const reason = (r.details || r.reason || r.description || '').toLowerCase();
   if (reportType.includes('job scam') || reportType.includes('job description') || reportType.includes('fee request') || reportType.includes('employer') || reason.includes('recruiter') || reason.includes('job')) {
     return 'RECRUITER';
   }
@@ -36,7 +44,7 @@ export const getReportUserType = (r) => {
     return 'CANDIDATE';
   }
 
-  const reporter = (r.reporter || '').toLowerCase();
+  const reporter = (r.reporter?.name || r.reporter || '').toLowerCase();
   if (reporter.includes('hr') || reporter.includes('recruiter') || reporter.includes('technologies') || reporter.includes('company')) {
     return 'CANDIDATE';
   }
@@ -49,17 +57,21 @@ export const getReportUserType = (r) => {
 
 export default function AdminReportsPage() {
   const { addToast } = useToast();
-  const { reports, resolveReport, rejectReport } = useAdmin();
 
   const PAGE_SIZE = 10;
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [userTypeFilter, setUserTypeFilter] = useState('ALL');
   const [currentPage, setCurrentPage] = useState(1);
 
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [search, statusFilter, userTypeFilter]);
+  // Data & loading states
+  const [reports, setReports] = useState([]);
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [summary, setSummary] = useState({ all: 0, pending: 0, resolved: 0, dismissed: 0, open_complaints: 0 });
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Review Modal
   const [selectedReport, setSelectedReport] = useState(null);
@@ -74,45 +86,67 @@ export default function AdminReportsPage() {
   const [dismissTarget, setDismissTarget] = useState(null);
   const [dismissModalOpen, setDismissModalOpen] = useState(false);
 
-  const filtered = useMemo(() => {
-    return reports.filter((r) => {
-      // 1. User Type Filter
-      if (userTypeFilter !== 'ALL') {
-        const uType = getReportUserType(r);
-        if (uType !== userTypeFilter) {
-          return false;
-        }
+  // Debounce search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+      setCurrentPage(1);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  // Reset page when filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [statusFilter, userTypeFilter]);
+
+  // Fetch summary counts
+  const fetchSummary = useCallback(async () => {
+    try {
+      const data = await adminReportService.getSummary();
+      if (data) {
+        setSummary(data);
       }
+    } catch (err) {
+      console.warn('Failed to load moderation summary:', err);
+    }
+  }, []);
 
-      // 2. Status Filter
-      if (statusFilter !== 'ALL') {
-        if (r.status !== statusFilter) return false;
+  // Fetch reports from backend API
+  const fetchReports = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const data = await adminReportService.getReports({
+        status: statusFilter !== 'ALL' ? statusFilter : undefined,
+        reported_user_type: userTypeFilter !== 'ALL' ? userTypeFilter : undefined,
+        search: debouncedSearch.trim() || undefined,
+        page: currentPage,
+        page_size: PAGE_SIZE,
+      });
+
+      if (data) {
+        setReports(data.items || []);
+        setTotalItems(data.total || 0);
+        setTotalPages(data.total_pages || Math.max(1, Math.ceil((data.total || 0) / PAGE_SIZE)));
       }
+    } catch (err) {
+      console.error('Failed to load moderation reports:', err);
+      addToast(err.message || 'Failed to load reports from server.', 'error');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [statusFilter, userTypeFilter, debouncedSearch, currentPage, addToast]);
 
-      // 3. Search Filter
-      if (search.trim()) {
-        const q = search.toLowerCase();
-        const type = (r.reportType || r.type || '').toLowerCase();
-        const entity = (r.reportedEntity || '').toLowerCase();
-        const reporter = (r.reporter || '').toLowerCase();
-        const reason = (r.details || r.reason || '').toLowerCase();
-        if (!type.includes(q) && !entity.includes(q) && !reporter.includes(q) && !reason.includes(q)) {
-          return false;
-        }
-      }
+  useEffect(() => {
+    fetchSummary();
+  }, [fetchSummary]);
 
-      return true;
-    });
-  }, [reports, search, statusFilter, userTypeFilter]);
-
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const paginatedReports = useMemo(() => {
-    const startIndex = (currentPage - 1) * PAGE_SIZE;
-    return filtered.slice(startIndex, startIndex + PAGE_SIZE);
-  }, [filtered, currentPage]);
+  useEffect(() => {
+    fetchReports();
+  }, [fetchReports]);
 
   const handleExportExcel = () => {
-    if (filtered.length === 0) {
+    if (reports.length === 0) {
       addToast('No records available to export for the selected filters.', 'info');
       return;
     }
@@ -128,20 +162,28 @@ export default function AdminReportsPage() {
       'Status',
       'Action / Resolution'
     ];
-    const rows = filtered.map(r => {
+    const rows = reports.map(r => {
       const uType = getReportUserType(r);
+      const entityName = r.reported_entity?.name || r.reportedEntity || 'Entity';
+      const reporterName = r.reporter?.name || r.reporter || 'Platform User';
+      const repType = r.report_type_label || r.reportType || r.type || 'Flagged Content';
+      const narrative = r.description || r.details || r.reason || 'N/A';
+      const formattedDate = r.date || (r.created_at ? new Date(r.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A');
+      const action = r.action_taken || r.admin_notes || (r.status === 'RESOLVED' ? 'Corrective action taken' : 'Under Investigation');
+
       return [
-        r.id || 'N/A',
+        r.report_number || r.id || 'N/A',
         uType === 'CANDIDATE' ? 'Candidate' : 'Recruiter',
-        r.reportedEntity || 'Entity',
-        r.reporter || 'Candidate',
-        r.reportType || r.type || 'Flagged Content',
-        r.details || r.reason || 'N/A',
-        r.date || r.createdAt ? new Date(r.date || r.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Aug 2026',
+        entityName,
+        reporterName,
+        repType,
+        narrative,
+        formattedDate,
         r.status || 'PENDING',
-        r.actionTaken || (r.status === 'RESOLVED' ? 'Corrective action taken' : 'Under Investigation')
+        action
       ];
     });
+
     exportToExcel({
       filename: getExportFilename('reports_complaints', statusFilter.toLowerCase(), 'xlsx'),
       sheetName: 'Reports',
@@ -152,24 +194,30 @@ export default function AdminReportsPage() {
   };
 
   const handleExportPdf = () => {
-    if (filtered.length === 0) {
+    if (reports.length === 0) {
       addToast('No records available to export for the selected filters.', 'info');
       return;
     }
     addToast('Exporting moderation complaints to PDF...', 'info');
     const headers = ['Report ID', 'User Type', 'Reported Entity', 'Reporter', 'Type', 'Date', 'Status'];
-    const rows = filtered.map(r => {
+    const rows = reports.map(r => {
       const uType = getReportUserType(r);
+      const entityName = r.reported_entity?.name || r.reportedEntity || 'Entity';
+      const reporterName = r.reporter?.name || r.reporter || 'Candidate';
+      const repType = r.report_type_label || r.reportType || r.type || 'Flagged';
+      const formattedDate = r.date || (r.created_at ? new Date(r.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A');
+
       return [
-        r.id || 'N/A',
+        r.report_number || r.id || 'N/A',
         uType === 'CANDIDATE' ? 'Candidate' : 'Recruiter',
-        r.reportedEntity || 'Entity',
-        r.reporter || 'Candidate',
-        r.reportType || r.type || 'Flagged',
-        r.date || r.createdAt ? new Date(r.date || r.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Aug 2026',
+        entityName,
+        reporterName,
+        repType,
+        formattedDate,
         r.status || 'PENDING'
       ];
     });
+
     const tabObj = [
       { key: 'ALL', label: 'All Reports' },
       { key: 'PENDING', label: 'Pending' },
@@ -188,7 +236,7 @@ export default function AdminReportsPage() {
         'Status Filter': statusLabel,
         'User Type Filter': userTypeLabel,
         'Search Query': search || 'None',
-        'Total Records': filtered.length
+        'Total Records': totalItems
       },
       headers,
       rows
@@ -202,16 +250,40 @@ export default function AdminReportsPage() {
     setResolveModalOpen(true);
   };
 
-  const handleConfirmResolve = (e) => {
+  const handleConfirmResolve = async (e) => {
     e.preventDefault();
     if (!resolveTarget) return;
-    resolveReport(resolveTarget.id, resolutionNotes);
-    addToast(`Report #${resolveTarget.id} against ${resolveTarget.reportedEntity} has been RESOLVED.`, 'success');
-    setResolveModalOpen(false);
-    if (selectedReport?.id === resolveTarget.id) {
-      setSelectedReport({ ...selectedReport, status: 'RESOLVED', actionTaken: resolutionNotes });
+
+    setIsSubmitting(true);
+    try {
+      await adminReportService.resolveReport(resolveTarget.id, {
+        admin_notes: resolutionNotes,
+        resolution_reason: 'POLICY_VIOLATION_CONFIRMED'
+      });
+
+      const targetName = resolveTarget.reported_entity?.name || resolveTarget.reportedEntity || 'Entity';
+      addToast(`Report #${resolveTarget.report_number || resolveTarget.id} against ${targetName} has been RESOLVED.`, 'success');
+      setResolveModalOpen(false);
+
+      if (selectedReport?.id === resolveTarget.id) {
+        setSelectedReport({
+          ...selectedReport,
+          status: 'RESOLVED',
+          action_taken: resolutionNotes,
+          admin_notes: resolutionNotes
+        });
+      }
+      setResolveTarget(null);
+
+      // Refresh data
+      await fetchReports();
+      await fetchSummary();
+    } catch (err) {
+      console.error('Failed to resolve report:', err);
+      addToast(err.message || 'Failed to resolve report.', 'error');
+    } finally {
+      setIsSubmitting(false);
     }
-    setResolveTarget(null);
   };
 
   const handleOpenDismiss = (rep) => {
@@ -219,15 +291,37 @@ export default function AdminReportsPage() {
     setDismissModalOpen(true);
   };
 
-  const handleConfirmDismiss = () => {
+  const handleConfirmDismiss = async () => {
     if (!dismissTarget) return;
-    rejectReport(dismissTarget.id);
-    addToast(`Report #${dismissTarget.id} has been DISMISSED.`, 'info');
-    setDismissModalOpen(false);
-    if (selectedReport?.id === dismissTarget.id) {
-      setSelectedReport({ ...selectedReport, status: 'DISMISSED' });
+
+    setIsSubmitting(true);
+    try {
+      await adminReportService.dismissReport(dismissTarget.id, {
+        admin_notes: 'Dismissed as non-actionable or insufficient evidence.',
+        resolution_reason: 'INSUFFICIENT_EVIDENCE'
+      });
+
+      addToast(`Report #${dismissTarget.report_number || dismissTarget.id} has been DISMISSED.`, 'info');
+      setDismissModalOpen(false);
+
+      if (selectedReport?.id === dismissTarget.id) {
+        setSelectedReport({
+          ...selectedReport,
+          status: 'DISMISSED',
+          action_taken: 'Dismissed as non-actionable.'
+        });
+      }
+      setDismissTarget(null);
+
+      // Refresh data
+      await fetchReports();
+      await fetchSummary();
+    } catch (err) {
+      console.error('Failed to dismiss report:', err);
+      addToast(err.message || 'Failed to dismiss report.', 'error');
+    } finally {
+      setIsSubmitting(false);
     }
-    setDismissTarget(null);
   };
 
   const columns = [
@@ -236,7 +330,7 @@ export default function AdminReportsPage() {
       label: 'Report Type',
       sortable: true,
       render: (_, row) => {
-        const type = row.reportType || row.type || 'Flagged Content';
+        const type = row.report_type_label || row.reportType || row.type || 'Flagged Content';
         return (
           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
             <AlertTriangle size={15} style={{ color: '#dc2626' }} />
@@ -251,11 +345,13 @@ export default function AdminReportsPage() {
       sortable: true,
       render: (_, row) => {
         const uType = getReportUserType(row);
+        const entityName = row.reported_entity?.name || row.reportedEntity || 'Target Entity';
+        const displayId = row.report_number || row.id;
         return (
           <div>
-            <strong style={{ fontSize: 'var(--text-xs)', color: '#b91c1c' }}>{row.reportedEntity}</strong>
+            <strong style={{ fontSize: 'var(--text-xs)', color: '#b91c1c' }}>{entityName}</strong>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
-              <span style={{ fontSize: '10px', color: 'var(--color-text-muted)' }}>ID: {row.id}</span>
+              <span style={{ fontSize: '10px', color: 'var(--color-text-muted)' }}>ID: {displayId}</span>
               <span style={{
                 fontSize: '9px',
                 fontWeight: 700,
@@ -278,9 +374,10 @@ export default function AdminReportsPage() {
       label: 'Reporter',
       render: (_, row) => {
         const uType = getReportUserType(row);
+        const reporterName = row.reporter?.name || row.reporter || 'Platform User';
         return (
           <div style={{ fontSize: 'var(--text-xs)' }}>
-            <strong>{row.reporter}</strong>
+            <strong>{reporterName}</strong>
             <span style={{ fontSize: '10px', color: 'var(--color-text-muted)', display: 'block' }}>
               {uType === 'CANDIDATE' ? 'Employer / Recruiter' : 'Verified Candidate'}
             </span>
@@ -292,11 +389,14 @@ export default function AdminReportsPage() {
       key: 'date',
       label: 'Date',
       sortable: true,
-      render: (v) => (
-        <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>
-          {v ? new Date(v).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Aug 2026'}
-        </span>
-      )
+      render: (_, row) => {
+        const d = row.date || row.created_at || row.createdAt;
+        return (
+          <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>
+            {d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Aug 2026'}
+          </span>
+        );
+      }
     },
     {
       key: 'status',
@@ -389,7 +489,7 @@ export default function AdminReportsPage() {
               fontSize: 'var(--text-xs)',
               fontWeight: 700
             }}>
-              {reports.filter(r => r.status === 'PENDING').length} Open Complaints
+              {summary.open_complaints} Open Complaints
             </span>
           </div>
         </div>
@@ -426,7 +526,7 @@ export default function AdminReportsPage() {
           <ExportDropdown
             onExportExcel={handleExportExcel}
             onExportPdf={handleExportPdf}
-            disabled={filtered.length === 0}
+            disabled={totalItems === 0 || isLoading}
           />
         </div>
 
@@ -492,7 +592,12 @@ export default function AdminReportsPage() {
 
       {/* Data Table */}
       <div className="card" style={{ borderRadius: 'var(--radius-2xl)', overflow: 'hidden' }}>
-        {filtered.length === 0 ? (
+        {isLoading ? (
+          <div style={{ padding: 'var(--space-12)', textAlign: 'center', color: 'var(--color-text-muted)' }}>
+            <Loader2 size={32} className="animate-spin" style={{ margin: '0 auto var(--space-3)' }} />
+            <p style={{ margin: 0, fontSize: 'var(--text-sm)' }}>Loading moderation complaints...</p>
+          </div>
+        ) : reports.length === 0 ? (
           <EmptyState
             icon={<CheckCircle2 size={40} />}
             title="No Moderation Complaints"
@@ -500,11 +605,11 @@ export default function AdminReportsPage() {
           />
         ) : (
           <>
-            <Table columns={columns} data={paginatedReports} />
+            <Table columns={columns} data={reports} />
             <Pagination
               currentPage={currentPage}
               totalPages={totalPages}
-              totalItems={filtered.length}
+              totalItems={totalItems}
               pageSize={PAGE_SIZE}
               onPageChange={setCurrentPage}
             />
@@ -517,7 +622,7 @@ export default function AdminReportsPage() {
         <Modal
           isOpen={viewModalOpen}
           onClose={() => setViewModalOpen(false)}
-          title={`Grievance Report: #${selectedReport.id}`}
+          title={`Grievance Report: #${selectedReport.report_number || selectedReport.id}`}
           size="lg"
         >
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
@@ -547,14 +652,14 @@ export default function AdminReportsPage() {
               </div>
               <div style={{ flex: 1 }}>
                 <h3 style={{ fontSize: 'var(--text-lg)', fontWeight: 800, margin: 0, color: '#fff' }}>
-                  {selectedReport.reportType || selectedReport.type}
+                  {selectedReport.report_type_label || selectedReport.reportType || selectedReport.type || selectedReport.report_type}
                 </h3>
                 <p style={{ fontSize: 'var(--text-sm)', color: '#fecaca', margin: '2px 0 0 0' }}>
-                  Reported Target: {selectedReport.reportedEntity} ({getReportUserType(selectedReport) === 'CANDIDATE' ? 'Candidate' : 'Recruiter'})
+                  Reported Target: {selectedReport.reported_entity?.name || selectedReport.reportedEntity} ({getReportUserType(selectedReport) === 'CANDIDATE' ? 'Candidate' : 'Recruiter'})
                 </p>
                 <div style={{ display: 'flex', gap: 'var(--space-4)', marginTop: 'var(--space-2)', fontSize: '11px', color: '#fee2e2' }}>
-                  <span>👤 Reporter: {selectedReport.reporter}</span>
-                  <span>📅 Date: {selectedReport.date ? new Date(selectedReport.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Aug 2026'}</span>
+                  <span>👤 Reporter: {selectedReport.reporter?.name || selectedReport.reporter}</span>
+                  <span>📅 Date: {selectedReport.date || (selectedReport.created_at ? new Date(selectedReport.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A')}</span>
                   <span>🛡️ Status: {selectedReport.status}</span>
                 </div>
               </div>
@@ -566,17 +671,17 @@ export default function AdminReportsPage() {
                 Complaint Description & Evidence
               </h4>
               <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text)', lineHeight: 1.6, margin: 0 }}>
-                {selectedReport.reason || 'Candidate reported suspicious recruitment behavior requesting security deposits or unofficial registration fees.'}
+                {selectedReport.description || selectedReport.details || selectedReport.reason || 'Candidate reported suspicious recruitment behavior requesting security deposits or unofficial registration fees.'}
               </p>
             </div>
 
-            {selectedReport.actionTaken && (
+            {(selectedReport.action_taken || selectedReport.admin_notes) && (
               <div style={{ background: '#ecfdf5', border: '1px solid #a7f3d0', padding: 'var(--space-4)', borderRadius: 'var(--radius-lg)' }}>
                 <h4 style={{ fontSize: '12px', fontWeight: 800, textTransform: 'uppercase', color: '#047857', marginBottom: 'var(--space-1)' }}>
                   Action Taken / Resolution
                 </h4>
                 <p style={{ fontSize: 'var(--text-xs)', color: '#065f46', margin: 0 }}>
-                  {selectedReport.actionTaken}
+                  {selectedReport.action_taken || selectedReport.admin_notes}
                 </p>
               </div>
             )}
@@ -617,13 +722,13 @@ export default function AdminReportsPage() {
       {resolveModalOpen && resolveTarget && (
         <Modal
           isOpen={resolveModalOpen}
-          onClose={() => setResolveModalOpen(false)}
-          title={`Resolve Report #${resolveTarget.id}`}
+          onClose={() => !isSubmitting && setResolveModalOpen(false)}
+          title={`Resolve Report #${resolveTarget.report_number || resolveTarget.id}`}
           size="md"
         >
           <form onSubmit={handleConfirmResolve} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
             <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', margin: 0 }}>
-              Specify the corrective action or resolution summary for complaint against <strong>{resolveTarget.reportedEntity}</strong>.
+              Specify the corrective action or resolution summary for complaint against <strong>{resolveTarget.reported_entity?.name || resolveTarget.reportedEntity}</strong>.
             </p>
 
             <FormField label="Resolution Summary" required>
@@ -637,11 +742,11 @@ export default function AdminReportsPage() {
             </FormField>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-2)' }}>
-              <Button type="button" variant="outline" onClick={() => setResolveModalOpen(false)}>
+              <Button type="button" variant="outline" onClick={() => setResolveModalOpen(false)} disabled={isSubmitting}>
                 Cancel
               </Button>
-              <Button type="submit" variant="primary">
-                Confirm & Mark Resolved
+              <Button type="submit" variant="primary" disabled={isSubmitting}>
+                {isSubmitting ? 'Resolving...' : 'Confirm & Mark Resolved'}
               </Button>
             </div>
           </form>
@@ -652,20 +757,20 @@ export default function AdminReportsPage() {
       {dismissModalOpen && dismissTarget && (
         <Modal
           isOpen={dismissModalOpen}
-          onClose={() => setDismissModalOpen(false)}
-          title={`Dismiss Complaint #${dismissTarget.id}`}
+          onClose={() => !isSubmitting && setDismissModalOpen(false)}
+          title={`Dismiss Complaint #${dismissTarget.report_number || dismissTarget.id}`}
           size="sm"
         >
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
             <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', margin: 0 }}>
-              Are you sure you want to dismiss the complaint against <strong>{dismissTarget.reportedEntity}</strong> as non-actionable?
+              Are you sure you want to dismiss the complaint against <strong>{dismissTarget.reported_entity?.name || dismissTarget.reportedEntity}</strong> as non-actionable?
             </p>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-2)' }}>
-              <Button variant="outline" onClick={() => setDismissModalOpen(false)}>
+              <Button variant="outline" onClick={() => setDismissModalOpen(false)} disabled={isSubmitting}>
                 Cancel
               </Button>
-              <Button variant="danger" onClick={handleConfirmDismiss}>
-                Dismiss Complaint
+              <Button variant="danger" onClick={handleConfirmDismiss} disabled={isSubmitting}>
+                {isSubmitting ? 'Dismissing...' : 'Dismiss Complaint'}
               </Button>
             </div>
           </div>

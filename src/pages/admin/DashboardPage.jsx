@@ -1,35 +1,75 @@
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Users, Building2, Briefcase, FileText, GraduationCap,
   CalendarDays, UserCheck, Clock, TrendingUp, AlertCircle,
   ArrowRight, ShieldCheck, CheckCircle2, XCircle, Activity,
-  Layers, BarChart2, Eye, AlertTriangle, History
+  Layers, BarChart2, Eye, AlertTriangle, History, Loader2, RefreshCw
 } from 'lucide-react';
 import StatCard from '../../components/ui/StatCard';
 import { Card, CardHeader, CardBody } from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
-import { useAdmin } from '../../context/AdminContext';
+import { useToast } from '../../context/ToastContext';
+import adminDashboardService from '../../services/adminDashboardService';
 
 export default function AdminDashboard() {
-  const {
-    candidates,
-    recruiters,
-    companies,
-    jobs,
-    internships,
-    applications,
-    jobMelas,
-    registrations,
-    reports,
-    auditLogs,
-    pendingCounts
-  } = useAdmin();
+  const { addToast } = useToast();
+
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const [moderationQueue, setModerationQueue] = useState({
+    pending_recruiter_verifications: 0,
+    pending_company_verifications: 0,
+    pending_job_approvals: 0,
+    pending_internship_approvals: 0,
+    pending_job_mela_approvals: 0,
+    open_moderation_reports: 0,
+    total_pending: 0,
+  });
+
+  const [platformOverview, setPlatformOverview] = useState({
+    total_candidates: 0,
+    total_recruiters: 0,
+    verified_companies: 0,
+    active_jobs: 0,
+    submitted_applications: 0,
+    job_mela_registrations: 0,
+  });
+
+  const [pendingStream, setPendingStream] = useState([]);
+  const [recentAuditLogs, setRecentAuditLogs] = useState([]);
+
+  // Fetch dashboard data from backend API
+  const loadDashboardData = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const data = await adminDashboardService.getDashboard();
+      if (data) {
+        if (data.moderation_queue) setModerationQueue(data.moderation_queue);
+        if (data.platform_overview) setPlatformOverview(data.platform_overview);
+        if (data.pending_moderation_stream) setPendingStream(data.pending_moderation_stream);
+        if (data.recent_audit_logs) setRecentAuditLogs(data.recent_audit_logs);
+      }
+    } catch (err) {
+      console.error('Failed to load admin dashboard data:', err);
+      setError(err.message || 'Unable to load admin dashboard data.');
+      addToast(err.message || 'Unable to load admin dashboard data. Please try again.', 'error');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [addToast]);
+
+  useEffect(() => {
+    loadDashboardData();
+  }, [loadDashboardData]);
 
   // 1. Action Required: Moderation Queue (6 Cards)
   const STATS_PENDING_ACTION = [
     {
       label: 'Pending Recruiter Verifications',
-      value: String(pendingCounts.recruiterVerifications),
+      value: String(moderationQueue.pending_recruiter_verifications),
       change: 'Action Required',
       positive: false,
       icon: <UserCheck size={20} />,
@@ -40,7 +80,7 @@ export default function AdminDashboard() {
     },
     {
       label: 'Pending Company Verifications',
-      value: String(pendingCounts.companyVerifications),
+      value: String(moderationQueue.pending_company_verifications),
       change: 'Identity Check',
       positive: false,
       icon: <Building2 size={20} />,
@@ -51,7 +91,7 @@ export default function AdminDashboard() {
     },
     {
       label: 'Pending Job Approvals',
-      value: String(pendingCounts.jobApprovals),
+      value: String(moderationQueue.pending_job_approvals),
       change: 'Under Review',
       positive: false,
       icon: <Clock size={20} />,
@@ -62,7 +102,7 @@ export default function AdminDashboard() {
     },
     {
       label: 'Pending Internship Approvals',
-      value: String(pendingCounts.internshipApprovals),
+      value: String(moderationQueue.pending_internship_approvals),
       change: 'Campus Queue',
       positive: false,
       icon: <GraduationCap size={20} />,
@@ -73,7 +113,7 @@ export default function AdminDashboard() {
     },
     {
       label: 'Pending Job Mela Approvals',
-      value: String(pendingCounts.jobMelaApprovals),
+      value: String(moderationQueue.pending_job_mela_approvals),
       change: 'Event Queues',
       positive: false,
       icon: <CalendarDays size={20} />,
@@ -84,7 +124,7 @@ export default function AdminDashboard() {
     },
     {
       label: 'Open Moderation Reports',
-      value: String(pendingCounts.openReports),
+      value: String(moderationQueue.open_moderation_reports),
       change: 'Urgent Complaints',
       positive: false,
       icon: <AlertTriangle size={20} />,
@@ -99,7 +139,7 @@ export default function AdminDashboard() {
   const STATS_PRIMARY = [
     {
       label: 'Total Candidates',
-      value: String(candidates.length + 12450),
+      value: String(platformOverview.total_candidates),
       change: '+240 today',
       positive: true,
       icon: <Users size={20} />,
@@ -108,7 +148,7 @@ export default function AdminDashboard() {
     },
     {
       label: 'Total Recruiters',
-      value: String(recruiters.length + 1280),
+      value: String(platformOverview.total_recruiters),
       change: '+18 this week',
       positive: true,
       icon: <UserCheck size={20} />,
@@ -117,7 +157,7 @@ export default function AdminDashboard() {
     },
     {
       label: 'Verified Companies',
-      value: String(companies.filter(c => c.verificationStatus === 'VERIFIED').length + 840),
+      value: String(platformOverview.verified_companies),
       change: '+12 this month',
       positive: true,
       icon: <Building2 size={20} />,
@@ -126,7 +166,7 @@ export default function AdminDashboard() {
     },
     {
       label: 'Active Jobs',
-      value: String(jobs.filter(j => j.status === 'ACTIVE').length + 4320),
+      value: String(platformOverview.active_jobs),
       change: '+85 new',
       positive: true,
       icon: <Briefcase size={20} />,
@@ -136,7 +176,7 @@ export default function AdminDashboard() {
     },
     {
       label: 'Submitted Applications',
-      value: String(applications.length + 48900),
+      value: String(platformOverview.submitted_applications),
       change: '+1.4k this week',
       positive: true,
       icon: <FileText size={20} />,
@@ -145,7 +185,7 @@ export default function AdminDashboard() {
     },
     {
       label: 'Job Mela Registrations',
-      value: String(registrations.length + 15200),
+      value: String(platformOverview.job_mela_registrations),
       change: '+850 recent',
       positive: true,
       icon: <CalendarDays size={20} />,
@@ -153,38 +193,6 @@ export default function AdminDashboard() {
       iconColor: '#e11d48'
     },
   ];
-
-  // 3. Pending Approvals Queue Items
-  const pendingQueue = [
-    ...recruiters.filter(r => r.verificationStatus === 'PENDING').map(r => ({
-      type: 'Recruiter Verification',
-      name: r.name,
-      entity: r.company,
-      time: r.registrationDate,
-      link: '/admin/recruiter-verification',
-    })),
-    ...companies.filter(c => c.verificationStatus === 'PENDING').map(c => ({
-      type: 'Company Verification',
-      name: c.name,
-      entity: `${c.industry} • ${c.recruiter}`,
-      time: c.registrationDate,
-      link: '/admin/company-verification',
-    })),
-    ...jobs.filter(j => j.status === 'PENDING').map(j => ({
-      type: 'Job Approval',
-      name: j.title,
-      entity: `${j.company} • ${j.recruiter}`,
-      time: j.postedDate,
-      link: '/admin/job-approvals',
-    })),
-    ...internships.filter(i => i.status === 'PENDING').map(i => ({
-      type: 'Internship Approval',
-      name: i.title,
-      entity: i.company,
-      time: i.submittedDate,
-      link: '/admin/internship-approvals',
-    })),
-  ].slice(0, 5);
 
   return (
     <div className="admin-dashboard" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)', paddingBottom: 'var(--space-16)' }}>
@@ -213,24 +221,24 @@ export default function AdminDashboard() {
             Platform Command Center
           </h1>
           <p style={{ fontSize: 'var(--text-sm)', color: '#d4d4d8' }}>
-            There are <strong>{pendingCounts.recruiterVerifications + pendingCounts.companyVerifications + pendingCounts.jobApprovals + pendingCounts.internshipApprovals + pendingCounts.openReports} pending moderation items</strong> requiring administrative review.
+            There are <strong>{moderationQueue.total_pending} pending moderation items</strong> requiring administrative review.
           </p>
         </div>
 
         <div style={{ display: 'flex', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
           <Link to="/admin/recruiter-verification">
             <Button variant="primary" size="lg" style={{ background: '#3b82f6', color: '#ffffff', fontWeight: 700 }}>
-              Recruiters ({pendingCounts.recruiterVerifications})
+              Recruiters ({moderationQueue.pending_recruiter_verifications})
             </Button>
           </Link>
           <Link to="/admin/job-approvals">
             <Button variant="secondary" size="lg" style={{ background: 'rgba(255,255,255,0.1)', color: '#ffffff', borderColor: 'rgba(255,255,255,0.2)' }}>
-              Jobs ({pendingCounts.jobApprovals})
+              Jobs ({moderationQueue.pending_job_approvals})
             </Button>
           </Link>
           <Link to="/admin/company-verification">
             <Button variant="secondary" size="lg" style={{ background: 'rgba(255,255,255,0.1)', color: '#ffffff', borderColor: 'rgba(255,255,255,0.2)' }}>
-              Companies ({pendingCounts.companyVerifications})
+              Companies ({moderationQueue.pending_company_verifications})
             </Button>
           </Link>
         </div>
@@ -275,16 +283,21 @@ export default function AdminDashboard() {
             </Link>
           </CardHeader>
           <CardBody style={{ padding: 0 }}>
-            {pendingQueue.length === 0 ? (
+            {isLoading ? (
+              <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
+                <Loader2 size={24} className="animate-spin" style={{ margin: '0 auto 0.5rem' }} />
+                <p style={{ fontSize: 'var(--text-xs)' }}>Loading pending stream...</p>
+              </div>
+            ) : pendingStream.length === 0 ? (
               <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
                 <CheckCircle2 size={32} style={{ color: '#10b981', margin: '0 auto 0.5rem' }} />
                 <p style={{ fontWeight: 600 }}>All moderation queues are clear!</p>
               </div>
             ) : (
-              pendingQueue.map((item, idx) => (
-                <div key={idx} style={{
+              pendingStream.map((item, idx) => (
+                <div key={item.id || idx} style={{
                   padding: 'var(--space-4) var(--space-6)',
-                  borderBottom: idx < pendingQueue.length - 1 ? '1px solid var(--color-gray-100)' : 'none',
+                  borderBottom: idx < pendingStream.length - 1 ? '1px solid var(--color-gray-100)' : 'none',
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
@@ -320,25 +333,39 @@ export default function AdminDashboard() {
             </Link>
           </CardHeader>
           <CardBody style={{ padding: 0 }}>
-            {auditLogs.slice(0, 5).map((log, idx) => (
-              <div key={log.id} style={{
-                padding: 'var(--space-3) var(--space-6)',
-                borderBottom: idx < 4 ? '1px solid var(--color-gray-100)' : 'none',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                fontSize: 'var(--text-xs)'
-              }}>
-                <div>
-                  <strong style={{ color: 'var(--color-gray-900)', display: 'block' }}>{log.action}</strong>
-                  <span style={{ color: 'var(--color-gray-500)' }}>{log.target} • by {log.adminUser}</span>
-                </div>
-                <div style={{ textAlign: 'right' }}>
-                  <span style={{ color: '#059669', fontWeight: 700 }}>{log.result}</span>
-                  <div style={{ color: 'var(--color-gray-400)', fontSize: '10px' }}>{log.time}</div>
-                </div>
+            {isLoading ? (
+              <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
+                <Loader2 size={24} className="animate-spin" style={{ margin: '0 auto 0.5rem' }} />
+                <p style={{ fontSize: 'var(--text-xs)' }}>Loading audit logs...</p>
               </div>
-            ))}
+            ) : recentAuditLogs.length === 0 ? (
+              <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
+                <History size={32} style={{ color: 'var(--color-text-muted)', margin: '0 auto 0.5rem' }} />
+                <p style={{ fontWeight: 600 }}>No recent audit activity recorded.</p>
+              </div>
+            ) : (
+              recentAuditLogs.slice(0, 5).map((log, idx) => (
+                <div key={log.id || idx} style={{
+                  padding: 'var(--space-3) var(--space-6)',
+                  borderBottom: idx < Math.min(recentAuditLogs.length, 5) - 1 ? '1px solid var(--color-gray-100)' : 'none',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  fontSize: 'var(--text-xs)'
+                }}>
+                  <div>
+                    <strong style={{ color: 'var(--color-gray-900)', display: 'block' }}>{log.action}</strong>
+                    <span style={{ color: 'var(--color-gray-500)' }}>{log.target} • by {log.adminUser || log.actor}</span>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <span style={{ color: (log.result || 'SUCCESS').toUpperCase() === 'SUCCESS' ? '#059669' : '#dc2626', fontWeight: 700 }}>
+                      {log.result || 'SUCCESS'}
+                    </span>
+                    <div style={{ color: 'var(--color-gray-400)', fontSize: '10px' }}>{log.time}</div>
+                  </div>
+                </div>
+              ))
+            )}
           </CardBody>
         </Card>
 

@@ -10,7 +10,12 @@ import PortalHeader from './PortalHeader';
 import { SidebarProvider } from '../../context/SidebarContext';
 import { useAdmin } from '../../context/AdminContext';
 
+import adminProfileService from '../../services/adminProfileService';
+
+const BACKEND_BASE = (import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api/v1').replace(/\/api\/v1\/?$/, '');
+
 function getPageTitle(pathname) {
+
   const map = {
     '/admin/dashboard':               'System Administration Dashboard',
     '/admin/profile':                 'Admin Profile',
@@ -79,6 +84,38 @@ export default function AdminLayout() {
   });
 
   useEffect(() => {
+    if (token) {
+      adminProfileService.getProfile().then((data) => {
+        if (data) {
+          const resolved = {
+            name: data.full_name || 'Admin User',
+            role: data.role || 'Platform Administrator',
+            email: data.email || 'admin1@ntrvikasa.com',
+            designation: data.designation || 'State Operations Lead',
+            phone: data.contact_phone || '+91 98765 43210',
+            department: data.department || 'State Employment & Skill Development Authority',
+            status: data.status || 'ACTIVE',
+          };
+          setCustomProfile(resolved);
+          try {
+            localStorage.setItem('ntr_admin_custom_profile', JSON.stringify(resolved));
+          } catch (e) {}
+
+          if (data.profile_image_url) {
+            const fullImg = data.profile_image_url.startsWith('http') || data.profile_image_url.startsWith('data:')
+              ? data.profile_image_url
+              : `${BACKEND_BASE}${data.profile_image_url.startsWith('/') ? '' : '/'}${data.profile_image_url}`;
+            setCustomAvatar(fullImg);
+            try {
+              localStorage.setItem('ntr_admin_custom_avatar', fullImg);
+            } catch (e) {}
+          }
+        }
+      }).catch(() => {});
+    }
+  }, [token]);
+
+  useEffect(() => {
     const handleAvatarUpdate = () => {
       try {
         setCustomAvatar(localStorage.getItem('ntr_admin_custom_avatar') || null);
@@ -95,6 +132,7 @@ export default function AdminLayout() {
       window.removeEventListener('admin_profile_updated', handleAvatarUpdate);
     };
   }, []);
+
 
   const navItems = [
     // 1. MAIN

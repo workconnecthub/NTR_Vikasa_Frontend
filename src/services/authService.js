@@ -183,6 +183,24 @@ export const authService = {
   },
 
   /**
+   * Change Password for Authenticated User (Admin, Recruiter, Candidate)
+   * @param {Object} payload - { current_password, new_password, confirm_password }
+   * @returns {Promise<Object>} { status: "success", message: "Password changed successfully." }
+   */
+  async changePassword({ current_password, new_password, confirm_password }) {
+    try {
+      const response = await apiClient.post('/auth/change-password', {
+        current_password,
+        new_password,
+        confirm_password,
+      });
+      return response;
+    } catch (error) {
+      throw new Error(parseApiError(error));
+    }
+  },
+
+  /**
    * Explicit Refresh Token Rotation
    */
   async refresh() {
