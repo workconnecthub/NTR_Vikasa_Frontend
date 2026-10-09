@@ -14,6 +14,7 @@ import Textarea from '../../components/ui/Textarea';
 import JobMelaPosterModal, { downloadPosterImage } from '../../components/ui/JobMelaPosterModal';
 import { useToast } from '../../context/ToastContext';
 import { useAdmin, NTR_MANDALS } from '../../context/AdminContext';
+import adminService from '../../services/adminService';
 
 export default function AdminCreateJobMelaPage() {
   const navigate = useNavigate();
@@ -102,9 +103,26 @@ export default function AdminCreateJobMelaPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (!file.type.startsWith('image/')) {
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
       toast({ type: 'error', title: 'Invalid File', message: 'Please select an image file (JPG, PNG, WEBP).' });
       return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      toast({ type: 'error', title: 'File Too Large', message: 'Poster file size must be within 10MB.' });
+      return;
+    }
+
+    try {
+      const res = await adminService.uploadJobMelaPoster(file);
+      if (res?.url) {
+        setBannerPreview(res.url);
+        toast({ type: 'success', title: 'Official Poster Uploaded', message: 'Official Job Mela event flyer saved and ready for display.' });
+        return;
+      }
+    } catch (uploadErr) {
+      console.warn('Backend poster upload failed, using local fallback:', uploadErr);
     }
 
     try {
@@ -169,7 +187,7 @@ export default function AdminCreateJobMelaPage() {
     );
   };
 
-  const handleSaveDraft = () => {
+  const handleSaveDraft = async () => {
     if (!formData.title.trim()) {
       toast({ type: 'error', title: 'Event Name Required', message: 'Please enter an event name before saving draft.' });
       return;
@@ -191,29 +209,37 @@ export default function AdminCreateJobMelaPage() {
         notes: c.notes.trim() || ''
       }));
 
-    const newMela = createJobMela({
-      ...formData,
-      organizer: formData.createdForClient && formData.client
-        ? `${formData.client} (Client Partner)`
-        : 'NTR Vikasa State Employment Authority',
-      banner: bannerPreview,
-      posterImage: bannerPreview,
-      image: bannerPreview,
-      status: 'UPCOMING',
-      participatingCompanies: cleanCompanies,
-      companiesCount: cleanCompanies.length,
-      registeredCandidatesCount: 0
-    });
+    try {
+      const newMela = await createJobMela({
+        ...formData,
+        organizer: formData.createdForClient && formData.client
+          ? `${formData.client} (Client Partner)`
+          : 'NTR Vikasa State Employment Authority',
+        banner: bannerPreview,
+        posterImage: bannerPreview,
+        image: bannerPreview,
+        status: 'UPCOMING',
+        participatingCompanies: cleanCompanies,
+        companiesCount: cleanCompanies.length,
+        registeredCandidatesCount: 0
+      });
 
-    toast({
-      type: 'info',
-      title: 'Draft Saved',
-      message: `Job Mela "${formData.title}" saved to drafts with ${cleanCompanies.length} companies.`,
-    });
-    navigate('/admin/job-melas', { state: { openMelaId: newMela.id } });
+      toast({
+        type: 'info',
+        title: 'Draft Saved',
+        message: `Job Mela "${formData.title}" saved to drafts with ${cleanCompanies.length} companies.`,
+      });
+      navigate('/admin/job-melas', { state: { openMelaId: newMela.id } });
+    } catch (err) {
+      toast({
+        type: 'error',
+        title: 'Save Failed',
+        message: err.message || 'Could not save draft.',
+      });
+    }
   };
 
-  const handlePublish = (e) => {
+  const handlePublish = async (e) => {
     e.preventDefault();
     if (!formData.title.trim() || !formData.venue.trim()) {
       toast({ type: 'error', title: 'Incomplete Details', message: 'Please complete all required event logistics fields.' });
@@ -239,7 +265,7 @@ export default function AdminCreateJobMelaPage() {
     }
 
     setLoading(true);
-    setTimeout(() => {
+    try {
       const cleanCompanies = validCompanies.map((c, idx) => ({
         id: `pmc-${Date.now()}-${idx}`,
         companyId: c.companyId || '',
@@ -254,7 +280,7 @@ export default function AdminCreateJobMelaPage() {
         notes: c.notes.trim() || 'Direct walk-in screening'
       }));
 
-      const newMela = createJobMela({
+      const newMela = await createJobMela({
         ...formData,
         organizer: formData.createdForClient && formData.client
           ? `${formData.client} (Client Partner)`
@@ -274,7 +300,14 @@ export default function AdminCreateJobMelaPage() {
         message: `Event "${formData.title}" is now published with ${cleanCompanies.length} participating companies!`,
       });
       navigate('/admin/job-melas', { state: { openMelaId: newMela.id } });
-    }, 600);
+    } catch (err) {
+      setLoading(false);
+      toast({
+        type: 'error',
+        title: 'Publish Failed',
+        message: err.message || 'Could not publish Job Mela.',
+      });
+    }
   };
 
   return (

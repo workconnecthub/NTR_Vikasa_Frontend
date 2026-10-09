@@ -227,11 +227,15 @@ export default function AdminJobsPage() {
     addToast('PDF export downloaded successfully!', 'success');
   };
 
-  const handleApprove = (j) => {
-    approveJob(j.id);
-    addToast(`"${j.title}" by ${j.company} is now VERIFIED & APPROVED.`, 'success');
-    if (selectedJob?.id === j.id) {
-      setSelectedJob({ ...selectedJob, status: 'APPROVED' });
+  const handleApprove = async (j) => {
+    try {
+      await approveJob(j.id);
+      addToast(`"${j.title}" by ${j.company} is now VERIFIED & APPROVED.`, 'success');
+      if (selectedJob?.id === j.id) {
+        setSelectedJob({ ...selectedJob, status: 'APPROVED' });
+      }
+    } catch (err) {
+      addToast(err.message || 'Failed to approve job', 'error');
     }
   };
 
@@ -241,16 +245,20 @@ export default function AdminJobsPage() {
     setRejectModalOpen(true);
   };
 
-  const handleConfirmReject = (e) => {
+  const handleConfirmReject = async (e) => {
     e.preventDefault();
     if (!rejectTarget) return;
-    rejectJob(rejectTarget.id, rejectionReason || 'Rejected by administrator.');
-    addToast(`"${rejectTarget.title}" has been REJECTED.`, 'info');
-    setRejectModalOpen(false);
-    if (selectedJob?.id === rejectTarget.id) {
-      setSelectedJob({ ...selectedJob, status: 'REJECTED' });
+    try {
+      await rejectJob(rejectTarget.id, rejectionReason || 'Rejected by administrator.');
+      addToast(`"${rejectTarget.title}" has been REJECTED.`, 'info');
+      setRejectModalOpen(false);
+      if (selectedJob?.id === rejectTarget.id) {
+        setSelectedJob({ ...selectedJob, status: 'REJECTED' });
+      }
+      setRejectTarget(null);
+    } catch (err) {
+      addToast(err.message || 'Failed to reject job', 'error');
     }
-    setRejectTarget(null);
   };
 
   const handleOpenRequestChanges = (j) => {

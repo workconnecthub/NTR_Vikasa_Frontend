@@ -2881,11 +2881,14 @@ export function AdminProvider({ children }) {
   const [companies, setCompanies] = useState(() => {
     try {
       const stored = localStorage.getItem('ntr_admin_companies_v1');
-      if (stored) return JSON.parse(stored);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
     } catch (e) {
       // ignore
     }
-    return SEED_COMPANIES;
+    return [];
   });
 
   const [jobs, setJobs] = useState(() => {
@@ -3161,13 +3164,102 @@ export function AdminProvider({ children }) {
     let isMounted = true;
     const fetchLiveModerationData = async () => {
       try {
-        const [jobsRes, internshipsRes, companiesRes] = await Promise.allSettled([
+        const [jobsRes, internshipsRes, companiesRes, melasRes, requestsRes, recruitersRes, candidatesRes, photosRes, videosRes, pressRes] = await Promise.allSettled([
           adminService.getJobs({ page_size: 100 }),
           adminService.getInternships({ page_size: 100 }),
           adminService.getCompanies(),
+          adminService.getAdminJobMelas(),
+          adminService.getJobMelaRequests(),
+          adminService.getRecruiters({ page_size: 100 }),
+          adminService.getCandidates({ page_size: 100 }),
+          adminService.getGalleryPhotos({ page_size: 100 }),
+          adminService.getGalleryVideos({ page_size: 100 }),
+          adminService.getPressArticles({ page_size: 100 }),
         ]);
 
         if (!isMounted) return;
+
+        if (recruitersRes.status === 'fulfilled' && recruitersRes.value) {
+          const rawRecs = Array.isArray(recruitersRes.value)
+            ? recruitersRes.value
+            : (recruitersRes.value.items || []);
+          if (rawRecs.length > 0) {
+            const mappedRecs = rawRecs.map(r => ({
+              id: r.id,
+              user_id: r.user_id,
+              name: r.name || r.recruiter_name,
+              recruiter_name: r.name || r.recruiter_name,
+              email: r.email || r.work_email,
+              work_email: r.email || r.work_email,
+              phone: r.phone || r.mobile_phone,
+              mobile_phone: r.phone || r.mobile_phone,
+              designation: r.designation || 'Talent Acquisition Manager',
+              company: r.company || r.company_name,
+              company_name: r.company || r.company_name,
+              companyId: r.company_id,
+              company_id: r.company_id,
+              industry: r.industry || 'Information Technology & Services',
+              location: r.location || 'Vijayawada, NTR District',
+              district: r.district || 'NTR District',
+              mandal: r.mandal || 'Vijayawada Urban',
+              village: r.village || '',
+              registrationDate: r.registrationDate || r.registration_date || r.created_at?.split(' ')[0] || new Date().toISOString().split('T')[0],
+              verificationStatus: r.verificationStatus || r.verification_status || 'VERIFIED',
+              accountStatus: r.accountStatus || r.account_status || 'ACTIVE',
+              postedJobsCount: r.postedJobsCount !== undefined ? r.postedJobsCount : (r.posted_jobs_count || 0),
+              open_jobs: r.open_jobs || 0,
+              onboarded_by: r.onboarded_by || 'ADMIN',
+            }));
+            setRecruiters(prev => {
+              const liveKeys = new Set(mappedRecs.map(mr => mr.id));
+              const retained = prev.filter(p => !liveKeys.has(p.id));
+              return [...mappedRecs, ...retained];
+            });
+          }
+        }
+
+        if (candidatesRes.status === 'fulfilled' && candidatesRes.value) {
+          const rawCands = Array.isArray(candidatesRes.value)
+            ? candidatesRes.value
+            : (candidatesRes.value.items || []);
+          if (rawCands.length > 0) {
+            const mappedCands = rawCands.map(c => ({
+              id: c.id,
+              user_id: c.user_id,
+              name: c.name,
+              email: c.email,
+              phone: c.phone,
+              gender: c.gender || 'Male',
+              aadhaarNumber: c.aadhaar_masked || c.aadhaar_number || 'XXXX XXXX 1234',
+              district: c.district || 'NTR District',
+              mandal: c.mandal || '',
+              village: c.village || '',
+              location: c.location || (c.village ? `${c.village}, ${c.mandal}` : (c.mandal || 'NTR District')),
+              qualificationLevel: c.qualification_level,
+              education: c.education || (c.qualification_level ? `${c.qualification_level} Class` : 'Pending Profile Completion'),
+              headline: c.headline || 'Registered Candidate',
+              experience: c.experience || 'Fresher (0-1 Year)',
+              skills: Array.isArray(c.skills) ? c.skills : [],
+              placementStatus: c.placement_status || 'NOT_PLACED',
+              placedCompany: c.placed_company || '',
+              placedRole: c.placed_role || '',
+              placedSalary: c.placed_salary || '',
+              placedDate: c.placed_date || null,
+              referenceAdmin: c.reference_admin || 'Admin User (State Operations)',
+              customReferrer: c.custom_referrer || '',
+              registrationDate: c.registration_date || c.created_at?.split(' ')[0] || new Date().toISOString().split('T')[0],
+              profileStatus: c.profile_status || (c.profile_completion >= 80 ? 'COMPLETE' : 'BASIC_REGISTERED'),
+              profileCompletion: c.profile_completion || 35,
+              accountStatus: c.account_status || 'ACTIVE',
+              applicationsCount: c.applications_count || 0
+            }));
+            setCandidates(prev => {
+              const liveKeys = new Set(mappedCands.map(mc => mc.id));
+              const retained = prev.filter(p => !liveKeys.has(p.id));
+              return [...mappedCands, ...retained];
+            });
+          }
+        }
 
         if (jobsRes.status === 'fulfilled' && jobsRes.value?.items?.length) {
           const mappedJobs = jobsRes.value.items.map(j => ({
@@ -3224,32 +3316,191 @@ export function AdminProvider({ children }) {
           });
         }
 
-        if (companiesRes.status === 'fulfilled' && Array.isArray(companiesRes.value) && companiesRes.value.length) {
-          const mappedComps = companiesRes.value.map(c => ({
+        const rawComps = Array.isArray(companiesRes.value)
+          ? companiesRes.value
+          : (companiesRes.value?.items || []);
+        if (companiesRes.status === 'fulfilled' && rawComps.length) {
+          const mappedComps = rawComps.map(c => ({
             id: c.id,
             name: c.company_name || c.name,
-            recruiter: c.recruiter_name || c.recruiter || 'HR Lead',
-            industry: c.industry || 'Information Technology',
-            location: c.location || 'Bengaluru, Karnataka',
-            district: 'NTR District',
-            mandal: 'Vijayawada Urban',
-            size: c.company_size || '100-500 employees',
-            verificationStatus: c.verification_status || (c.status === 'APPROVED' ? 'VERIFIED' : c.status === 'REJECTED' ? 'REJECTED' : 'PENDING'),
-            accountStatus: 'ACTIVE',
-            registrationDate: c.submitted_at?.split(' ')[0] || new Date().toISOString().split('T')[0],
-            activeJobsCount: c.open_jobs || 0,
-            website: c.website || '',
-            email: c.recruiter_email || '',
-            description: c.description || '',
-            cin: 'U37AP2026PTC098765',
-            gstin: '37ABCDE1234F1Z5',
-            rejectionReason: c.rejection_reason || null,
+            company_name: c.company_name || c.name,
+            recruiter: c.recruiter_name || c.recruiter || 'Corporate HR Lead',
+            recruiter_name: c.recruiter_name || c.recruiter || 'Corporate HR Lead',
+            recruiter_email: c.recruiter_email || c.email || '',
+            recruiter_phone: c.recruiter_phone || c.phone || '',
+            email: c.email || c.corporate_email || c.recruiter_email || '',
+            phone: c.phone || c.company_phone || c.recruiter_phone || '',
+            designation: c.designation || 'Director of Talent Acquisition',
+            industry: c.industry || c.primary_industry || 'Information Technology & Services',
+            location: c.location || c.headquarters_city_state || 'Vijayawada, NTR District',
+            district: c.district || 'NTR District',
+            mandal: c.mandal || 'Vijayawada Urban',
+            village: c.village || '',
+            size: c.company_size || c.size || '100-500 employees',
+            company_size: c.company_size || c.size || '100-500 employees',
+            type: c.company_type || c.type || 'Private Limited (Pvt Ltd)',
+            company_type: c.company_type || c.type || 'Private Limited (Pvt Ltd)',
+            verificationStatus: c.verification_status || c.verificationStatus || (c.status === 'APPROVED' ? 'VERIFIED' : c.status === 'REJECTED' ? 'REJECTED' : c.status === 'SUSPENDED' ? 'SUSPENDED' : 'PENDING'),
+            status: c.status || 'APPROVED',
+            accountStatus: c.accountStatus || (c.status === 'SUSPENDED' ? 'SUSPENDED' : 'ACTIVE'),
+            registrationDate: c.registrationDate || c.submitted_at?.split(' ')[0] || new Date().toISOString().split('T')[0],
+            activeJobsCount: c.open_jobs || c.openJobs || 0,
+            open_jobs: c.open_jobs || c.openJobs || 0,
+            open_internships: c.open_internships || 0,
+            applications_count: c.applications_count || 0,
+            recruiters_count: c.recruiters_count || 1,
+            website: c.website || c.company_website || '',
+            description: c.description || c.company_description || '',
+            about: c.about || c.company_description || '',
+            cin: c.cin || c.cin_number || '',
+            cin_number: c.cin || c.cin_number || '',
+            gstin: c.gstin || c.gst_number || '',
+            gst_number: c.gstin || c.gst_number || '',
+            rejectionReason: c.rejection_reason || c.rejectionReason || null,
+            rejection_reason: c.rejection_reason || c.rejectionReason || null,
+            logo: c.logo || c.logo_url || null,
+            logo_url: c.logo || c.logo_url || null,
           }));
-          setCompanies(prev => {
-            const liveKeys = new Set(mappedComps.map(mc => mc.id));
+          setCompanies(mappedComps);
+        }
+
+        if (melasRes.status === 'fulfilled' && Array.isArray(melasRes.value) && melasRes.value.length) {
+          const mappedMelas = melasRes.value.map(m => ({
+            id: m.id,
+            mela_number: m.mela_number,
+            event: m.event || m.title,
+            title: m.title || m.event,
+            description: m.description || '',
+            date: m.date,
+            startTime: m.startTime || '09:00 AM',
+            endTime: m.endTime || '05:30 PM',
+            time: m.time || `${m.startTime || '09:00 AM'} - ${m.endTime || '05:30 PM'}`,
+            venue: m.venue,
+            city: m.city,
+            district: m.district || 'NTR District',
+            state: m.state || 'Andhra Pradesh',
+            location: m.location || `${m.city}, ${m.state || 'Andhra Pradesh'}`,
+            address: m.address || m.venue,
+            organizer: m.organizer || 'NTR Vikasa State Employment Authority',
+            client: m.client || null,
+            createdForClient: Boolean(m.createdForClient || m.client),
+            createdByAdmin: true,
+            status: m.status,
+            capacity: m.capacity || m.maxCapacity || 5000,
+            maxCapacity: m.maxCapacity || m.capacity || 5000,
+            companiesCount: m.companiesCount || (m.participatingCompanies?.length || 0),
+            vacanciesCount: m.vacanciesCount || 1000,
+            registeredCandidatesCount: m.registeredCandidatesCount || 0,
+            banner: m.banner || m.posterImage || m.flyer_url || '/hero2.jpg',
+            posterImage: m.posterImage || m.banner || m.flyer_url || '/hero2.jpg',
+            image: m.image || m.banner || m.flyer_url || '/hero2.jpg',
+            flyer_url: m.flyer_url || m.banner || '/hero2.jpg',
+            participatingCompanies: m.participatingCompanies || [],
+            eligibleMandals: m.eligibleMandals || ['All Mandals'],
+            eligibleVillages: m.eligibleVillages || 'All villages in selected mandals',
+            eligibleQualifications: m.eligibleQualifications || ['10TH', 'INTER', 'UG', 'PG'],
+          }));
+
+          setJobMelas(prev => {
+            const liveKeys = new Set(mappedMelas.map(mm => mm.id));
             const retained = prev.filter(p => !liveKeys.has(p.id));
-            return [...mappedComps, ...retained];
+            return [...mappedMelas, ...retained];
           });
+        }
+
+        if (requestsRes.status === 'fulfilled' && Array.isArray(requestsRes.value) && requestsRes.value.length) {
+          const mappedRequests = requestsRes.value.map(r => ({
+            id: r.id,
+            request_number: r.request_number,
+            event: r.event || r.title,
+            title: r.title || r.event,
+            description: r.description || '',
+            organizer: r.organizer,
+            company: r.organizer,
+            requestingOrganization: r.organizer,
+            date: r.date,
+            time: r.time || '09:00 AM - 05:00 PM',
+            venue: r.venue,
+            location: r.location || `${r.city}, ${r.state || 'Andhra Pradesh'}`,
+            city: r.city,
+            state: r.state || 'Andhra Pradesh',
+            address: r.address || `${r.venue}, ${r.city}`,
+            requestDate: r.requestDate,
+            createdAt: r.createdAt || r.requestDate,
+            status: r.status,
+            capacity: r.capacity || r.maxCapacity || 2000,
+            maxCapacity: r.maxCapacity || r.capacity || 2000,
+            vacancies: r.vacancies || 500,
+            contactPerson: r.contactPerson,
+            email: r.email,
+            phone: r.phone,
+            rejectionReason: r.rejectionReason,
+            linkedJobMelaId: r.linkedJobMelaId,
+            participatingCompanies: r.participatingCompanies || [],
+            createdByAdmin: false,
+          }));
+
+          setJobMelas(prev => {
+            const reqKeys = new Set(mappedRequests.map(mr => mr.id));
+            const retained = prev.filter(p => !reqKeys.has(p.id));
+            return [...mappedRequests, ...retained];
+          });
+        }
+
+        if (photosRes.status === 'fulfilled' && Array.isArray(photosRes.value) && photosRes.value.length > 0) {
+          const liveImages = photosRes.value.map(p => ({
+            id: p.id,
+            title: p.title,
+            category: p.category,
+            imageUrl: p.imageUrl || p.image_url,
+            date: p.date,
+            description: p.description || '',
+          }));
+          setHomeContent(prev => ({
+            ...prev,
+            gallery: {
+              ...(prev.gallery || DEFAULT_HOME_CONTENT.gallery),
+              images: liveImages,
+            },
+          }));
+        }
+
+        if (videosRes.status === 'fulfilled' && Array.isArray(videosRes.value) && videosRes.value.length > 0) {
+          const liveVideos = videosRes.value.map(v => ({
+            id: v.id,
+            title: v.title,
+            youtubeUrl: v.youtubeUrl || v.youtube_url,
+            category: v.category,
+            date: v.date || '',
+            description: v.description || '',
+          }));
+          setHomeContent(prev => ({
+            ...prev,
+            gallery: {
+              ...(prev.gallery || DEFAULT_HOME_CONTENT.gallery),
+              videos: liveVideos,
+            },
+          }));
+        }
+
+        if (pressRes.status === 'fulfilled' && Array.isArray(pressRes.value) && pressRes.value.length > 0) {
+          const liveArticles = pressRes.value.map(a => ({
+            id: a.id,
+            newspaper: a.newspaper || a.publication_name,
+            title: a.title,
+            date: a.date || a.publication_date,
+            edition: a.edition || '',
+            imageUrl: a.imageUrl || a.image_url,
+            sourceUrl: a.sourceUrl || a.source_url || a.article_url || '',
+            summary: a.summary || a.description || '',
+          }));
+          setHomeContent(prev => ({
+            ...prev,
+            newsArticles: {
+              ...(prev.newsArticles || DEFAULT_HOME_CONTENT.newsArticles),
+              articles: liveArticles,
+            },
+          }));
         }
       } catch (e) {
         console.warn('Error fetching live admin moderation data:', e);
@@ -3307,7 +3558,13 @@ export function AdminProvider({ children }) {
   // ── ACTION DISPATCHERS ───────────────────────────────────────────────────
 
   // Recruiter actions
-  const verifyRecruiter = (recruiterId, status = 'VERIFIED', notes = '') => {
+  const verifyRecruiter = async (recruiterId, status = 'VERIFIED', notes = '') => {
+    try {
+      await adminService.verifyRecruiter(recruiterId);
+    } catch (err) {
+      console.warn('Backend verifyRecruiter call error:', err);
+    }
+
     setRecruiters(prev =>
       prev.map(r => (r.id === recruiterId ? { ...r, verificationStatus: status } : r))
     );
@@ -3330,7 +3587,13 @@ export function AdminProvider({ children }) {
     });
   };
 
-  const suspendRecruiter = (recruiterId) => {
+  const suspendRecruiter = async (recruiterId, reason = 'Suspended by admin') => {
+    try {
+      await adminService.suspendRecruiter(recruiterId, reason);
+    } catch (err) {
+      console.warn('Backend suspendRecruiter call error:', err);
+    }
+
     setRecruiters(prev =>
       prev.map(r => (r.id === recruiterId ? { ...r, accountStatus: 'SUSPENDED' } : r))
     );
@@ -3338,7 +3601,13 @@ export function AdminProvider({ children }) {
     addAuditLog('Recruiter Suspended', rec?.name || recruiterId, 'RECRUITER');
   };
 
-  const activateRecruiter = (recruiterId) => {
+  const activateRecruiter = async (recruiterId) => {
+    try {
+      await adminService.activateRecruiter(recruiterId);
+    } catch (err) {
+      console.warn('Backend activateRecruiter call error:', err);
+    }
+
     setRecruiters(prev =>
       prev.map(r => (r.id === recruiterId ? { ...r, accountStatus: 'ACTIVE' } : r))
     );
@@ -3347,7 +3616,12 @@ export function AdminProvider({ children }) {
   };
 
   // Candidate actions
-  const suspendCandidate = (candidateId) => {
+  const suspendCandidate = async (candidateId, reason = 'Suspended by admin') => {
+    try {
+      await adminService.suspendCandidate(candidateId, reason);
+    } catch (err) {
+      console.warn('Backend suspendCandidate call error:', err);
+    }
     setCandidates(prev =>
       prev.map(c => (c.id === candidateId ? { ...c, accountStatus: 'SUSPENDED' } : c))
     );
@@ -3355,7 +3629,12 @@ export function AdminProvider({ children }) {
     addAuditLog('Candidate Suspended', cand?.name || candidateId, 'CANDIDATE');
   };
 
-  const activateCandidate = (candidateId) => {
+  const activateCandidate = async (candidateId) => {
+    try {
+      await adminService.activateCandidate(candidateId);
+    } catch (err) {
+      console.warn('Backend activateCandidate call error:', err);
+    }
     setCandidates(prev =>
       prev.map(c => (c.id === candidateId ? { ...c, accountStatus: 'ACTIVE' } : c))
     );
@@ -3363,66 +3642,143 @@ export function AdminProvider({ children }) {
     addAuditLog('Candidate Activated', cand?.name || candidateId, 'CANDIDATE');
   };
 
-  const addCandidate = (candidateData) => {
-    const qual = candidateData.qualificationLevel || '10TH';
-    const qualLabel = qual === '10TH' ? '10th Class (SSC)' : qual === 'INTER' ? 'Intermediate / Diploma' : qual === 'PG' ? 'Postgraduate (PG)' : 'Undergraduate (UG)';
+  const addCandidate = async (candidateData) => {
+    let serverCand = null;
+    try {
+      const rawAadhaar = (candidateData.aadhaarNumber || '').replace(/[\s\-]/g, '');
+      serverCand = await adminService.createCandidate({
+        full_name: candidateData.name,
+        email: candidateData.email,
+        mobile_number: candidateData.phone,
+        gender: candidateData.gender || 'Male',
+        aadhaar_number: rawAadhaar,
+        referred_by: candidateData.referenceAdmin || 'Admin User (State Operations)',
+        custom_referrer: candidateData.customReferrer || null,
+        placement_status: candidateData.placementStatus || 'NOT_PLACED',
+        placed_company: candidateData.placedCompany || null,
+        placed_role: candidateData.placedRole || null,
+        placed_salary: candidateData.placedSalary || null,
+        placed_date: candidateData.placedDate || null,
+      });
+    } catch (err) {
+      console.warn('Backend createCandidate call error:', err);
+      throw err;
+    }
+
+    const qual = serverCand?.qualification_level || candidateData.qualificationLevel || null;
+    const qualLabel = qual === '10TH' ? '10th Class (SSC)' : qual === 'INTER' ? 'Intermediate / Diploma' : qual === 'PG' ? 'Postgraduate (PG)' : qual ? 'Undergraduate (UG)' : 'Pending Candidate 100% Profile Completion';
     
-    // Determine profile completion percentage:
-    // If student was just added via basic KYC (name, email, phone, gender, aadhaar), mark profileStatus as 'BASIC_REGISTERED' (35%), candidate needs to log in to complete to 100%
     const isBasicKYC = !candidateData.education && !candidateData.skills;
-    const profileCompletion = isBasicKYC ? 35 : (candidateData.profileCompletion || 100);
-    const profileStatus = isBasicKYC ? 'BASIC_REGISTERED' : (candidateData.profileStatus || 'COMPLETE');
+    const profileCompletion = serverCand?.profile_completion || (isBasicKYC ? 35 : (candidateData.profileCompletion || 100));
+    const profileStatus = serverCand?.profile_status || (isBasicKYC ? 'BASIC_REGISTERED' : (candidateData.profileStatus || 'COMPLETE'));
+    const isPlaced = (serverCand?.placement_status || candidateData.placementStatus) === 'PLACED';
 
     const newCand = {
-      id: `cand-${Date.now()}`,
-      name: candidateData.name || 'New Student',
-      email: candidateData.email || '',
-      phone: candidateData.phone || '',
-      gender: candidateData.gender || 'Male',
-      aadhaarNumber: candidateData.aadhaarNumber || '',
-      district: candidateData.district || 'NTR District',
-      mandal: candidateData.mandal || 'Vijayawada Urban',
-      village: candidateData.village || 'Vijayawada',
-      location: candidateData.location || `${candidateData.village ? candidateData.village + ', ' : ''}${candidateData.mandal || 'Vijayawada Urban'}, ${candidateData.district || 'NTR District'}`,
-      qualificationLevel: qual, // '10TH' | 'INTER' | 'UG' | 'PG'
-      education: candidateData.education || (isBasicKYC ? 'Pending Candidate 100% Profile Completion' : qualLabel),
-      headline: candidateData.headline || (isBasicKYC ? 'Registered Candidate (KYC Verified - Profile Incomplete)' : `${qualLabel} Candidate`),
+      id: serverCand?.id || `cand-${Date.now()}`,
+      user_id: serverCand?.user_id,
+      name: serverCand?.name || candidateData.name || 'New Student',
+      email: serverCand?.email || candidateData.email || '',
+      phone: serverCand?.phone || candidateData.phone || '',
+      gender: serverCand?.gender || candidateData.gender || 'Male',
+      aadhaarNumber: serverCand?.aadhaar_masked || candidateData.aadhaarNumber || '',
+      district: serverCand?.district || candidateData.district || 'NTR District',
+      mandal: serverCand?.mandal || candidateData.mandal || '',
+      village: serverCand?.village || candidateData.village || '',
+      location: serverCand?.location || candidateData.location || 'NTR District',
+      qualificationLevel: qual,
+      education: serverCand?.education || qualLabel,
+      headline: serverCand?.headline || (isPlaced ? `Placed at ${candidateData.placedCompany}` : (isBasicKYC ? 'Registered Candidate (KYC Verified)' : `${qualLabel} Candidate`)),
       experience: candidateData.experience || 'Fresher (0-1 Year)',
-      skills: Array.isArray(candidateData.skills) ? candidateData.skills : (candidateData.skills ? candidateData.skills.split(',').map(s => s.trim()) : (isBasicKYC ? ['Basic Profile Registered'] : ['Basic Computer Skills'])),
-      placementStatus: candidateData.placementStatus || 'NOT_PLACED', // 'PLACED' | 'NOT_PLACED'
-      placedCompany: candidateData.placementStatus === 'PLACED' ? (candidateData.placedCompany || '') : '',
-      placedRole: candidateData.placementStatus === 'PLACED' ? (candidateData.placedRole || '') : '',
-      placedSalary: candidateData.placementStatus === 'PLACED' ? (candidateData.placedSalary || '') : '',
+      skills: Array.isArray(candidateData.skills) ? candidateData.skills : (candidateData.skills ? candidateData.skills.split(',').map(s => s.trim()) : ['Basic Profile Registered']),
+      placementStatus: isPlaced ? 'PLACED' : 'NOT_PLACED',
+      placedCompany: isPlaced ? (serverCand?.placed_company || candidateData.placedCompany || '') : '',
+      placedRole: isPlaced ? (serverCand?.placed_role || candidateData.placedRole || '') : '',
+      placedSalary: isPlaced ? (serverCand?.placed_salary || candidateData.placedSalary || '') : '',
+      placedDate: serverCand?.placed_date || candidateData.placedDate || null,
       isCompanyInDatabase: Boolean(candidateData.isCompanyInDatabase),
-      referenceAdmin: candidateData.referenceAdmin || 'Admin User (State Operations)',
-      registrationDate: new Date().toISOString().split('T')[0],
+      referenceAdmin: serverCand?.reference_admin || candidateData.referenceAdmin || 'Admin User (State Operations)',
+      customReferrer: serverCand?.custom_referrer || candidateData.customReferrer || '',
+      registrationDate: serverCand?.registration_date || new Date().toISOString().split('T')[0],
       profileStatus,
       profileCompletion,
       accountStatus: 'ACTIVE',
       applicationsCount: 0,
-      ...candidateData
     };
-    setCandidates(prev => [newCand, ...prev]);
-    addAuditLog('Student / Candidate Added Manually', `${newCand.name} (${newCand.aadhaarNumber ? 'Aadhaar: ' + newCand.aadhaarNumber + ' - ' : ''}Ref: ${newCand.referenceAdmin})`, 'CANDIDATE');
+    setCandidates(prev => [newCand, ...prev.filter(c => c.id !== newCand.id)]);
+    addAuditLog('Student / Candidate Added Manually', `${newCand.name} (Ref: ${newCand.referenceAdmin})`, 'CANDIDATE');
     return newCand;
   };
 
-  const addRecruiter = (recruiterData) => {
+  const addRecruiter = async (recruiterData) => {
+    let serverRecruiter = null;
+    try {
+      const payload = {
+        name: recruiterData.name,
+        email: recruiterData.email,
+        phone: recruiterData.phone || '',
+        designation: recruiterData.designation || 'Talent Acquisition Manager',
+        company_type: recruiterData.companyType || (recruiterData.newCompanyName ? 'NEW' : 'EXISTING'),
+        selected_company: recruiterData.selectedCompany || recruiterData.company || '',
+        new_company_name: recruiterData.newCompanyName || '',
+        company: recruiterData.company || recruiterData.selectedCompany || recruiterData.newCompanyName || '',
+        industry: recruiterData.industry || 'Information Technology & Services',
+        location: recruiterData.location || 'Vijayawada, NTR District',
+      };
+      serverRecruiter = await adminService.createRecruiter(payload);
+    } catch (err) {
+      console.warn('Backend createRecruiter call error:', err);
+      throw err;
+    }
+
+    const assignedCompany = serverRecruiter?.company || recruiterData.company || recruiterData.selectedCompany || 'Registered Enterprise';
+
     const newRecruiter = {
-      id: `rec-u-${Date.now()}`,
-      name: recruiterData.name || 'New Recruiter',
-      email: recruiterData.email || '',
-      phone: recruiterData.phone || '',
-      company: recruiterData.company || recruiterData.companyName || 'Registered Enterprise',
-      designation: recruiterData.designation || 'Talent Acquisition Specialist',
-      registrationDate: new Date().toISOString().split('T')[0],
-      verificationStatus: recruiterData.verificationStatus || 'VERIFIED',
-      accountStatus: recruiterData.accountStatus || 'ACTIVE',
+      id: serverRecruiter?.id || `rec-u-${Date.now()}`,
+      name: serverRecruiter?.name || recruiterData.name || 'New Recruiter',
+      email: serverRecruiter?.email || recruiterData.email || '',
+      phone: serverRecruiter?.phone || recruiterData.phone || '',
+      company: assignedCompany,
+      designation: serverRecruiter?.designation || recruiterData.designation || 'Talent Acquisition Manager',
+      industry: serverRecruiter?.industry || recruiterData.industry || 'Information Technology & Services',
+      location: serverRecruiter?.location || recruiterData.location || 'Vijayawada, NTR District',
+      registrationDate: serverRecruiter?.registration_date || new Date().toISOString().split('T')[0],
+      verificationStatus: serverRecruiter?.verification_status || 'VERIFIED',
+      accountStatus: serverRecruiter?.account_status || 'ACTIVE',
       postedJobsCount: 0,
       documentsSubmitted: ['Admin Authorized Direct Onboarding', 'Official Work Email'],
-      ...recruiterData
+      ...(serverRecruiter || {}),
+      ...recruiterData,
+      company: assignedCompany,
     };
-    setRecruiters(prev => [newRecruiter, ...prev]);
+
+    setRecruiters(prev => [newRecruiter, ...prev.filter(r => r.id !== newRecruiter.id)]);
+
+    // If new company was registered, also update companies state
+    if (recruiterData.companyType === 'NEW' && recruiterData.newCompanyName) {
+      setCompanies(prev => {
+        const exists = prev.some(c => (c.name || '').toLowerCase() === recruiterData.newCompanyName.toLowerCase());
+        if (!exists) {
+          return [{
+            id: `comp-${Date.now()}`,
+            name: recruiterData.newCompanyName,
+            company_name: recruiterData.newCompanyName,
+            recruiter: newRecruiter.name,
+            recruiter_name: newRecruiter.name,
+            email: newRecruiter.email,
+            phone: newRecruiter.phone,
+            industry: newRecruiter.industry,
+            location: newRecruiter.location,
+            verificationStatus: 'VERIFIED',
+            accountStatus: 'ACTIVE',
+            activeJobsCount: 0,
+            open_jobs: 0,
+            registrationDate: newRecruiter.registrationDate,
+          }, ...prev];
+        }
+        return prev;
+      });
+    }
+
     addAuditLog('Recruiter Onboarded Manually by Admin', `${newRecruiter.name} (${newRecruiter.company})`, 'RECRUITER');
 
     dispatchAdminEvent({
@@ -3443,32 +3799,60 @@ export function AdminProvider({ children }) {
     return newRecruiter;
   };
 
-  const addCompany = (companyData) => {
+  const addCompany = async (companyData) => {
+    let serverCompany = null;
+    try {
+      serverCompany = await adminService.createCompany({
+        name: companyData.name,
+        industry: companyData.industry,
+        recruiter: companyData.recruiter,
+        email: companyData.email,
+        phone: companyData.phone,
+        website: companyData.website,
+        district: companyData.district || 'NTR District',
+        mandal: companyData.mandal || 'Vijayawada Urban',
+        village: companyData.village || '',
+        size: companyData.size || '100-500 employees',
+        type: companyData.type || 'Private Limited (Pvt Ltd)',
+        cin: companyData.cin,
+        gstin: companyData.gstin,
+        about: companyData.about || companyData.description,
+      });
+    } catch (err) {
+      console.warn('Backend createCompany call error:', err);
+      throw err;
+    }
+
     const newCompany = {
-      id: `comp-${Date.now()}`,
-      name: companyData.name || 'New Enterprise Partner',
-      recruiter: companyData.recruiter || companyData.primaryContact || 'HR Lead',
-      industry: companyData.industry || 'Information Technology & Services',
-      location: companyData.location || `${companyData.village ? companyData.village + ', ' : ''}${companyData.mandal || 'Vijayawada Urban'}, ${companyData.district || 'NTR District'}`,
-      district: companyData.district || 'NTR District',
-      mandal: companyData.mandal || 'Vijayawada Urban',
-      village: companyData.village || 'Commercial Hub',
-      eligibleMandals: companyData.eligibleMandals || ['All Mandals of NTR District'],
-      eligibleVillages: companyData.eligibleVillages || ['All Villages & Wards'],
-      size: companyData.size || '100-500 employees',
-      cin: companyData.cin || `U${Math.floor(10000 + Math.random() * 90000)}AP2026PTC${Math.floor(100000 + Math.random() * 900000)}`,
-      gstin: companyData.gstin || `37ABCDE${Math.floor(1000 + Math.random() * 9000)}F1Z5`,
-      verificationStatus: companyData.verificationStatus || 'VERIFIED',
+      id: serverCompany?.id || `comp-${Date.now()}`,
+      name: serverCompany?.name || companyData.name || 'New Enterprise Partner',
+      recruiter: serverCompany?.recruiter || companyData.recruiter || 'Corporate HR Lead',
+      recruiter_name: serverCompany?.recruiter_name || companyData.recruiter || 'Corporate HR Lead',
+      industry: serverCompany?.industry || companyData.industry || 'Information Technology & Services',
+      location: serverCompany?.location || companyData.location || `${companyData.village ? companyData.village + ', ' : ''}${companyData.mandal || 'Vijayawada Urban'}, ${companyData.district || 'NTR District'}`,
+      district: serverCompany?.district || companyData.district || 'NTR District',
+      mandal: serverCompany?.mandal || companyData.mandal || 'Vijayawada Urban',
+      village: serverCompany?.village || companyData.village || 'Commercial Hub',
+      eligibleMandals: ['All Mandals of NTR District'],
+      eligibleVillages: ['All Villages & Wards'],
+      size: serverCompany?.size || companyData.size || '100-500 employees',
+      company_size: serverCompany?.company_size || companyData.size || '100-500 employees',
+      cin: serverCompany?.cin || companyData.cin || '',
+      gstin: serverCompany?.gstin || companyData.gstin || '',
+      verificationStatus: 'VERIFIED',
+      status: 'APPROVED',
       accountStatus: 'ACTIVE',
-      registrationDate: new Date().toISOString().split('T')[0],
+      registrationDate: serverCompany?.registrationDate || new Date().toISOString().split('T')[0],
       activeJobsCount: 0,
-      website: companyData.website || '',
-      email: companyData.email || '',
-      phone: companyData.phone || '',
-      description: companyData.description || 'Verified enterprise hiring partner onboarded by NTR District Vikasa Administration.',
-      ...companyData
+      open_jobs: 0,
+      website: serverCompany?.website || companyData.website || '',
+      email: serverCompany?.email || companyData.email || '',
+      phone: serverCompany?.phone || companyData.phone || '',
+      description: serverCompany?.description || companyData.description || 'Verified enterprise hiring partner onboarded by NTR District Vikasa Administration.',
+      about: serverCompany?.about || companyData.about || companyData.description || '',
+      ...(serverCompany || {}),
     };
-    setCompanies(prev => [newCompany, ...prev]);
+    setCompanies(prev => [newCompany, ...prev.filter(c => c.id !== newCompany.id)]);
     addAuditLog('Company Added Directly by Admin', `${newCompany.name} (${newCompany.industry})`, 'COMPANY');
 
     dispatchAdminEvent({
@@ -3502,16 +3886,43 @@ export function AdminProvider({ children }) {
     addAuditLog('Candidate Removed from Platform', target?.name || candidateId, 'CANDIDATE');
   };
 
-  const updateCandidatePlacement = (candidateId, placementStatus, placedCompany = '', placedRole = '', placedSalary = '') => {
+  const updateCandidatePlacement = async (candidateId, statusOrObj, placedCompany = '', placedRole = '', placedSalary = '', placedDate = null) => {
+    let placementStatus = statusOrObj;
+    let finalCompany = placedCompany;
+    let finalRole = placedRole;
+    let finalSalary = placedSalary;
+    let finalDate = placedDate;
+
+    if (typeof statusOrObj === 'object' && statusOrObj !== null) {
+      placementStatus = statusOrObj.placementStatus;
+      finalCompany = statusOrObj.placedCompany || '';
+      finalRole = statusOrObj.placedRole || '';
+      finalSalary = statusOrObj.placedSalary || '';
+      finalDate = statusOrObj.placedDate || null;
+    }
+
+    try {
+      await adminService.updateCandidatePlacement(candidateId, {
+        placement_status: placementStatus,
+        placed_company: finalCompany,
+        placed_role: finalRole,
+        placed_salary: finalSalary,
+        placed_date: finalDate,
+      });
+    } catch (err) {
+      console.warn('Backend updateCandidatePlacement call error:', err);
+    }
+
     setCandidates(prev =>
       prev.map(c => {
         if (c.id === candidateId) {
           return {
             ...c,
             placementStatus,
-            placedCompany: placementStatus === 'PLACED' ? placedCompany : '',
-            placedRole: placementStatus === 'PLACED' ? placedRole : '',
-            placedSalary: placementStatus === 'PLACED' ? placedSalary : '',
+            placedCompany: placementStatus === 'PLACED' ? finalCompany : '',
+            placedRole: placementStatus === 'PLACED' ? finalRole : '',
+            placedSalary: placementStatus === 'PLACED' ? finalSalary : '',
+            placedDate: placementStatus === 'PLACED' ? finalDate : null,
           };
         }
         return c;
@@ -3580,9 +3991,14 @@ export function AdminProvider({ children }) {
     });
   };
 
-  const suspendCompany = (companyId) => {
+  const suspendCompany = async (companyId, reason = '') => {
+    try {
+      await adminService.suspendCompany(companyId, reason || 'Suspended by admin');
+    } catch (err) {
+      console.warn('Backend suspendCompany call error:', err);
+    }
     setCompanies(prev =>
-      prev.map(c => (c.id === companyId ? { ...c, verificationStatus: 'SUSPENDED', accountStatus: 'SUSPENDED' } : c))
+      prev.map(c => (c.id === companyId ? { ...c, verificationStatus: 'SUSPENDED', accountStatus: 'SUSPENDED', status: 'SUSPENDED' } : c))
     );
     const comp = companies.find(c => c.id === companyId);
     addAuditLog('Company Suspended', comp?.name || companyId, 'COMPANY');
@@ -3724,13 +4140,50 @@ export function AdminProvider({ children }) {
 
 
   // Job Mela actions
-  const createJobMela = (melaData) => {
+  const createJobMela = async (melaData) => {
     const isClientSpecific = !!melaData.client;
     const organizerName = isClientSpecific 
       ? `${melaData.client} (Client Hiring Summit)` 
       : (melaData.organizer || 'NTR Vikasa State Employment Authority (Admin)');
 
-    const newMela = {
+    let serverMela = null;
+    try {
+      serverMela = await adminService.createJobMela({
+        title: melaData.title || melaData.event || 'Mega Career Expo',
+        description: melaData.description || '',
+        date: melaData.date || '2026-11-15',
+        startTime: melaData.startTime || '09:00',
+        endTime: melaData.endTime || '18:00',
+        venue: melaData.venue || 'State Convention Center',
+        address: melaData.address || '',
+        city: melaData.city || 'Vijayawada',
+        state: melaData.state || 'Andhra Pradesh',
+        regStartDate: melaData.regStartDate || '2026-10-01',
+        regEndDate: melaData.regEndDate || '2026-11-10',
+        maxCapacity: Number(melaData.maxCapacity) || 3500,
+        createdForClient: isClientSpecific,
+        client: melaData.client || '',
+        clientId: melaData.clientId || '',
+        clientContactPerson: melaData.clientContactPerson || '',
+        clientContactPhone: melaData.clientContactPhone || '',
+        eligibleMandals: melaData.eligibleMandals || ['All Mandals'],
+        eligibleVillages: melaData.eligibleVillages || 'All villages in selected mandals',
+        eligibleQualifications: melaData.eligibleQualifications || ['10TH', 'INTER', 'UG', 'PG'],
+        banner: melaData.banner || melaData.posterImage || '/hero2.jpg',
+        posterImage: melaData.posterImage || melaData.banner || '/hero2.jpg',
+        status: melaData.status || 'APPROVED',
+        participatingCompanies: melaData.participatingCompanies || [],
+      });
+    } catch (err) {
+      console.warn('Backend createJobMela call error:', err);
+    }
+
+    const newMela = serverMela ? {
+      ...serverMela,
+      createdByAdmin: true,
+      createdForClient: isClientSpecific,
+      organizer: serverMela.organizer || organizerName,
+    } : {
       id: `mela-${Date.now()}`,
       event: melaData.title || melaData.event || (isClientSpecific ? `${melaData.client} Mega Recruitment Drive` : 'Mega Job Mela Event'),
       title: melaData.title || melaData.event || (isClientSpecific ? `${melaData.client} Mega Recruitment Drive` : 'Mega Job Mela Event'),
@@ -3758,27 +4211,28 @@ export function AdminProvider({ children }) {
       status: melaData.status || 'APPROVED',
       eligibleMandals: melaData.eligibleMandals || ['All Mandals'],
       eligibleVillages: melaData.eligibleVillages || ['All Villages'],
-      participatingCompanies: melaData.participatingCompanies || (isClientSpecific ? [{
-        id: `pmc-${Date.now()}`,
-        company: melaData.client,
-        companyId: melaData.clientId || '',
-        position: melaData.position || 'Open Multiple Positions',
-        vacancies: Number(melaData.vacanciesCount) || 50,
-        salary: melaData.salary || 'Best in Industry',
-        qualification: melaData.qualification || '10th / Inter / Degree / Engineering',
-        experience: '0-3 Years',
-        location: melaData.venue || 'On-site Stalls'
-      }] : []),
+      participatingCompanies: melaData.participatingCompanies || [],
       ...melaData
     };
-    setJobMelas(prev => [newMela, ...prev]);
-    addAuditLog('Job Mela Event Created', `${newMela.event}${isClientSpecific ? ` for ${newMela.client}` : ''}`, 'JOB_MELA');
+
+    setJobMelas(prev => [newMela, ...prev.filter(m => m.id !== newMela.id)]);
+    addAuditLog('Job Mela Event Created', `${newMela.event || newMela.title}${isClientSpecific ? ` for ${newMela.client}` : ''}`, 'JOB_MELA');
     return newMela;
   };
 
-  const addCompanyToJobMela = (melaId, companyData) => {
+  const addCompanyToJobMela = async (melaId, companyData) => {
+    let serverComp = null;
+    try {
+      serverComp = await adminService.addCompanyToMela(melaId, companyData);
+    } catch (err) {
+      console.warn('Backend addCompanyToMela call error:', err);
+    }
+
     const matchedComp = companies.find(c => c.id === companyData.companyId || c.name === companyData.company);
-    const newEntry = {
+    const newEntry = serverComp ? {
+      ...serverComp,
+      applications: 0
+    } : {
       id: `pmc-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       companyId: companyData.companyId || matchedComp?.id || '',
       company: companyData.company || companyData.name || 'Participating Employer',
@@ -3813,7 +4267,13 @@ export function AdminProvider({ children }) {
     return newEntry;
   };
 
-  const updateCompanyInJobMela = (melaId, companyEntryId, updatedData) => {
+  const updateCompanyInJobMela = async (melaId, companyEntryId, updatedData) => {
+    try {
+      await adminService.updateCompanyInMela(melaId, companyEntryId, updatedData);
+    } catch (err) {
+      console.warn('Backend updateCompanyInMela call error:', err);
+    }
+
     setJobMelas(prev =>
       prev.map(m => {
         if (m.id === melaId) {
@@ -3833,7 +4293,13 @@ export function AdminProvider({ children }) {
     addAuditLog('Job Mela Company Details Updated', `Entry #${companyEntryId} in Event #${melaId}`, 'JOB_MELA');
   };
 
-  const removeCompanyFromJobMela = (melaId, companyEntryId) => {
+  const removeCompanyFromJobMela = async (melaId, companyEntryId) => {
+    try {
+      await adminService.removeCompanyFromMela(melaId, companyEntryId);
+    } catch (err) {
+      console.warn('Backend removeCompanyFromMela call error:', err);
+    }
+
     setJobMelas(prev =>
       prev.map(m => {
         if (m.id === melaId) {
@@ -3851,11 +4317,23 @@ export function AdminProvider({ children }) {
     addAuditLog('Company Removed from Job Mela', `Entry #${companyEntryId} removed from Event #${melaId}`, 'JOB_MELA');
   };
 
-  const approveJobMela = (melaId) => {
+  const approveJobMela = async (melaId) => {
+    const mela = jobMelas.find(m => m.id === melaId);
+    const isRequest = !mela?.createdByAdmin || mela?.status === 'PENDING' || String(melaId).startsWith('req-') || String(melaId).startsWith('jmr-');
+
+    try {
+      if (isRequest) {
+        await adminService.approveJobMelaRequest(melaId);
+      } else {
+        await adminService.updateJobMelaStatus(melaId, 'APPROVED');
+      }
+    } catch (err) {
+      console.warn('Backend approveJobMela call error:', err);
+    }
+
     setJobMelas(prev =>
       prev.map(m => (m.id === melaId ? { ...m, status: 'APPROVED' } : m))
     );
-    const mela = jobMelas.find(m => m.id === melaId);
     addAuditLog('Job Mela Event Approved', mela?.event || melaId, 'JOB_MELA');
 
     dispatchAdminEvent({
@@ -3874,11 +4352,23 @@ export function AdminProvider({ children }) {
     });
   };
 
-  const rejectJobMela = (melaId) => {
-    setJobMelas(prev =>
-      prev.map(m => (m.id === melaId ? { ...m, status: 'REJECTED' } : m))
-    );
+  const rejectJobMela = async (melaId, reason = '') => {
     const mela = jobMelas.find(m => m.id === melaId);
+    const isRequest = !mela?.createdByAdmin || mela?.status === 'PENDING' || String(melaId).startsWith('req-') || String(melaId).startsWith('jmr-');
+
+    try {
+      if (isRequest) {
+        await adminService.rejectJobMelaRequest(melaId, reason || 'Does not meet requirements.');
+      } else {
+        await adminService.updateJobMelaStatus(melaId, 'REJECTED');
+      }
+    } catch (err) {
+      console.warn('Backend rejectJobMela call error:', err);
+    }
+
+    setJobMelas(prev =>
+      prev.map(m => (m.id === melaId ? { ...m, status: 'REJECTED', rejectionReason: reason } : m))
+    );
     addAuditLog('Job Mela Event Rejected', mela?.event || melaId, 'JOB_MELA');
 
     dispatchAdminEvent({

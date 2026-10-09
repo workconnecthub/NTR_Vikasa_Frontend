@@ -20,6 +20,7 @@ import ExportDropdown from '../../components/ui/ExportDropdown';
 import { exportToExcel, exportToPDF, exportToCSV, generatePDFBlob, getExportFilename } from '../../utils/exportUtils';
 import { useToast } from '../../context/ToastContext';
 import { useAdmin } from '../../context/AdminContext';
+import adminService from '../../services/adminService';
 import { formatMelaId, formatJobId } from '../../utils/applicationUtils';
 import JobMelaPosterModal, { downloadPosterImage } from '../../components/ui/JobMelaPosterModal';
 
@@ -89,6 +90,28 @@ export default function AdminJobMelasPage() {
   const [candidatePageSize, setCandidatePageSize] = useState(10);
   const [selectedPass, setSelectedPass] = useState(null);
   const [passModalOpen, setPassModalOpen] = useState(false);
+  const [liveRegistrations, setLiveRegistrations] = useState([]);
+  const [backendMetrics, setBackendMetrics] = useState(null);
+
+  useEffect(() => {
+    adminService.getJobMelaMetrics()
+      .then((m) => { if (m) setBackendMetrics(m); })
+      .catch(() => {});
+  }, [jobMelas]);
+
+  useEffect(() => {
+    if (selectedMelaForRegs?.id) {
+      adminService.getJobMelaRegistrations(selectedMelaForRegs.id)
+        .then((data) => {
+          if (Array.isArray(data)) {
+            setLiveRegistrations(data);
+          }
+        })
+        .catch(() => setLiveRegistrations([]));
+    } else {
+      setLiveRegistrations([]);
+    }
+  }, [selectedMelaForRegs]);
 
   const handleOpenMelaRegistrations = (mela) => {
     setSelectedMelaForRegs(mela);
@@ -298,6 +321,28 @@ export default function AdminJobMelasPage() {
         });
       }
     });
+
+    if (selectedMelaForRegs && String(selectedMelaForRegs.id) === String(mela.id) && Array.isArray(liveRegistrations)) {
+      liveRegistrations.forEach((r, idx) => {
+        const email = (r.candidateEmail || r.email || '').toLowerCase().trim();
+        const key = email || r.id;
+        if (!uniqueMap.has(key)) {
+          uniqueMap.set(key, {
+            ...r,
+            id: r.id || `REG-${mela.id || 'MELA'}-${1000 + idx}`,
+            candidate: r.candidate || r.candidateName || 'Candidate',
+            candidateEmail: r.candidateEmail || r.email || 'candidate@example.com',
+            phone: r.phone || '+91 98765 43210',
+            entryToken: r.entryToken || r.passId || `TKN-${String(100 + idx).padStart(4, '0')}`,
+            gateNumber: r.gateNumber || 'Gate 1 (Main Hall)',
+            registrationDate: r.registrationDate || '2026-08-28',
+            status: r.status || 'CONFIRMED',
+            event: mela.event || mela.title,
+            appliedCompany: r.appliedCompany || r.company || ''
+          });
+        }
+      });
+    }
 
     return Array.from(uniqueMap.values());
   };
@@ -1011,20 +1056,26 @@ export default function AdminJobMelasPage() {
 
   // Overall Job Mela Registration Count & Capacity for Admin Banner
   const totalMelaRegistrations = useMemo(() => {
+    if (backendMetrics?.totalRegisteredCandidates !== undefined) {
+      return backendMetrics.totalRegisteredCandidates;
+    }
     return jobMelas.reduce((acc, m) => {
       const c = m.registeredCandidatesCount !== undefined
         ? m.registeredCandidatesCount
         : (m.registrationsCount !== undefined ? m.registrationsCount : 150);
       return acc + Number(c || 0);
     }, 0);
-  }, [jobMelas]);
+  }, [backendMetrics, jobMelas]);
 
   const totalMelaCapacity = useMemo(() => {
+    if (backendMetrics?.totalEventCapacity !== undefined && backendMetrics.totalEventCapacity > 0) {
+      return backendMetrics.totalEventCapacity;
+    }
     return jobMelas.reduce((acc, m) => {
       const c = Number(m.capacity || m.maxCapacity) || 2500;
       return acc + c;
     }, 0);
-  }, [jobMelas]);
+  }, [backendMetrics, jobMelas]);
 
   return (
     <div className="admin-job-melas-page" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)', paddingBottom: 'var(--space-16)' }}>

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import {
   Camera, Film, Plus, Edit3, Trash2, ExternalLink, Search,
   Filter, CheckCircle2, AlertCircle, Sparkles, Image as ImageIcon,
@@ -12,6 +12,7 @@ import { Modal } from '../ui/Modal';
 import { useToast } from '../../context/ToastContext';
 import { useAdmin, DEFAULT_HOME_CONTENT } from '../../context/AdminContext';
 import { getYouTubeVideoId, getYouTubeThumbnailUrl, buildYouTubeEmbedUrl, getYouTubeWatchUrl } from '../../utils/youtube';
+import adminService from '../../services/adminService';
 
 const CATEGORY_OPTIONS = [
   'Job Melas',
@@ -46,6 +47,12 @@ export default function AdminGalleryManager() {
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('All');
 
+  // Loading & Async states
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [savingPhoto, setSavingPhoto] = useState(false);
+  const [savingVideo, setSavingVideo] = useState(false);
+  const [savingHeader, setSavingHeader] = useState(false);
+
   // ── Header Settings Form State ──
   const [headerForm, setHeaderForm] = useState({
     badge: gallery.badge || '',
@@ -54,18 +61,92 @@ export default function AdminGalleryManager() {
     subtitle: gallery.subtitle || '',
   });
 
-  const handleSaveHeader = (e) => {
+  // ── Load Backend Gallery Data ──
+  const loadBackendGallery = useCallback(async () => {
+    try {
+      const [photosRes, videosRes, headerRes] = await Promise.allSettled([
+        adminService.getGalleryPhotos({ page_size: 100 }),
+        adminService.getGalleryVideos({ page_size: 100 }),
+        adminService.getWebsiteSectionHeader('gallery'),
+      ]);
+
+      const updatedGallery = { ...gallery };
+
+      if (photosRes.status === 'fulfilled' && Array.isArray(photosRes.value) && photosRes.value.length > 0) {
+        updatedGallery.images = photosRes.value.map(p => ({
+          id: p.id,
+          title: p.title,
+          category: p.category,
+          imageUrl: p.imageUrl || p.image_url,
+          date: p.date,
+          description: p.description || '',
+        }));
+      }
+
+      if (videosRes.status === 'fulfilled' && Array.isArray(videosRes.value) && videosRes.value.length > 0) {
+        updatedGallery.videos = videosRes.value.map(v => ({
+          id: v.id,
+          title: v.title,
+          youtubeUrl: v.youtubeUrl || v.youtube_url,
+          category: v.category,
+          date: v.date || '',
+          description: v.description || '',
+        }));
+      }
+
+      if (headerRes.status === 'fulfilled' && headerRes.value) {
+        const h = headerRes.value;
+        if (h.heading1) {
+          updatedGallery.badge = h.badge || updatedGallery.badge;
+          updatedGallery.heading1 = h.heading1 || updatedGallery.heading1;
+          updatedGallery.heading2 = h.heading2 || updatedGallery.heading2;
+          updatedGallery.subtitle = h.subtitle || updatedGallery.subtitle;
+          setHeaderForm({
+            badge: updatedGallery.badge,
+            heading1: updatedGallery.heading1,
+            heading2: updatedGallery.heading2,
+            subtitle: updatedGallery.subtitle,
+          });
+        }
+      }
+
+      updateHomeContent({ gallery: updatedGallery });
+    } catch (err) {
+      console.warn('Failed to load gallery from backend:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadBackendGallery();
+  }, [loadBackendGallery]);
+
+  const handleSaveHeader = async (e) => {
     e.preventDefault();
-    updateHomeContent({
-      gallery: {
-        ...gallery,
-        ...headerForm,
-      },
-    });
-    addToast('Gallery section header settings saved successfully!', 'success');
+    setSavingHeader(true);
+    try {
+      await adminService.updateWebsiteSectionHeader('gallery', headerForm);
+      updateHomeContent({
+        gallery: {
+          ...gallery,
+          ...headerForm,
+        },
+      });
+      addToast('Gallery section header settings saved successfully!', 'success');
+    } catch (err) {
+      // Local fallback
+      updateHomeContent({
+        gallery: {
+          ...gallery,
+          ...headerForm,
+        },
+      });
+      addToast('Gallery section header settings saved locally.', 'info');
+    } finally {
+      setSavingHeader(false);
+    }
   };
 
-  const handleResetHeader = () => {
+  const handleResetHeader = async () => {
     const def = DEFAULT_HOME_CONTENT.gallery;
     setHeaderForm({
       badge: def.badge,
@@ -73,6 +154,16 @@ export default function AdminGalleryManager() {
       heading2: def.heading2,
       subtitle: def.subtitle,
     });
+    try {
+      await adminService.updateWebsiteSectionHeader('gallery', {
+        badge: def.badge,
+        heading1: def.heading1,
+        heading2: def.heading2,
+        subtitle: def.subtitle,
+      });
+    } catch {
+      // ignore
+    }
     updateHomeContent({
       gallery: {
         ...gallery,
@@ -120,26 +211,39 @@ export default function AdminGalleryManager() {
     setPhotoModalOpen(true);
   };
 
-  const handleImageFileUpload = (e) => {
+  const handleImageFileUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (!file.type.startsWith('image/')) {
+    const allowed = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!allowed.includes(file.type)) {
       addToast('Please select a valid image file (JPG, PNG, WebP)', 'error');
       return;
     }
-    if (file.size > 3 * 1024 * 1024) {
-      addToast('Image size should be less than 3MB', 'error');
+    if (file.size > 5 * 1024 * 1024) {
+      addToast('Image size should be less than 5MB', 'error');
       return;
     }
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setPhotoForm(prev => ({ ...prev, imageUrl: reader.result }));
-      addToast('Photo loaded successfully.', 'info');
-    };
-    reader.readAsDataURL(file);
+
+    setUploadingImage(true);
+    try {
+      const res = await adminService.uploadWebsiteContentMedia(file, 'gallery');
+      const savedUrl = res.url || res;
+      setPhotoForm(prev => ({ ...prev, imageUrl: savedUrl }));
+      addToast('Photo uploaded successfully to server storage.', 'success');
+    } catch (err) {
+      // Fallback to local data URL reader
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPhotoForm(prev => ({ ...prev, imageUrl: reader.result }));
+        addToast('Photo loaded (local preview).', 'info');
+      };
+      reader.readAsDataURL(file);
+    } finally {
+      setUploadingImage(false);
+    }
   };
 
-  const handleSavePhoto = (e) => {
+  const handleSavePhoto = async (e) => {
     e.preventDefault();
     if (!photoForm.title.trim()) {
       addToast('Photo title is required', 'error');
@@ -150,20 +254,49 @@ export default function AdminGalleryManager() {
       return;
     }
 
-    if (editingPhotoId) {
-      updateGalleryImage(editingPhotoId, photoForm);
-      addToast('Gallery photo updated successfully!', 'success');
-    } else {
-      addGalleryImage(photoForm);
-      addToast('New photo added to gallery!', 'success');
+    setSavingPhoto(true);
+    try {
+      if (editingPhotoId) {
+        const updated = await adminService.updateGalleryPhoto(editingPhotoId, {
+          title: photoForm.title,
+          category: photoForm.category,
+          date: photoForm.date,
+          imageUrl: photoForm.imageUrl,
+          description: photoForm.description,
+        });
+        updateGalleryImage(editingPhotoId, updated || photoForm);
+        addToast('Gallery photo updated successfully in database!', 'success');
+      } else {
+        const created = await adminService.createGalleryPhoto({
+          title: photoForm.title,
+          category: photoForm.category,
+          date: photoForm.date,
+          imageUrl: photoForm.imageUrl,
+          description: photoForm.description,
+        });
+        addGalleryImage(created || photoForm);
+        addToast('New photo added to gallery database!', 'success');
+      }
+      setPhotoModalOpen(false);
+      await loadBackendGallery();
+    } catch (err) {
+      addToast(err.message || 'Failed to persist gallery photo', 'error');
+    } finally {
+      setSavingPhoto(false);
     }
-    setPhotoModalOpen(false);
   };
 
-  const handleDeletePhoto = (photo) => {
+  const handleDeletePhoto = async (photo) => {
     if (window.confirm(`Are you sure you want to delete photo "${photo.title}"?`)) {
-      deleteGalleryImage(photo.id);
-      addToast('Photo deleted from gallery.', 'info');
+      try {
+        await adminService.deleteGalleryPhoto(photo.id);
+        deleteGalleryImage(photo.id);
+        addToast('Photo deleted from database gallery.', 'info');
+        await loadBackendGallery();
+      } catch (err) {
+        deleteGalleryImage(photo.id);
+        addToast('Photo removed.', 'info');
+      }
     }
   };
 
@@ -206,7 +339,7 @@ export default function AdminGalleryManager() {
     setVideoModalOpen(true);
   };
 
-  const handleSaveVideo = (e) => {
+  const handleSaveVideo = async (e) => {
     e.preventDefault();
     if (!videoForm.title.trim()) {
       addToast('Video title is required', 'error');
@@ -217,20 +350,49 @@ export default function AdminGalleryManager() {
       return;
     }
 
-    if (editingVideoId) {
-      updateGalleryVideo(editingVideoId, videoForm);
-      addToast('Gallery video updated successfully!', 'success');
-    } else {
-      addGalleryVideo(videoForm);
-      addToast('New video added to gallery! Hover playback is enabled.', 'success');
+    setSavingVideo(true);
+    try {
+      if (editingVideoId) {
+        const updated = await adminService.updateGalleryVideo(editingVideoId, {
+          title: videoForm.title,
+          youtubeUrl: videoForm.youtubeUrl,
+          category: videoForm.category,
+          date: videoForm.date,
+          description: videoForm.description,
+        });
+        updateGalleryVideo(editingVideoId, updated || videoForm);
+        addToast('Gallery video updated successfully in database!', 'success');
+      } else {
+        const created = await adminService.createGalleryVideo({
+          title: videoForm.title,
+          youtubeUrl: videoForm.youtubeUrl,
+          category: videoForm.category,
+          date: videoForm.date,
+          description: videoForm.description,
+        });
+        addGalleryVideo(created || videoForm);
+        addToast('New video added to gallery database! Hover playback is enabled.', 'success');
+      }
+      setVideoModalOpen(false);
+      await loadBackendGallery();
+    } catch (err) {
+      addToast(err.message || 'Failed to persist video', 'error');
+    } finally {
+      setSavingVideo(false);
     }
-    setVideoModalOpen(false);
   };
 
-  const handleDeleteVideo = (video) => {
+  const handleDeleteVideo = async (video) => {
     if (window.confirm(`Are you sure you want to delete video "${video.title}"?`)) {
-      deleteGalleryVideo(video.id);
-      addToast('Video deleted from gallery.', 'info');
+      try {
+        await adminService.deleteGalleryVideo(video.id);
+        deleteGalleryVideo(video.id);
+        addToast('Video deleted from gallery database.', 'info');
+        await loadBackendGallery();
+      } catch (err) {
+        deleteGalleryVideo(video.id);
+        addToast('Video removed.', 'info');
+      }
     }
   };
 
@@ -441,8 +603,8 @@ export default function AdminGalleryManager() {
             </FormField>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
-              <Button type="submit" variant="primary">
-                Save Header Settings
+              <Button type="submit" variant="primary" disabled={savingHeader}>
+                {savingHeader ? 'Saving...' : 'Save Header Settings'}
               </Button>
             </div>
           </form>
@@ -896,18 +1058,20 @@ export default function AdminGalleryManager() {
                     border: '1px solid var(--color-border)',
                     fontSize: '12px',
                     fontWeight: 600,
-                    cursor: 'pointer',
+                    cursor: uploadingImage ? 'wait' : 'pointer',
                     display: 'flex',
                     alignItems: 'center',
                     gap: 6,
                     whiteSpace: 'nowrap',
+                    opacity: uploadingImage ? 0.7 : 1,
                   }}
                 >
-                  <UploadCloud size={14} /> Upload
+                  <UploadCloud size={14} /> {uploadingImage ? 'Uploading...' : 'Upload'}
                   <input
                     type="file"
                     accept="image/*"
                     onChange={handleImageFileUpload}
+                    disabled={uploadingImage}
                     style={{ display: 'none' }}
                   />
                 </label>
@@ -935,11 +1099,11 @@ export default function AdminGalleryManager() {
           </FormField>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 8 }}>
-            <Button type="button" variant="outline" onClick={() => setPhotoModalOpen(false)}>
+            <Button type="button" variant="outline" onClick={() => setPhotoModalOpen(false)} disabled={savingPhoto}>
               Cancel
             </Button>
-            <Button type="submit" variant="primary">
-              {editingPhotoId ? 'Update Photo' : 'Add Photo'}
+            <Button type="submit" variant="primary" disabled={savingPhoto || uploadingImage}>
+              {savingPhoto ? 'Saving...' : (editingPhotoId ? 'Update Photo' : 'Add Photo')}
             </Button>
           </div>
         </form>
@@ -1076,11 +1240,11 @@ export default function AdminGalleryManager() {
           </FormField>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 8 }}>
-            <Button type="button" variant="outline" onClick={() => setVideoModalOpen(false)}>
+            <Button type="button" variant="outline" onClick={() => setVideoModalOpen(false)} disabled={savingVideo}>
               Cancel
             </Button>
-            <Button type="submit" variant="primary" disabled={!detectedVideoId}>
-              {editingVideoId ? 'Update Video' : 'Add Video'}
+            <Button type="submit" variant="primary" disabled={savingVideo || !detectedVideoId}>
+              {savingVideo ? 'Saving...' : (editingVideoId ? 'Update Video' : 'Add Video')}
             </Button>
           </div>
         </form>

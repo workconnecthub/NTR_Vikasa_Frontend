@@ -194,11 +194,15 @@ export default function AdminInternshipsPage() {
     addToast('PDF export downloaded successfully!', 'success');
   };
 
-  const handleApprove = (item) => {
-    approveInternship(item.id);
-    addToast(`"${item.title}" by ${item.company} is now APPROVED.`, 'success');
-    if (selectedInternship?.id === item.id) {
-      setSelectedInternship({ ...selectedInternship, status: 'APPROVED' });
+  const handleApprove = async (item) => {
+    try {
+      await approveInternship(item.id);
+      addToast(`"${item.title}" by ${item.company} is now APPROVED.`, 'success');
+      if (selectedInternship?.id === item.id) {
+        setSelectedInternship({ ...selectedInternship, status: 'APPROVED' });
+      }
+    } catch (err) {
+      addToast(err.message || 'Failed to approve internship', 'error');
     }
   };
 
@@ -208,16 +212,20 @@ export default function AdminInternshipsPage() {
     setRejectModalOpen(true);
   };
 
-  const handleConfirmReject = (e) => {
+  const handleConfirmReject = async (e) => {
     e.preventDefault();
     if (!rejectTarget) return;
-    rejectInternship(rejectTarget.id, rejectionReason || 'Rejected by administrator.');
-    addToast(`"${rejectTarget.title}" has been REJECTED.`, 'info');
-    setRejectModalOpen(false);
-    if (selectedInternship?.id === rejectTarget.id) {
-      setSelectedInternship({ ...selectedInternship, status: 'REJECTED' });
+    try {
+      await rejectInternship(rejectTarget.id, rejectionReason || 'Rejected by administrator.');
+      addToast(`"${rejectTarget.title}" has been REJECTED.`, 'info');
+      setRejectModalOpen(false);
+      if (selectedInternship?.id === rejectTarget.id) {
+        setSelectedInternship({ ...selectedInternship, status: 'REJECTED' });
+      }
+      setRejectTarget(null);
+    } catch (err) {
+      addToast(err.message || 'Failed to reject internship', 'error');
     }
-    setRejectTarget(null);
   };
 
   const columns = [

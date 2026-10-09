@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import {
   Newspaper, Plus, Edit3, Trash2, ExternalLink, Search,
   Calendar, UploadCloud, RotateCcw, Sparkles, BookOpen
@@ -10,6 +10,7 @@ import Textarea from '../ui/Textarea';
 import { Modal } from '../ui/Modal';
 import { useToast } from '../../context/ToastContext';
 import { useAdmin, DEFAULT_HOME_CONTENT } from '../../context/AdminContext';
+import adminService from '../../services/adminService';
 
 const NEWSPAPER_PRESETS = [
   'Sakshi',
@@ -39,6 +40,11 @@ export default function AdminNewsManager() {
   const [activeTab, setActiveTab] = useState('articles'); // 'articles' | 'header'
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Async & Loading states
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [savingArticle, setSavingArticle] = useState(false);
+  const [savingHeader, setSavingHeader] = useState(false);
+
   // ── Header Form State ──
   const [headerForm, setHeaderForm] = useState({
     badge: newsContent.badge || '',
@@ -47,18 +53,81 @@ export default function AdminNewsManager() {
     subtitle: newsContent.subtitle || '',
   });
 
-  const handleSaveHeader = (e) => {
+  // ── Load Backend News Data ──
+  const loadBackendNews = useCallback(async () => {
+    try {
+      const [articlesRes, headerRes] = await Promise.allSettled([
+        adminService.getPressArticles({ page_size: 100 }),
+        adminService.getWebsiteSectionHeader('news'),
+      ]);
+
+      const updatedNews = { ...newsContent };
+
+      if (articlesRes.status === 'fulfilled' && Array.isArray(articlesRes.value) && articlesRes.value.length > 0) {
+        updatedNews.articles = articlesRes.value.map(a => ({
+          id: a.id,
+          newspaper: a.newspaper || a.publication_name,
+          title: a.title,
+          date: a.date || a.publication_date,
+          edition: a.edition || '',
+          imageUrl: a.imageUrl || a.image_url,
+          sourceUrl: a.sourceUrl || a.source_url || a.article_url || '',
+          summary: a.summary || a.description || '',
+        }));
+      }
+
+      if (headerRes.status === 'fulfilled' && headerRes.value) {
+        const h = headerRes.value;
+        if (h.heading1) {
+          updatedNews.badge = h.badge || updatedNews.badge;
+          updatedNews.heading1 = h.heading1 || updatedNews.heading1;
+          updatedNews.heading2 = h.heading2 || updatedNews.heading2;
+          updatedNews.subtitle = h.subtitle || updatedNews.subtitle;
+          setHeaderForm({
+            badge: updatedNews.badge,
+            heading1: updatedNews.heading1,
+            heading2: updatedNews.heading2,
+            subtitle: updatedNews.subtitle,
+          });
+        }
+      }
+
+      updateHomeContent({ newsArticles: updatedNews });
+    } catch (err) {
+      console.warn('Failed to load news from backend:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadBackendNews();
+  }, [loadBackendNews]);
+
+  const handleSaveHeader = async (e) => {
     e.preventDefault();
-    updateHomeContent({
-      newsArticles: {
-        ...newsContent,
-        ...headerForm,
-      },
-    });
-    addToast('News section header settings saved successfully!', 'success');
+    setSavingHeader(true);
+    try {
+      await adminService.updateWebsiteSectionHeader('news', headerForm);
+      updateHomeContent({
+        newsArticles: {
+          ...newsContent,
+          ...headerForm,
+        },
+      });
+      addToast('News section header settings saved successfully!', 'success');
+    } catch (err) {
+      updateHomeContent({
+        newsArticles: {
+          ...newsContent,
+          ...headerForm,
+        },
+      });
+      addToast('News section header settings saved locally.', 'info');
+    } finally {
+      setSavingHeader(false);
+    }
   };
 
-  const handleResetHeader = () => {
+  const handleResetHeader = async () => {
     const def = DEFAULT_HOME_CONTENT.newsArticles;
     setHeaderForm({
       badge: def.badge,
@@ -66,6 +135,16 @@ export default function AdminNewsManager() {
       heading2: def.heading2,
       subtitle: def.subtitle,
     });
+    try {
+      await adminService.updateWebsiteSectionHeader('news', {
+        badge: def.badge,
+        heading1: def.heading1,
+        heading2: def.heading2,
+        subtitle: def.subtitle,
+      });
+    } catch {
+      // ignore
+    }
     updateHomeContent({
       newsArticles: {
         ...newsContent,
@@ -119,26 +198,38 @@ export default function AdminNewsManager() {
     setArticleModalOpen(true);
   };
 
-  const handleImageFileUpload = (e) => {
+  const handleImageFileUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (!file.type.startsWith('image/')) {
+    const allowed = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!allowed.includes(file.type)) {
       addToast('Please select a valid image file (JPG, PNG, WebP)', 'error');
       return;
     }
-    if (file.size > 4 * 1024 * 1024) {
-      addToast('Image size should be less than 4MB', 'error');
+    if (file.size > 5 * 1024 * 1024) {
+      addToast('Image size should be less than 5MB', 'error');
       return;
     }
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setArticleForm(prev => ({ ...prev, imageUrl: reader.result }));
-      addToast('Clipping image loaded successfully.', 'info');
-    };
-    reader.readAsDataURL(file);
+
+    setUploadingImage(true);
+    try {
+      const res = await adminService.uploadWebsiteContentMedia(file, 'press');
+      const savedUrl = res.url || res;
+      setArticleForm(prev => ({ ...prev, imageUrl: savedUrl }));
+      addToast('Clipping image uploaded successfully to server storage.', 'success');
+    } catch (err) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setArticleForm(prev => ({ ...prev, imageUrl: reader.result }));
+        addToast('Clipping image loaded (local preview).', 'info');
+      };
+      reader.readAsDataURL(file);
+    } finally {
+      setUploadingImage(false);
+    }
   };
 
-  const handleSaveArticle = (e) => {
+  const handleSaveArticle = async (e) => {
     e.preventDefault();
     if (!articleForm.title.trim()) {
       addToast('Headline / Title is required', 'error');
@@ -149,20 +240,53 @@ export default function AdminNewsManager() {
       return;
     }
 
-    if (editingArticleId) {
-      updateNewsArticle(editingArticleId, articleForm);
-      addToast('News article clipping updated successfully!', 'success');
-    } else {
-      addNewsArticle(articleForm);
-      addToast('New press clipping added to news section!', 'success');
+    setSavingArticle(true);
+    try {
+      if (editingArticleId) {
+        const updated = await adminService.updatePressArticle(editingArticleId, {
+          title: articleForm.title,
+          newspaper: articleForm.newspaper,
+          date: articleForm.date,
+          edition: articleForm.edition,
+          imageUrl: articleForm.imageUrl,
+          sourceUrl: articleForm.sourceUrl,
+          summary: articleForm.summary,
+        });
+        updateNewsArticle(editingArticleId, updated || articleForm);
+        addToast('News article clipping updated successfully in database!', 'success');
+      } else {
+        const created = await adminService.createPressArticle({
+          title: articleForm.title,
+          newspaper: articleForm.newspaper,
+          date: articleForm.date,
+          edition: articleForm.edition,
+          imageUrl: articleForm.imageUrl,
+          sourceUrl: articleForm.sourceUrl,
+          summary: articleForm.summary,
+        });
+        addNewsArticle(created || articleForm);
+        addToast('New press clipping added to database!', 'success');
+      }
+      setArticleModalOpen(false);
+      await loadBackendNews();
+    } catch (err) {
+      addToast(err.message || 'Failed to persist news clipping', 'error');
+    } finally {
+      setSavingArticle(false);
     }
-    setArticleModalOpen(false);
   };
 
-  const handleDeleteArticle = (art) => {
+  const handleDeleteArticle = async (art) => {
     if (window.confirm(`Are you sure you want to delete clipping "${art.title}"?`)) {
-      deleteNewsArticle(art.id);
-      addToast('News clipping deleted.', 'info');
+      try {
+        await adminService.deletePressArticle(art.id);
+        deleteNewsArticle(art.id);
+        addToast('News clipping deleted from database.', 'info');
+        await loadBackendNews();
+      } catch (err) {
+        deleteNewsArticle(art.id);
+        addToast('News clipping removed.', 'info');
+      }
     }
   };
 
@@ -318,8 +442,8 @@ export default function AdminNewsManager() {
             </FormField>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
-              <Button type="submit" variant="primary">
-                Save Header Settings
+              <Button type="submit" variant="primary" disabled={savingHeader}>
+                {savingHeader ? 'Saving...' : 'Save Header Settings'}
               </Button>
             </div>
           </form>
@@ -548,18 +672,20 @@ export default function AdminNewsManager() {
                     border: '1px solid var(--color-border)',
                     fontSize: '12px',
                     fontWeight: 600,
-                    cursor: 'pointer',
+                    cursor: uploadingImage ? 'wait' : 'pointer',
                     display: 'flex',
                     alignItems: 'center',
                     gap: 6,
                     whiteSpace: 'nowrap',
+                    opacity: uploadingImage ? 0.7 : 1,
                   }}
                 >
-                  <UploadCloud size={14} /> Upload
+                  <UploadCloud size={14} /> {uploadingImage ? 'Uploading...' : 'Upload'}
                   <input
                     type="file"
                     accept="image/*"
                     onChange={handleImageFileUpload}
+                    disabled={uploadingImage}
                     style={{ display: 'none' }}
                   />
                 </label>
@@ -595,11 +721,11 @@ export default function AdminNewsManager() {
           </FormField>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 8 }}>
-            <Button type="button" variant="outline" onClick={() => setArticleModalOpen(false)}>
+            <Button type="button" variant="outline" onClick={() => setArticleModalOpen(false)} disabled={savingArticle}>
               Cancel
             </Button>
-            <Button type="submit" variant="primary">
-              {editingArticleId ? 'Update Clipping' : 'Add Clipping'}
+            <Button type="submit" variant="primary" disabled={savingArticle || uploadingImage}>
+              {savingArticle ? 'Saving...' : (editingArticleId ? 'Update Clipping' : 'Add Clipping')}
             </Button>
           </div>
         </form>

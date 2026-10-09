@@ -91,6 +91,7 @@ export default function AdminCandidatesPage() {
 
   // Add Candidate Modal State - Streamlined to KYC & Basic Registration as requested
   const [addModalOpen, setAddModalOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [addForm, setAddForm] = useState({
     name: '',
     email: '',
@@ -267,20 +268,28 @@ export default function AdminCandidatesPage() {
     return filtered.slice(startIndex, startIndex + pageSize);
   }, [filtered, currentPage, pageSize]);
 
-  const handleActivate = (c) => {
-    activateCandidate(c.id);
-    addToast(`${c.name}'s account is now ACTIVE.`, 'success');
+  const handleActivate = async (c) => {
+    try {
+      await activateCandidate(c.id);
+      addToast(`${c.name}'s account is now ACTIVE.`, 'success');
+    } catch (err) {
+      addToast(err.message || 'Failed to activate candidate', 'error');
+    }
   };
 
-  const handleConfirmSuspend = () => {
+  const handleConfirmSuspend = async () => {
     if (!suspendTarget) return;
-    suspendCandidate(suspendTarget.id);
-    addToast(`Candidate account for ${suspendTarget.name} has been SUSPENDED.`, 'error');
-    setSuspendTarget(null);
+    try {
+      await suspendCandidate(suspendTarget.id);
+      addToast(`Candidate account for ${suspendTarget.name} has been SUSPENDED.`, 'error');
+      setSuspendTarget(null);
+    } catch (err) {
+      addToast(err.message || 'Failed to suspend candidate', 'error');
+    }
   };
 
   // Add Candidate Submit Handler (Streamlined KYC & Identity - fast registration)
-  const handleAddCandidateSubmit = (e) => {
+  const handleAddCandidateSubmit = async (e) => {
     e.preventDefault();
     if (!addForm.name.trim() || !addForm.email.trim() || !addForm.phone.trim()) {
       addToast('Please enter Candidate Full Name, Email, and Mobile Phone Number.', 'error');
@@ -318,40 +327,48 @@ export default function AdminCandidatesPage() {
       }
     }
 
-    const newCandidate = addCandidate({
-      name: addForm.name.trim(),
-      email: addForm.email.trim(),
-      phone: addForm.phone.trim(),
-      gender: addForm.gender,
-      aadhaarNumber: formattedAadhaar,
-      referenceAdmin: finalReference,
-      placementStatus: addForm.placementStatus,
-      placedCompany: finalPlacedCompany,
-      isCompanyInDatabase,
-      placedRole: addForm.placementStatus === 'PLACED' ? addForm.placedRole.trim() : '',
-      placedSalary: addForm.placementStatus === 'PLACED' ? addForm.placedSalary.trim() : '',
-      profileStatus: 'BASIC_REGISTERED',
-      profileCompletion: 35
-    });
+    try {
+      setIsSubmitting(true);
+      const newCandidate = await addCandidate({
+        name: addForm.name.trim(),
+        email: addForm.email.trim(),
+        phone: addForm.phone.trim(),
+        gender: addForm.gender,
+        aadhaarNumber: formattedAadhaar,
+        referenceAdmin: finalReference,
+        customReferrer: addForm.referenceAdmin === 'Other' ? addForm.customReferrer.trim() : null,
+        placementStatus: addForm.placementStatus,
+        placedCompany: finalPlacedCompany,
+        isCompanyInDatabase,
+        placedRole: addForm.placementStatus === 'PLACED' ? addForm.placedRole.trim() : '',
+        placedSalary: addForm.placementStatus === 'PLACED' ? addForm.placedSalary.trim() : '',
+        profileStatus: 'BASIC_REGISTERED',
+        profileCompletion: 35
+      });
 
-    addToast(`Candidate ${newCandidate.name} successfully registered! Student can log in to complete 100% profile.`, 'success');
-    setAddModalOpen(false);
+      addToast(`Candidate ${newCandidate.name} successfully registered! Student can log in to complete 100% profile.`, 'success');
+      setAddModalOpen(false);
 
-    // Reset Form
-    setAddForm({
-      name: '',
-      email: '',
-      phone: '',
-      gender: 'Male',
-      aadhaarNumber: '',
-      referenceAdmin: REFERENCE_ADMINS[0] || 'Admin User (State Operations)',
-      customReferrer: '',
-      placementStatus: 'NOT_PLACED',
-      selectedCompanyKey: '',
-      customCompany: '',
-      placedRole: '',
-      placedSalary: ''
-    });
+      // Reset Form
+      setAddForm({
+        name: '',
+        email: '',
+        phone: '',
+        gender: 'Male',
+        aadhaarNumber: '',
+        referenceAdmin: REFERENCE_ADMINS[0] || 'Admin User (State Operations)',
+        customReferrer: '',
+        placementStatus: 'NOT_PLACED',
+        selectedCompanyKey: '',
+        customCompany: '',
+        placedRole: '',
+        placedSalary: ''
+      });
+    } catch (err) {
+      addToast(err.message || 'Failed to register candidate', 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // Open Placement Modal
@@ -372,7 +389,7 @@ export default function AdminCandidatesPage() {
   };
 
   // Save Placement Submit Handler
-  const handleSavePlacement = (e) => {
+  const handleSavePlacement = async (e) => {
     e.preventDefault();
     if (!placementTarget) return;
 
@@ -394,28 +411,32 @@ export default function AdminCandidatesPage() {
       }
     }
 
-    updateCandidatePlacement(placementTarget.id, {
-      placementStatus: placementForm.placementStatus,
-      placedCompany: placementForm.placementStatus === 'PLACED' ? finalCompany : '',
-      isCompanyInDatabase,
-      placedRole: placementForm.placementStatus === 'PLACED' ? placementForm.placedRole.trim() : '',
-      placedSalary: placementForm.placementStatus === 'PLACED' ? placementForm.placedSalary.trim() : '',
-      placedDate: placementForm.placementStatus === 'PLACED' ? placementForm.placedDate : null
-    });
-
-    addToast(`Placement details updated for ${placementTarget.name}.`, 'success');
-    setPlacementModalOpen(false);
-    if (selectedCand?.id === placementTarget.id) {
-      setSelectedCand({
-        ...selectedCand,
+    try {
+      await updateCandidatePlacement(placementTarget.id, {
         placementStatus: placementForm.placementStatus,
         placedCompany: placementForm.placementStatus === 'PLACED' ? finalCompany : '',
         isCompanyInDatabase,
         placedRole: placementForm.placementStatus === 'PLACED' ? placementForm.placedRole.trim() : '',
         placedSalary: placementForm.placementStatus === 'PLACED' ? placementForm.placedSalary.trim() : '',
+        placedDate: placementForm.placementStatus === 'PLACED' ? placementForm.placedDate : null
       });
+
+      addToast(`Placement details updated for ${placementTarget.name}.`, 'success');
+      setPlacementModalOpen(false);
+      if (selectedCand?.id === placementTarget.id) {
+        setSelectedCand({
+          ...selectedCand,
+          placementStatus: placementForm.placementStatus,
+          placedCompany: placementForm.placementStatus === 'PLACED' ? finalCompany : '',
+          isCompanyInDatabase,
+          placedRole: placementForm.placementStatus === 'PLACED' ? placementForm.placedRole.trim() : '',
+          placedSalary: placementForm.placementStatus === 'PLACED' ? placementForm.placedSalary.trim() : '',
+        });
+      }
+      setPlacementTarget(null);
+    } catch (err) {
+      addToast(err.message || 'Failed to update placement details', 'error');
     }
-    setPlacementTarget(null);
   };
 
   // Exports
@@ -1836,11 +1857,11 @@ export default function AdminCandidatesPage() {
                 </div>
 
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-3)', marginTop: 'var(--space-2)' }}>
-                  <Button variant="outline" type="button" onClick={() => setAddModalOpen(false)}>
+                  <Button variant="outline" type="button" onClick={() => setAddModalOpen(false)} disabled={isSubmitting}>
                     Cancel
                   </Button>
-                  <Button variant="primary" type="submit" leftIcon={<UserPlus size={16} />}>
-                    Save & Register Student
+                  <Button variant="primary" type="submit" leftIcon={<UserPlus size={16} />} disabled={isSubmitting}>
+                    {isSubmitting ? 'Registering Student...' : 'Save & Register Student'}
                   </Button>
                 </div>
               </form>

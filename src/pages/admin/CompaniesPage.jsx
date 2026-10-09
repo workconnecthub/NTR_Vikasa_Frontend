@@ -17,6 +17,7 @@ import Pagination from '../../components/ui/Pagination';
 import ExportDropdown from '../../components/ui/ExportDropdown';
 import { exportToExcel, exportToPDF, getExportFilename, exportCompanyDossierPDF } from '../../utils/exportUtils';
 import { useToast } from '../../context/ToastContext';
+import adminService from '../../services/adminService';
 import { useAdmin, NTR_MANDALS } from '../../context/AdminContext';
 
 export default function AdminCompaniesPage() {
@@ -39,6 +40,48 @@ export default function AdminCompaniesPage() {
   const [industryFilter, setIndustryFilter] = useState('ALL');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [currentPage, setCurrentPage] = useState(1);
+
+  // Live Backend State
+  const [serverCompanies, setServerCompanies] = useState(null);
+  const [serverTotal, setServerTotal] = useState(0);
+  const [serverVerifiedCount, setServerVerifiedCount] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [companyDocs, setCompanyDocs] = useState([]);
+
+  const fetchLiveCompanies = async () => {
+    setIsLoading(true);
+    try {
+      const res = await adminService.getCompanies({
+        page: currentPage,
+        page_size: pageSize,
+        search,
+        status: statusFilter,
+        industry: industryFilter,
+      });
+
+      if (res && typeof res === 'object' && Array.isArray(res.items)) {
+        setServerCompanies(res.items);
+        setServerTotal(res.total);
+        setServerVerifiedCount(res.verified_count || 0);
+      } else if (Array.isArray(res)) {
+        setServerCompanies(res);
+        setServerTotal(res.length);
+        setServerVerifiedCount(res.filter(c => c.verificationStatus === 'VERIFIED' || c.status === 'APPROVED').length);
+      }
+    } catch (err) {
+      console.warn('Failed to load companies from backend:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      fetchLiveCompanies();
+    }, 250);
+    return () => clearTimeout(handler);
+  }, [search, industryFilter, statusFilter, currentPage, pageSize]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -63,60 +106,93 @@ export default function AdminCompaniesPage() {
     about: '',
   });
 
-  const handleAddCompanySubmit = (e) => {
+  const handleAddCompanySubmit = async (e) => {
     e.preventDefault();
     if (!addForm.name.trim()) {
       addToast('Please enter the organization name.', 'error');
       return;
     }
 
-    const companyLocation = `${addForm.village ? addForm.village + ', ' : ''}${addForm.mandal}, ${addForm.district}`;
+    if (addForm.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(addForm.email.trim())) {
+      addToast('Please enter a valid corporate email address.', 'error');
+      return;
+    }
 
-    const newCompany = {
-      name: addForm.name.trim(),
-      industry: addForm.industry.trim() || 'Information Technology & Services',
-      recruiter: addForm.recruiter.trim() || 'Corporate HR Lead',
-      email: addForm.email.trim() || `hr@${addForm.name.toLowerCase().replace(/[^a-z0-9]/g, '')}.com`,
-      phone: addForm.phone.trim() || '+91 866 245 0000',
-      location: companyLocation,
-      mandal: addForm.mandal,
-      village: addForm.village,
-      district: addForm.district,
-      size: addForm.size || '100-500 employees',
-      type: addForm.type || 'Private Limited (Pvt Ltd)',
-      cin: addForm.cin.trim() || `U72200AP${new Date().getFullYear()}PTC0${Math.floor(10000 + Math.random() * 90000)}`,
-      gstin: addForm.gstin.trim() || `37AAAAA${Math.floor(1000 + Math.random() * 9000)}A1Z5`,
-      website: addForm.website.trim() || `https://www.${addForm.name.toLowerCase().replace(/[^a-z0-9]/g, '')}.com`,
-      description: addForm.about.trim() || `${addForm.name.trim()} is an enterprise company operating in ${addForm.district}, offering career placements and hiring drives.`,
-      verificationStatus: 'VERIFIED',
-      accountStatus: 'ACTIVE',
-      activeJobsCount: 0
-    };
+    setIsSubmitting(true);
+    try {
+      const companyLocation = `${addForm.village ? addForm.village + ', ' : ''}${addForm.mandal}, ${addForm.district}`;
 
-    addCompany(newCompany);
-    addToast(`Company "${newCompany.name}" successfully registered and verified in NTR Vikasa!`, 'success');
-    setAddModalOpen(false);
-    setAddForm({
-      name: '',
-      industry: 'Information Technology & Services',
-      recruiter: '',
-      email: '',
-      phone: '',
-      district: 'NTR District',
-      mandal: 'Vijayawada Urban',
-      village: 'Benz Circle',
-      size: '100-500 employees',
-      type: 'Private Limited (Pvt Ltd)',
-      cin: '',
-      gstin: '',
-      website: '',
-      about: '',
-    });
+      const newCompany = {
+        name: addForm.name.trim(),
+        industry: addForm.industry.trim() || 'Information Technology & Services',
+        recruiter: addForm.recruiter.trim() || 'Corporate HR Lead',
+        email: addForm.email.trim(),
+        phone: addForm.phone.trim(),
+        location: companyLocation,
+        mandal: addForm.mandal,
+        village: addForm.village,
+        district: addForm.district,
+        size: addForm.size || '100-500 employees',
+        type: addForm.type || 'Private Limited (Pvt Ltd)',
+        cin: addForm.cin.trim(),
+        gstin: addForm.gstin.trim(),
+        website: addForm.website.trim(),
+        description: addForm.about.trim(),
+        about: addForm.about.trim(),
+        verificationStatus: 'VERIFIED',
+        accountStatus: 'ACTIVE',
+        activeJobsCount: 0
+      };
+
+      await addCompany(newCompany);
+      addToast(`Company "${newCompany.name}" successfully registered and verified in NTR Vikasa!`, 'success');
+      setAddModalOpen(false);
+      setAddForm({
+        name: '',
+        industry: 'Information Technology & Services',
+        recruiter: '',
+        email: '',
+        phone: '',
+        district: 'NTR District',
+        mandal: 'Vijayawada Urban',
+        village: 'Benz Circle',
+        size: '100-500 employees',
+        type: 'Private Limited (Pvt Ltd)',
+        cin: '',
+        gstin: '',
+        website: '',
+        about: '',
+      });
+      await fetchLiveCompanies();
+    } catch (err) {
+      addToast(err.message || 'Failed to register company. Please verify corporate credentials.', 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // View modal
   const [selectedComp, setSelectedComp] = useState(null);
   const [viewModalOpen, setViewModalOpen] = useState(false);
+
+  const handleOpenView = async (comp) => {
+    setSelectedComp(comp);
+    setViewModalOpen(true);
+    try {
+      const [full, docs] = await Promise.all([
+        adminService.getCompanyById(comp.id).catch(() => null),
+        adminService.getCompanyDocuments(comp.id).catch(() => []),
+      ]);
+      if (full) {
+        setSelectedComp(prev => ({ ...prev, ...full }));
+      }
+      if (docs) {
+        setCompanyDocs(docs);
+      }
+    } catch (err) {
+      console.warn('Error fetching company details:', err);
+    }
+  };
 
   // Recruiter Dossier Modal state (when clicking a related recruiter)
   const [selectedRecruiterForDossier, setSelectedRecruiterForDossier] = useState(null);
@@ -135,16 +211,21 @@ export default function AdminCompaniesPage() {
   const [rejectionReason, setRejectionReason] = useState('');
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
 
-  const handleConfirmSuspend = () => {
+  const handleConfirmSuspend = async () => {
     if (!suspendTarget) return;
-    if (suspendCompany) {
-      suspendCompany(suspendTarget.id);
+    try {
+      if (suspendCompany) {
+        await suspendCompany(suspendTarget.id);
+      }
+      addToast(`Company record for ${suspendTarget.name} has been SUSPENDED.`, 'error');
+      if (selectedComp?.id === suspendTarget.id) {
+        setSelectedComp({ ...selectedComp, verificationStatus: 'SUSPENDED', accountStatus: 'SUSPENDED', status: 'SUSPENDED' });
+      }
+      setSuspendTarget(null);
+      await fetchLiveCompanies();
+    } catch (err) {
+      addToast(err.message || 'Failed to suspend company.', 'error');
     }
-    addToast(`Company record for ${suspendTarget.name} has been SUSPENDED.`, 'error');
-    if (selectedComp?.id === suspendTarget.id) {
-      setSelectedComp({ ...selectedComp, verificationStatus: 'SUSPENDED', accountStatus: 'SUSPENDED' });
-    }
-    setSuspendTarget(null);
   };
 
   const filtered = useMemo(() => {
@@ -163,14 +244,23 @@ export default function AdminCompaniesPage() {
     });
   }, [companies, search, industryFilter, statusFilter]);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const totalPagesFallback = Math.max(1, Math.ceil(filtered.length / pageSize));
   const paginatedCompanies = useMemo(() => {
     const startIndex = (currentPage - 1) * pageSize;
     return filtered.slice(startIndex, startIndex + pageSize);
   }, [filtered, currentPage, pageSize]);
 
+  // Unified Directory Presentation Data (Priority: Live Backend MySQL)
+  const displayCompanies = serverCompanies !== null ? serverCompanies : paginatedCompanies;
+  const totalRecords = serverCompanies !== null ? serverTotal : filtered.length;
+  const totalPages = serverCompanies !== null ? Math.max(1, Math.ceil(serverTotal / pageSize)) : totalPagesFallback;
+  const verifiedCount = serverCompanies !== null
+    ? serverVerifiedCount
+    : companies.filter(c => c.verificationStatus === 'VERIFIED' || c.status === 'APPROVED').length;
+
   const handleExportExcel = () => {
-    if (filtered.length === 0) {
+    const exportData = serverCompanies !== null && serverCompanies.length > 0 ? serverCompanies : filtered;
+    if (exportData.length === 0) {
       addToast('No records available to export for the selected filters.', 'info');
       return;
     }
@@ -185,7 +275,7 @@ export default function AdminCompaniesPage() {
       'Registration Date',
       'Verification Status'
     ];
-    const rows = filtered.map(c => [
+    const rows = exportData.map(c => [
       c.name || 'N/A',
       c.recruiter || 'N/A',
       c.email || 'N/A',
@@ -205,13 +295,14 @@ export default function AdminCompaniesPage() {
   };
 
   const handleExportPdf = () => {
-    if (filtered.length === 0) {
+    const exportData = serverCompanies !== null && serverCompanies.length > 0 ? serverCompanies : filtered;
+    if (exportData.length === 0) {
       addToast('No records available to export for the selected filters.', 'info');
       return;
     }
     addToast('Exporting companies directory to PDF...', 'info');
     const headers = ['Company Name', 'Recruiter Lead', 'Industry', 'Employees', 'Location', 'Status'];
-    const rows = filtered.map(c => [
+    const rows = exportData.map(c => [
       c.name || 'N/A',
       c.recruiter || 'N/A',
       c.industry || 'IT / Software',
@@ -229,7 +320,7 @@ export default function AdminCompaniesPage() {
         'Status Filter': statusFilter === 'ALL' ? 'All Status' : statusFilter,
         'Industry Filter': industryFilter === 'ALL' ? 'All Industries' : industryFilter,
         'Search Query': search || 'None',
-        'Total Records': filtered.length
+        'Total Records': exportData.length
       },
       headers,
       rows
@@ -237,11 +328,16 @@ export default function AdminCompaniesPage() {
     addToast('PDF export downloaded successfully!', 'success');
   };
 
-  const handleApprove = (c) => {
-    approveCompany(c.id);
-    addToast(`${c.name} has been marked as VERIFIED & APPROVED.`, 'success');
-    if (selectedComp?.id === c.id) {
-      setSelectedComp({ ...selectedComp, verificationStatus: 'VERIFIED' });
+  const handleApprove = async (c) => {
+    try {
+      await approveCompany(c.id);
+      addToast(`${c.name} has been marked as VERIFIED & APPROVED.`, 'success');
+      if (selectedComp?.id === c.id) {
+        setSelectedComp({ ...selectedComp, verificationStatus: 'VERIFIED', status: 'APPROVED' });
+      }
+      await fetchLiveCompanies();
+    } catch (err) {
+      addToast(err.message || 'Failed to approve company.', 'error');
     }
   };
 
@@ -251,16 +347,25 @@ export default function AdminCompaniesPage() {
     setRejectModalOpen(true);
   };
 
-  const handleConfirmReject = (e) => {
+  const handleConfirmReject = async (e) => {
     e.preventDefault();
     if (!rejectTarget) return;
-    rejectCompany(rejectTarget.id, rejectionReason || 'Verification rejected by administrator.');
-    addToast(`${rejectTarget.name} verification has been REJECTED.`, 'info');
-    setRejectModalOpen(false);
-    if (selectedComp?.id === rejectTarget.id) {
-      setSelectedComp({ ...selectedComp, verificationStatus: 'REJECTED' });
+    if (!rejectionReason.trim()) {
+      addToast('Please specify a rejection reason.', 'error');
+      return;
     }
-    setRejectTarget(null);
+    try {
+      await rejectCompany(rejectTarget.id, rejectionReason.trim());
+      addToast(`${rejectTarget.name} verification has been REJECTED.`, 'info');
+      setRejectModalOpen(false);
+      if (selectedComp?.id === rejectTarget.id) {
+        setSelectedComp({ ...selectedComp, verificationStatus: 'REJECTED', status: 'REJECTED', rejectionReason: rejectionReason.trim() });
+      }
+      setRejectTarget(null);
+      await fetchLiveCompanies();
+    } catch (err) {
+      addToast(err.message || 'Failed to reject company.', 'error');
+    }
   };
 
   const columns = [
@@ -280,9 +385,18 @@ export default function AdminCompaniesPage() {
             alignItems: 'center',
             justifyContent: 'center',
             fontWeight: 800,
-            fontSize: 'var(--text-sm)'
+            fontSize: 'var(--text-sm)',
+            overflow: 'hidden'
           }}>
-            {row.name?.[0] || 'C'}
+            {row.logo || row.logo_url || row.company_logo_path ? (
+              <img
+                src={row.logo || row.logo_url || row.company_logo_path}
+                alt={row.name}
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                onError={(e) => { e.currentTarget.style.display = 'none'; }}
+              />
+            ) : null}
+            {(!row.logo && !row.logo_url && !row.company_logo_path) && (row.name?.[0] || 'C')}
           </div>
           <div>
             <strong style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text)', display: 'block' }}>{row.name}</strong>
@@ -360,10 +474,7 @@ export default function AdminCompaniesPage() {
             size="xs"
             variant="outline"
             leftIcon={<Eye size={12} />}
-            onClick={() => {
-              setSelectedComp(row);
-              setViewModalOpen(true);
-            }}
+            onClick={() => handleOpenView(row)}
           >
             View
           </Button>
@@ -430,7 +541,7 @@ export default function AdminCompaniesPage() {
                   fontSize: 'var(--text-xs)',
                   fontWeight: 700
                 }}>
-                  {companies.filter(c => c.verificationStatus === 'VERIFIED').length} Verified Organizations
+                  {verifiedCount} Verified Organizations
                 </span>
 
                 <Button
@@ -487,7 +598,7 @@ export default function AdminCompaniesPage() {
                 <ExportDropdown
                   onExportExcel={handleExportExcel}
                   onExportPdf={handleExportPdf}
-                  disabled={filtered.length === 0}
+                  disabled={displayCompanies.length === 0}
                 />
               </div>
             </div>
@@ -495,7 +606,7 @@ export default function AdminCompaniesPage() {
 
           {/* Data Table */}
           <div className="card" style={{ borderRadius: 'var(--radius-2xl)', overflow: 'hidden' }}>
-            {filtered.length === 0 ? (
+            {displayCompanies.length === 0 ? (
               <EmptyState
                 icon={<Building2 size={40} />}
                 title="No Companies Found"
@@ -503,11 +614,11 @@ export default function AdminCompaniesPage() {
               />
             ) : (
               <>
-                <Table columns={columns} data={paginatedCompanies} />
+                <Table columns={columns} data={displayCompanies} />
                 <Pagination
                   currentPage={currentPage}
                   totalPages={totalPages}
-                  totalItems={filtered.length}
+                  totalItems={totalRecords}
                   pageSize={pageSize}
                   onPageChange={(p) => {
                     setCurrentPage(p);
@@ -827,6 +938,35 @@ export default function AdminCompaniesPage() {
                       </div>
                     )}
                   </div>
+
+                  {/* Verification Compliance Documents if present in system */}
+                  {companyDocs && companyDocs.length > 0 && (
+                    <div style={{ background: 'var(--color-gray-50)', padding: 'var(--space-4)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)' }}>
+                      <h4 style={{ fontSize: '12px', fontWeight: 800, textTransform: 'uppercase', color: 'var(--color-primary-700)', marginBottom: 'var(--space-3)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <FileText size={14} /> Verification Compliance Documents
+                      </h4>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+                        {companyDocs.map((doc, idx) => (
+                          <div key={idx} style={{ background: '#fff', padding: '10px 14px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 'var(--text-xs)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <FileText size={16} style={{ color: 'var(--color-primary-600)' }} />
+                              <div>
+                                <strong>{doc.name}</strong>
+                                <span style={{ fontSize: '11px', color: 'var(--color-text-muted)', display: 'block' }}>{doc.file_path}</span>
+                              </div>
+                            </div>
+                            {doc.url && (
+                              <a href={doc.url} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>
+                                <Button size="xs" variant="outline" leftIcon={<Eye size={12} />}>
+                                  View Document
+                                </Button>
+                              </a>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   {/* 6. ADMIN ACTIONS */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--color-border)', paddingTop: 'var(--space-4)', flexWrap: 'wrap', gap: 'var(--space-3)' }}>
@@ -1223,11 +1363,11 @@ export default function AdminCompaniesPage() {
                 </FormField>
 
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-3)', marginTop: 'var(--space-2)' }}>
-                  <Button type="button" variant="outline" onClick={() => setAddModalOpen(false)}>
+                  <Button type="button" variant="outline" onClick={() => setAddModalOpen(false)} disabled={isSubmitting}>
                     Cancel
                   </Button>
-                  <Button type="submit" variant="primary" leftIcon={<Building2 size={16} />}>
-                    Register & Verify Company
+                  <Button type="submit" variant="primary" leftIcon={<Building2 size={16} />} disabled={isSubmitting}>
+                    {isSubmitting ? 'Registering & Verifying...' : 'Register & Verify Company'}
                   </Button>
                 </div>
               </form>

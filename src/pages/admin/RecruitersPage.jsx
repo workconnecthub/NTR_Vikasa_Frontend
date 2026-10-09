@@ -101,6 +101,7 @@ export default function AdminRecruitersPage() {
 
   // Add Recruiter Modal State
   const [addModalOpen, setAddModalOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [addForm, setAddForm] = useState({
     name: '',
     email: '',
@@ -113,7 +114,7 @@ export default function AdminRecruitersPage() {
     location: 'Vijayawada, NTR District',
   });
 
-  const handleAddRecruiterSubmit = (e) => {
+  const handleAddRecruiterSubmit = async (e) => {
     e.preventDefault();
     if (!addForm.name.trim() || !addForm.email.trim()) {
       addToast('Please enter recruiter name and email address.', 'error');
@@ -142,20 +143,27 @@ export default function AdminRecruitersPage() {
       postedJobsCount: 0
     };
 
-    addRecruiter(newRecruiter);
-    addToast(`Recruiter "${newRecruiter.name}" (${assignedCompany}) successfully registered and verified!`, 'success');
-    setAddModalOpen(false);
-    setAddForm({
-      name: '',
-      email: '',
-      phone: '',
-      designation: 'Talent Acquisition Manager',
-      companyType: 'EXISTING',
-      selectedCompany: availableCompanies[0] || '',
-      newCompanyName: '',
-      industry: 'Information Technology & Services',
-      location: 'Vijayawada, NTR District',
-    });
+    try {
+      setIsSubmitting(true);
+      await addRecruiter(newRecruiter);
+      addToast(`Recruiter "${newRecruiter.name}" (${assignedCompany}) successfully registered and verified!`, 'success');
+      setAddModalOpen(false);
+      setAddForm({
+        name: '',
+        email: '',
+        phone: '',
+        designation: 'Talent Acquisition Manager',
+        companyType: 'EXISTING',
+        selectedCompany: availableCompanies[0] || '',
+        newCompanyName: '',
+        industry: 'Information Technology & Services',
+        location: 'Vijayawada, NTR District',
+      });
+    } catch (err) {
+      addToast(err.message || 'Failed to register recruiter', 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // Suspend Dialog
@@ -204,21 +212,33 @@ export default function AdminRecruitersPage() {
     return filtered.slice(startIndex, startIndex + pageSize);
   }, [filtered, currentPage, pageSize]);
 
-  const handleVerify = (r) => {
-    verifyRecruiter(r.id);
-    addToast(`${r.name} (${r.company}) has been marked as VERIFIED.`, 'success');
+  const handleVerify = async (r) => {
+    try {
+      await verifyRecruiter(r.id);
+      addToast(`${r.name} (${r.company}) has been marked as VERIFIED.`, 'success');
+    } catch (err) {
+      addToast(err.message || 'Failed to verify recruiter', 'error');
+    }
   };
 
-  const handleActivate = (r) => {
-    activateRecruiter(r.id);
-    addToast(`${r.name} account is now ACTIVE.`, 'success');
+  const handleActivate = async (r) => {
+    try {
+      await activateRecruiter(r.id);
+      addToast(`${r.name} account is now ACTIVE.`, 'success');
+    } catch (err) {
+      addToast(err.message || 'Failed to activate recruiter', 'error');
+    }
   };
 
-  const handleConfirmSuspend = () => {
+  const handleConfirmSuspend = async () => {
     if (!suspendTarget) return;
-    suspendRecruiter(suspendTarget.id);
-    addToast(`Recruiter account for ${suspendTarget.name} has been SUSPENDED.`, 'error');
-    setSuspendTarget(null);
+    try {
+      await suspendRecruiter(suspendTarget.id);
+      addToast(`Recruiter account for ${suspendTarget.name} has been SUSPENDED.`, 'error');
+      setSuspendTarget(null);
+    } catch (err) {
+      addToast(err.message || 'Failed to suspend recruiter', 'error');
+    }
   };
 
   const handleExportExcel = () => {
@@ -1261,11 +1281,11 @@ export default function AdminRecruitersPage() {
                 </div>
 
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-3)', marginTop: 'var(--space-2)' }}>
-                  <Button type="button" variant="outline" onClick={() => setAddModalOpen(false)}>
+                  <Button type="button" variant="outline" onClick={() => setAddModalOpen(false)} disabled={isSubmitting}>
                     Cancel
                   </Button>
-                  <Button type="submit" variant="primary" leftIcon={<UserPlus size={16} />}>
-                    Register & Verify Recruiter
+                  <Button type="submit" variant="primary" leftIcon={<UserPlus size={16} />} disabled={isSubmitting}>
+                    {isSubmitting ? 'Registering...' : 'Register & Verify Recruiter'}
                   </Button>
                 </div>
               </form>

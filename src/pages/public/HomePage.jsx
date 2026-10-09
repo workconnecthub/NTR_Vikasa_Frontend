@@ -105,16 +105,23 @@ export default function HomePage() {
   const [liveCompanies, setLiveCompanies] = useState([]);
   const [liveInternships, setLiveInternships] = useState([]);
   const [liveJobMelas, setLiveJobMelas] = useState([]);
+  const [liveGallery, setLiveGallery] = useState(null);
+  const [liveNews, setLiveNews] = useState(null);
 
   useEffect(() => {
     let isMounted = true;
     const fetchPublicData = async () => {
       try {
-        const [jobsRes, compsRes, internsRes, melasRes] = await Promise.allSettled([
+        const [jobsRes, compsRes, internsRes, melasRes, photosRes, videosRes, pressRes, galleryHdrRes, newsHdrRes] = await Promise.allSettled([
           publicService.getPublishedJobs({ page_size: 10 }),
           publicService.getPublishedCompanies({ page_size: 10 }),
           publicService.getPublishedInternships({ page_size: 10 }),
           publicService.getPublishedJobMelas(),
+          publicService.getPublishedGalleryPhotos({ page_size: 50 }),
+          publicService.getPublishedGalleryVideos({ page_size: 50 }),
+          publicService.getPublishedPressArticles({ page_size: 50 }),
+          publicService.getPublishedSectionHeader('gallery'),
+          publicService.getPublishedSectionHeader('news'),
         ]);
 
         if (!isMounted) return;
@@ -171,6 +178,70 @@ export default function HomePage() {
             status: m.status,
             participatingCompaniesCount: m.participating_companies_count || 10,
           })));
+        }
+
+        if (photosRes.status === 'fulfilled' || videosRes.status === 'fulfilled' || galleryHdrRes.status === 'fulfilled') {
+          const imgs = photosRes.status === 'fulfilled' && Array.isArray(photosRes.value) && photosRes.value.length > 0
+            ? photosRes.value.map(p => ({
+                id: p.id,
+                title: p.title,
+                category: p.category,
+                imageUrl: p.imageUrl || p.image_url,
+                date: p.date,
+                description: p.description || '',
+              }))
+            : null;
+
+          const vids = videosRes.status === 'fulfilled' && Array.isArray(videosRes.value) && videosRes.value.length > 0
+            ? videosRes.value.map(v => ({
+                id: v.id,
+                title: v.title,
+                youtubeUrl: v.youtubeUrl || v.youtube_url,
+                category: v.category,
+                date: v.date || '',
+                description: v.description || '',
+              }))
+            : null;
+
+          const hdr = galleryHdrRes.status === 'fulfilled' && galleryHdrRes.value ? galleryHdrRes.value : null;
+
+          if (imgs || vids || hdr) {
+            setLiveGallery({
+              badge: hdr?.badge || galleryContent.badge,
+              heading1: hdr?.heading1 || galleryContent.heading1,
+              heading2: hdr?.heading2 || galleryContent.heading2,
+              subtitle: hdr?.subtitle || galleryContent.subtitle,
+              images: imgs || galleryContent.images || [],
+              videos: vids || galleryContent.videos || [],
+            });
+          }
+        }
+
+        if (pressRes.status === 'fulfilled' || newsHdrRes.status === 'fulfilled') {
+          const arts = pressRes.status === 'fulfilled' && Array.isArray(pressRes.value) && pressRes.value.length > 0
+            ? pressRes.value.map(a => ({
+                id: a.id,
+                newspaper: a.newspaper || a.publication_name,
+                title: a.title,
+                date: a.date || a.publication_date,
+                edition: a.edition || '',
+                imageUrl: a.imageUrl || a.image_url,
+                sourceUrl: a.sourceUrl || a.source_url || a.article_url || '',
+                summary: a.summary || a.description || '',
+              }))
+            : null;
+
+          const nhdr = newsHdrRes.status === 'fulfilled' && newsHdrRes.value ? newsHdrRes.value : null;
+
+          if (arts || nhdr) {
+            setLiveNews({
+              badge: nhdr?.badge || newsContent.badge,
+              heading1: nhdr?.heading1 || newsContent.heading1,
+              heading2: nhdr?.heading2 || newsContent.heading2,
+              subtitle: nhdr?.subtitle || newsContent.subtitle,
+              articles: arts || newsContent.articles || [],
+            });
+          }
         }
       } catch (e) {
         console.warn('HomePage public data load warning:', e);
@@ -788,10 +859,10 @@ export default function HomePage() {
       </section>
 
       {/* ── 8. Media & Event Gallery (Photos & Interactive Hover-to-Play Videos) ── */}
-      <GallerySection galleryContent={galleryContent} />
+      <GallerySection galleryContent={liveGallery || galleryContent} />
 
       {/* ── 9. Newspaper Articles & Media Highlights (Slow auto-moving carousel) ── */}
-      <NewsArticlesSection newsContent={newsContent} />
+      <NewsArticlesSection newsContent={liveNews || newsContent} />
 
       {/* ── 10. Why Choose Us Section ── */}
       <section style={{ padding: 'var(--space-20) 0', background: 'var(--color-surface)', borderTop: '1px solid var(--color-border)' }}>

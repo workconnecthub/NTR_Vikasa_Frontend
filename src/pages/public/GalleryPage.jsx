@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Camera, Film, Search, Filter, Sparkles, ChevronRight, Home,
@@ -9,11 +9,57 @@ import VideoGalleryCard from '../../components/ui/VideoGalleryCard';
 import ImageGalleryCard from '../../components/ui/ImageGalleryCard';
 import ImageLightbox from '../../components/ui/ImageLightbox';
 import Button from '../../components/ui/Button';
+import publicService from '../../services/publicService';
 
 export default function GalleryPage() {
   const { homeContent } = useAdmin();
   const currentContent = homeContent || DEFAULT_HOME_CONTENT;
   const gallery = currentContent.gallery || DEFAULT_HOME_CONTENT.gallery;
+
+  const [livePhotos, setLivePhotos] = useState(null);
+  const [liveVideos, setLiveVideos] = useState(null);
+  const [liveHeader, setLiveHeader] = useState(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchGallery = async () => {
+      try {
+        const [photosRes, videosRes, headerRes] = await Promise.allSettled([
+          publicService.getPublishedGalleryPhotos({ page_size: 100 }),
+          publicService.getPublishedGalleryVideos({ page_size: 100 }),
+          publicService.getPublishedSectionHeader('gallery'),
+        ]);
+        if (!isMounted) return;
+        if (photosRes.status === 'fulfilled' && Array.isArray(photosRes.value) && photosRes.value.length > 0) {
+          setLivePhotos(photosRes.value.map(p => ({
+            id: p.id,
+            title: p.title,
+            category: p.category,
+            imageUrl: p.imageUrl || p.image_url,
+            date: p.date,
+            description: p.description || '',
+          })));
+        }
+        if (videosRes.status === 'fulfilled' && Array.isArray(videosRes.value) && videosRes.value.length > 0) {
+          setLiveVideos(videosRes.value.map(v => ({
+            id: v.id,
+            title: v.title,
+            youtubeUrl: v.youtubeUrl || v.youtube_url,
+            category: v.category,
+            date: v.date || '',
+            description: v.description || '',
+          })));
+        }
+        if (headerRes.status === 'fulfilled' && headerRes.value) {
+          setLiveHeader(headerRes.value);
+        }
+      } catch (err) {
+        console.warn('GalleryPage load warning:', err);
+      }
+    };
+    fetchGallery();
+    return () => { isMounted = false; };
+  }, []);
 
   const [activeTab, setActiveTab] = useState('images'); // 'images' | 'videos'
   const [selectedCategory, setSelectedCategory] = useState('All');
@@ -21,8 +67,15 @@ export default function GalleryPage() {
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
 
-  const images = useMemo(() => gallery?.images || [], [gallery]);
-  const videos = useMemo(() => gallery?.videos || [], [gallery]);
+  const images = useMemo(() => livePhotos || gallery?.images || [], [livePhotos, gallery]);
+  const videos = useMemo(() => liveVideos || gallery?.videos || [], [liveVideos, gallery]);
+
+  const activeHeader = useMemo(() => ({
+    badge: liveHeader?.badge || gallery?.badge || 'Moments & Media Highlights',
+    heading1: liveHeader?.heading1 || gallery?.heading1 || 'NTR VIKASA Event &',
+    heading2: liveHeader?.heading2 || gallery?.heading2 || 'Media Gallery',
+    subtitle: liveHeader?.subtitle || gallery?.subtitle || 'Explore glimpses from our mega job fairs, candidate felicitations, skill training batches, and industry partner summits across Andhra Pradesh.',
+  }), [liveHeader, gallery]);
 
   const activeItems = activeTab === 'images' ? images : videos;
 
@@ -101,7 +154,7 @@ export default function GalleryPage() {
               }}
             >
               <Sparkles size={13} />
-              <span>{gallery.badge || 'Moments & Media Highlights'}</span>
+              <span>{activeHeader.badge}</span>
             </div>
 
             <h1
@@ -114,7 +167,7 @@ export default function GalleryPage() {
                 letterSpacing: '-0.02em',
               }}
             >
-              {gallery.heading1 || 'NTR VIKASA Event &'}{' '}
+              {activeHeader.heading1}{' '}
               <span
                 style={{
                   background: 'linear-gradient(135deg, #a5b4fc 0%, #e0e7ff 50%, #f5d0fe 100%)',
@@ -122,12 +175,12 @@ export default function GalleryPage() {
                   WebkitTextFillColor: 'transparent',
                 }}
               >
-                {gallery.heading2 || 'Media Gallery'}
+                {activeHeader.heading2}
               </span>
             </h1>
 
             <p style={{ fontSize: 'var(--text-base)', color: '#cbd5e1', lineHeight: 'var(--leading-relaxed)', margin: 0 }}>
-              {gallery.subtitle || 'Explore glimpses from our mega job fairs, candidate felicitations, skill training batches, and industry partner summits across Andhra Pradesh.'}
+              {activeHeader.subtitle}
             </p>
           </div>
 

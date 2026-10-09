@@ -139,6 +139,83 @@ const publicService = {
       return [];
     }
   },
+
+  /**
+   * Fetch approved/published gallery photos.
+   * @param {Object} [params]
+   * @returns {Promise<Array>}
+   */
+  async getPublishedGalleryPhotos(params = {}) {
+    try {
+      const query = new URLSearchParams();
+      if (params.category && params.category !== 'All') query.set('category', params.category);
+      if (params.search) query.set('search', params.search);
+      if (params.page) query.set('page', params.page);
+      if (params.page_size) query.set('page_size', params.page_size);
+      const qs = query.toString() ? `?${query.toString()}` : '';
+      const data = await apiClient.get(`/public/website-content/gallery/photos${qs}`);
+      return Array.isArray(data) ? data : (data?.items || []);
+    } catch (err) {
+      console.warn('publicService.getPublishedGalleryPhotos error:', parseApiError(err));
+      return [];
+    }
+  },
+
+  /**
+   * Fetch approved/published gallery videos.
+   * @param {Object} [params]
+   * @returns {Promise<Array>}
+   */
+  async getPublishedGalleryVideos(params = {}) {
+    try {
+      const query = new URLSearchParams();
+      if (params.category && params.category !== 'All') query.set('category', params.category);
+      if (params.search) query.set('search', params.search);
+      if (params.page) query.set('page', params.page);
+      if (params.page_size) query.set('page_size', params.page_size);
+      const qs = query.toString() ? `?${query.toString()}` : '';
+      const data = await apiClient.get(`/public/website-content/gallery/videos${qs}`);
+      return Array.isArray(data) ? data : (data?.items || []);
+    } catch (err) {
+      console.warn('publicService.getPublishedGalleryVideos error:', parseApiError(err));
+      return [];
+    }
+  },
+
+  /**
+   * Fetch approved/published press articles & newspaper clippings.
+   * @param {Object} [params]
+   * @returns {Promise<Array>}
+   */
+  async getPublishedPressArticles(params = {}) {
+    try {
+      const query = new URLSearchParams();
+      if (params.category && params.category !== 'All') query.set('category', params.category);
+      if (params.search) query.set('search', params.search);
+      if (params.page) query.set('page', params.page);
+      if (params.page_size) query.set('page_size', params.page_size);
+      const qs = query.toString() ? `?${query.toString()}` : '';
+      const data = await apiClient.get(`/public/website-content/press${qs}`);
+      return Array.isArray(data) ? data : (data?.items || []);
+    } catch (err) {
+      console.warn('publicService.getPublishedPressArticles error:', parseApiError(err));
+      return [];
+    }
+  },
+
+  /**
+   * Fetch public section header configuration.
+   * @param {string} sectionId
+   * @returns {Promise<Object>}
+   */
+  async getPublishedSectionHeader(sectionId) {
+    try {
+      return await apiClient.get(`/public/website-content/sections/${sectionId}`);
+    } catch (err) {
+      console.warn(`publicService.getPublishedSectionHeader(${sectionId}) error:`, parseApiError(err));
+      return null;
+    }
+  },
 };
 
 export default publicService;
