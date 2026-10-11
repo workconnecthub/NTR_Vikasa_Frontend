@@ -49,6 +49,8 @@ export default function GallerySection({ galleryContent }) {
   const heading2 = galleryContent?.heading2 || 'Media Gallery';
   const subtitle = galleryContent?.subtitle || 'Explore glimpses from our mega job fairs, candidate felicitations, skill training batches, and industry partner summits across Andhra Pradesh.';
 
+  if (images.length === 0 && videos.length === 0) return null;
+
   return (
     <section
       id="gallery"

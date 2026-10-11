@@ -13,7 +13,6 @@ import Button from '../../components/ui/Button';
 import ApplyModal from '../../components/ui/ApplyModal';
 import { useToast } from '../../context/ToastContext';
 import { useCandidate } from '../../context/CandidateContext';
-import { MOCK_JOBS } from '../../data/mockData';
 import candidateDashboardService from '../../services/candidateDashboardService';
 import authService from '../../services/authService';
 
@@ -79,22 +78,8 @@ export default function CandidateDashboard() {
   const recentApplications = dashboard?.recent_applications ?? [];
   const totalApplications  = recentApplications.length;
 
-  // Recommended Jobs — API first, fall back to MOCK_JOBS (max 3) with match scores
-  const recommendedJobs = (dashboard?.recommended_jobs?.length > 0)
-    ? dashboard.recommended_jobs
-    : MOCK_JOBS.slice(0, 3).map((job, idx) => ({
-        job_id:          String(job.id),
-        title:           job.title,
-        company_name:    job.company,
-        location:        job.location,
-        salary:          job.salary,
-        experience:      job.experience,
-        employment_type: job.mode,
-        match_percentage:idx === 0 ? 94 : idx === 1 ? 92 : 89,
-        tags:            job.tags || [],
-        is_applied:      false,
-        is_saved:        isJobSaved(job.id),
-      }));
+  // Recommended Jobs — from live candidate dashboard API
+  const recommendedJobs = dashboard?.recommended_jobs ?? [];
 
   // Upcoming Interviews — API only (no fake data)
   const upcomingInterviews = dashboard?.upcoming_interviews ?? [];

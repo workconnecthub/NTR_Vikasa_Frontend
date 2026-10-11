@@ -805,9 +805,9 @@ const ADMIN_NOTIFS = [
 
 // Portal → initial notifications mapping
 const PORTAL_NOTIFS = {
-  candidate: CANDIDATE_NOTIFS,
-  recruiter: RECRUITER_NOTIFS,
-  admin:     ADMIN_NOTIFS,
+  candidate: [],
+  recruiter: [],
+  admin:     [],
 };
 
 function mapBackendNotification(item) {
@@ -857,9 +857,9 @@ export function NotificationProvider({ children }) {
         const parsed = JSON.parse(stored);
         if (parsed && typeof parsed === 'object') {
           return {
-            candidate: parsed.candidate || PORTAL_NOTIFS.candidate,
-            recruiter: parsed.recruiter || PORTAL_NOTIFS.recruiter,
-            admin:     parsed.admin     || PORTAL_NOTIFS.admin,
+            candidate: parsed.candidate || [],
+            recruiter: parsed.recruiter || [],
+            admin:     parsed.admin     || [],
           };
         }
       }

@@ -8,7 +8,7 @@ import {
 import Button from '../../components/ui/Button';
 import CardCarousel from '../../components/ui/CardCarousel';
 import { Modal } from '../../components/ui/Modal';
-import { MOCK_STATS, WHY_CHOOSE_US } from '../../data/mockData';
+import { WHY_CHOOSE_US } from '../../data/mockData';
 import { useAdmin, DEFAULT_ABOUT_CONTENT } from '../../context/AdminContext';
 import publicService from '../../services/publicService';
 

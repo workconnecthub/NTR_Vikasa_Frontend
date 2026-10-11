@@ -16,7 +16,7 @@ import { JobCard } from '../../components/ui/EntityCards';
 import ApplyModal from '../../components/ui/ApplyModal';
 import { useToast } from '../../context/ToastContext';
 import { useCandidate } from '../../context/CandidateContext';
-import { MOCK_JOBS, MOCK_COMPANIES } from '../../data/mockData';
+import publicService from '../../services/publicService';
 
 export default function JobDetailPage() {
   const { jobId } = useParams();

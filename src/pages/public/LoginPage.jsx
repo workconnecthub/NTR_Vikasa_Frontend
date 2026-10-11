@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
-import { Briefcase, Mail, Lock, Building2, User, ArrowLeft, Sparkles, CheckCircle2, ShieldCheck } from 'lucide-react';
+import { Briefcase, Mail, Lock, Building2, User, ArrowLeft } from 'lucide-react';
 import Button from '../../components/ui/Button';
 import FormField from '../../components/ui/FormField';
 import Input from '../../components/ui/Input';
@@ -24,12 +24,12 @@ export default function LoginPage() {
 
   const [email, setEmail] = useState(() => {
     try {
-      return location.state?.email || localStorage.getItem('ntr_remember_email') || 'candidate1@ntrvikasa.com';
+      return location.state?.email || localStorage.getItem('ntr_remember_email') || '';
     } catch (e) {
-      return 'candidate1@ntrvikasa.com';
+      return '';
     }
   });
-  const [password, setPassword] = useState('password123');
+  const [password, setPassword] = useState('');
   const [remember, setRemember] = useState(true);
   const [loading, setLoading] = useState(false);
 
@@ -73,7 +73,7 @@ export default function LoginPage() {
         localStorage.removeItem('ntr_remember_email');
       }
 
-      if (userRole === 'ADMIN') {
+      if (userRole === 'ADMIN' || userRole === 'SUPER_ADMIN') {
         loginAdmin(loginEmail, loginPassword);
         navigate('/admin/dashboard');
         addToast(`Welcome ${user.name || 'Admin'}! Logged into NTR Vikasa Administration.`, 'success');
@@ -108,43 +108,6 @@ export default function LoginPage() {
   const handleSubmit = (e) => {
     e.preventDefault();
     handleSignIn(email, password);
-  };
-
-  // Quick Demo Buttons
-  const handleDemoCandidate1 = () => {
-    setEmail('candidate1@ntrvikasa.com');
-    setPassword('password123');
-    handleSignIn('candidate1@ntrvikasa.com', 'password123');
-  };
-
-  const handleDemoCandidate2 = () => {
-    setEmail('candidate2@ntrvikasa.com');
-    setPassword('password123');
-    handleSignIn('candidate2@ntrvikasa.com', 'password123');
-  };
-
-  const handleDemoRecruiter1 = () => {
-    setEmail('recruiter1@ntrvikasa.com');
-    setPassword('password123');
-    handleSignIn('recruiter1@ntrvikasa.com', 'password123');
-  };
-
-  const handleDemoRecruiter2 = () => {
-    setEmail('recruiter2@ntrvikasa.com');
-    setPassword('password123');
-    handleSignIn('recruiter2@ntrvikasa.com', 'password123');
-  };
-
-  const handleDemoAdmin1 = () => {
-    setEmail('admin1@ntrvikasa.com');
-    setPassword('password123');
-    handleSignIn('admin1@ntrvikasa.com', 'password123');
-  };
-
-  const handleDemoAdmin2 = () => {
-    setEmail('admin2@ntrvikasa.com');
-    setPassword('password123');
-    handleSignIn('admin2@ntrvikasa.com', 'password123');
   };
 
   return (
@@ -207,7 +170,7 @@ export default function LoginPage() {
             Sign in to NTR VIKASA
           </h1>
           <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', textAlign: 'center', marginBottom: 'var(--space-4)' }}>
-            Select a demo account below or enter your credentials to access your workspace.
+            Enter your credentials to access your workspace.
           </p>
 
           {location.state?.jobTitle && (
@@ -228,143 +191,7 @@ export default function LoginPage() {
             </div>
           )}
 
-          {/* Quick Demo Credentials Switchers */}
-          <div style={{
-            background: 'var(--color-primary-50)',
-            border: '1px solid var(--color-primary-200)',
-            borderRadius: 'var(--radius-xl)',
-            padding: 'var(--space-3) var(--space-4)',
-            marginBottom: 'var(--space-4)'
-          }}>
-            {/* Candidate Demos */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 'var(--space-1)' }}>
-              <Sparkles size={14} style={{ color: 'var(--color-primary-600)' }} />
-              <span style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--color-primary-700)' }}>
-                Demo Candidate Profiles:
-              </span>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-2)', marginBottom: 'var(--space-3)' }}>
-              <button
-                type="button"
-                onClick={handleDemoCandidate1}
-                style={{
-                  background: '#fff',
-                  border: '1.5px solid var(--color-primary-400)',
-                  borderRadius: 'var(--radius-lg)',
-                  padding: '6px 8px',
-                  textAlign: 'left',
-                  cursor: 'pointer',
-                  fontSize: '11px'
-                }}
-              >
-                <strong style={{ display: 'block', color: 'var(--color-primary-800)' }}>Candidate 1: Priya</strong>
-                <span style={{ color: 'var(--color-text-muted)', fontSize: '10px' }}>Frontend Dev (4 yrs)</span>
-              </button>
 
-              <button
-                type="button"
-                onClick={handleDemoCandidate2}
-                style={{
-                  background: '#fff',
-                  border: '1.5px solid var(--color-primary-400)',
-                  borderRadius: 'var(--radius-lg)',
-                  padding: '6px 8px',
-                  textAlign: 'left',
-                  cursor: 'pointer',
-                  fontSize: '11px'
-                }}
-              >
-                <strong style={{ display: 'block', color: 'var(--color-primary-800)' }}>Candidate 2: Rahul</strong>
-                <span style={{ color: 'var(--color-text-muted)', fontSize: '10px' }}>Python Backend (3.5 yrs)</span>
-              </button>
-            </div>
-
-            {/* Recruiter Demos */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 'var(--space-1)' }}>
-              <Building2 size={14} style={{ color: '#7c3aed' }} />
-              <span style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#6d28d9' }}>
-                Demo Recruiter Profiles:
-              </span>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-2)', marginBottom: 'var(--space-3)' }}>
-              <button
-                type="button"
-                onClick={handleDemoRecruiter1}
-                style={{
-                  background: '#fff',
-                  border: '1.5px solid #a78bfa',
-                  borderRadius: 'var(--radius-lg)',
-                  padding: '6px 8px',
-                  textAlign: 'left',
-                  cursor: 'pointer',
-                  fontSize: '11px'
-                }}
-              >
-                <strong style={{ display: 'block', color: '#5b21b6' }}>Recruiter 1: Arjun</strong>
-                <span style={{ color: 'var(--color-text-muted)', fontSize: '10px' }}>ABC Technologies</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={handleDemoRecruiter2}
-                style={{
-                  background: '#fff',
-                  border: '1.5px solid #a78bfa',
-                  borderRadius: 'var(--radius-lg)',
-                  padding: '6px 8px',
-                  textAlign: 'left',
-                  cursor: 'pointer',
-                  fontSize: '11px'
-                }}
-              >
-                <strong style={{ display: 'block', color: '#5b21b6' }}>Recruiter 2: Sneha</strong>
-                <span style={{ color: 'var(--color-text-muted)', fontSize: '10px' }}>Tech Solutions</span>
-              </button>
-            </div>
-
-            {/* Admin Demos */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 'var(--space-1)' }}>
-              <ShieldCheck size={14} style={{ color: '#0369a1' }} />
-              <span style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#0369a1' }}>
-                Demo Admin Profiles:
-              </span>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-2)' }}>
-              <button
-                type="button"
-                onClick={handleDemoAdmin1}
-                style={{
-                  background: '#fff',
-                  border: '1.5px solid #7dd3fc',
-                  borderRadius: 'var(--radius-lg)',
-                  padding: '6px 8px',
-                  textAlign: 'left',
-                  cursor: 'pointer',
-                  fontSize: '11px'
-                }}
-              >
-                <strong style={{ display: 'block', color: '#0c4a6e' }}>Admin 1: Admin User</strong>
-                <span style={{ color: 'var(--color-text-muted)', fontSize: '10px' }}>admin1@ntrvikasa.com</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={handleDemoAdmin2}
-                style={{
-                  background: '#fff',
-                  border: '1.5px solid #7dd3fc',
-                  borderRadius: 'var(--radius-lg)',
-                  padding: '6px 8px',
-                  textAlign: 'left',
-                  cursor: 'pointer',
-                  fontSize: '11px'
-                }}
-              >
-                <strong style={{ display: 'block', color: '#0c4a6e' }}>Admin 2: Super Admin</strong>
-                <span style={{ color: 'var(--color-text-muted)', fontSize: '10px' }}>admin2@ntrvikasa.com</span>
-              </button>
-            </div>
-          </div>
 
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
             <FormField label="Email Address" htmlFor="email" required>

@@ -61,2353 +61,18 @@ export const NTR_MANDALS = [
   'Vatsavai'
 ];
 
-// ─── 2. SEED PLATFORM CANDIDATES / STUDENTS ────────────────────────────────
-export const SEED_CANDIDATES = [
-  // ── 10TH CLASS (SSC) STUDENTS ──
-  {
-    id: 'cand-101',
-    name: 'Sai Krishna Teja',
-    email: 'krishna.teja@example.com',
-    phone: '+91 98480 11223',
-    district: 'NTR District',
-    mandal: 'Vijayawada Rural',
-    village: 'Gollapudi',
-    location: 'Gollapudi, Vijayawada Rural, NTR District',
-    headline: 'Certified Inventory & Logistics Assistant',
-    experience: '1.0 Year',
-    skills: ['Inventory Management', 'Material Inward', 'Packaging', 'Basic Computer'],
-    qualificationLevel: '10TH',
-    education: '10th Class (SSC), Zilla Parishad High School, Gollapudi',
-    placementStatus: 'PLACED',
-    placedCompany: 'Aparna Logistics & Distribution',
-    placedRole: 'Warehouse Operations Assistant',
-    placedSalary: '₹2,10,000 / year',
-    referenceAdmin: 'Admin User (State Operations)',
-    registrationDate: '2026-08-02',
-    profileStatus: 'COMPLETE',
-    accountStatus: 'ACTIVE',
-    applicationsCount: 3,
-  },
-  {
-    id: 'cand-102',
-    name: 'Gopi Chand',
-    email: 'gopi.chand@example.com',
-    phone: '+91 97001 22334',
-    district: 'NTR District',
-    mandal: 'Vijayawada Urban',
-    village: 'Bhavanipuram',
-    location: 'Bhavanipuram, Vijayawada Urban, NTR District',
-    headline: 'Vocational Retail & Store Associate Trainee',
-    experience: 'Fresher (0-1 Year)',
-    skills: ['Customer Assistance', 'Stock Sorting', 'Billing Point-of-Sale'],
-    qualificationLevel: '10TH',
-    education: '10th Class (SSC), Govt High School, Bhavanipuram',
-    placementStatus: 'NOT_PLACED',
-    placedCompany: '',
-    placedRole: '',
-    placedSalary: '',
-    referenceAdmin: 'District Nodal Officer (Vijayawada)',
-    registrationDate: '2026-08-08',
-    profileStatus: 'COMPLETE',
-    accountStatus: 'ACTIVE',
-    applicationsCount: 4,
-  },
-  {
-    id: 'cand-103',
-    name: 'Venkata Lakshmi',
-    email: 'v.lakshmi@example.com',
-    phone: '+91 96112 33445',
-    district: 'NTR District',
-    mandal: 'Nandigama',
-    village: 'Nandigama Town',
-    location: 'Nandigama, NTR District',
-    headline: 'Frontline Customer Executive & Cashier',
-    experience: '1.5 Years',
-    skills: ['Retail Management', 'Barcode Scanning', 'Tally Basic'],
-    qualificationLevel: '10TH',
-    education: '10th Class (SSC), ZP High School, Nandigama',
-    placementStatus: 'PLACED',
-    placedCompany: 'DMart Retail AP Ltd',
-    placedRole: 'Store Operations Associate',
-    placedSalary: '₹1,95,000 / year',
-    referenceAdmin: 'Nandigama Skill Coordinator',
-    registrationDate: '2026-08-12',
-    profileStatus: 'COMPLETE',
-    accountStatus: 'ACTIVE',
-    applicationsCount: 2,
-  },
-
-  // ── INTERMEDIATE / DIPLOMA (10+2) STUDENTS ──
-  {
-    id: 'cand-201',
-    name: 'Bhavani Prasad',
-    email: 'bhavani.prasad@example.com',
-    phone: '+91 98492 44556',
-    district: 'NTR District',
-    mandal: 'Vijayawada Urban',
-    village: 'Patamata',
-    location: 'Patamata, Vijayawada Urban, NTR District',
-    headline: 'Junior Quality & Mechanical Assembly Technician',
-    experience: '1.2 Years',
-    skills: ['Quality Inspection', 'AutoCAD Drafting', 'Assembly Tolerances'],
-    qualificationLevel: 'INTER',
-    education: 'Intermediate (MPC), Sri Chaitanya Junior College, Patamata',
-    placementStatus: 'PLACED',
-    placedCompany: 'Hero MotoCorp AP Plant',
-    placedRole: 'Assembly Line Trainee',
-    placedSalary: '₹2,80,000 / year',
-    referenceAdmin: 'Admin User (State Operations)',
-    registrationDate: '2026-08-14',
-    profileStatus: 'COMPLETE',
-    accountStatus: 'ACTIVE',
-    applicationsCount: 5,
-  },
-  {
-    id: 'cand-202',
-    name: 'Manikanta Reddy',
-    email: 'manikanta.reddy@example.com',
-    phone: '+91 99512 55667',
-    district: 'NTR District',
-    mandal: 'Ibrahimpatnam',
-    village: 'Kondapalli Industrial Area',
-    location: 'Kondapalli, Ibrahimpatnam, NTR District',
-    headline: 'Polytechnic Diploma Civil & Materials Testing',
-    experience: '1.8 Years',
-    skills: ['Concrete Slump Testing', 'Site Supervision', 'Quantity Survey'],
-    qualificationLevel: 'INTER',
-    education: 'Diploma in Civil Engineering, Govt Polytechnic, Vijayawada',
-    placementStatus: 'PLACED',
-    placedCompany: 'Ultratech Cement Ltd',
-    placedRole: 'Quality Testing Supervisor',
-    placedSalary: '₹3,20,000 / year',
-    referenceAdmin: 'Mandal Placement Officer (Ibrahimpatnam)',
-    registrationDate: '2026-08-16',
-    profileStatus: 'COMPLETE',
-    accountStatus: 'ACTIVE',
-    applicationsCount: 6,
-  },
-  {
-    id: 'cand-203',
-    name: 'Swathi Priya',
-    email: 'swathi.priya@example.com',
-    phone: '+91 98663 66778',
-    district: 'NTR District',
-    mandal: 'Ibrahimpatnam',
-    village: 'Ibrahimpatnam Center',
-    location: 'Ibrahimpatnam, NTR District',
-    headline: 'Pharma Lab Assistant & BiPC Candidate',
-    experience: 'Fresher (0-1 Year)',
-    skills: ['Laboratory Safety', 'Sample Preparation', 'Chemical Titration'],
-    qualificationLevel: 'INTER',
-    education: 'Intermediate (BiPC), Nalanda Junior College, Ibrahimpatnam',
-    placementStatus: 'NOT_PLACED',
-    placedCompany: '',
-    placedRole: '',
-    placedSalary: '',
-    referenceAdmin: 'Mandal Placement Officer (Ibrahimpatnam)',
-    registrationDate: '2026-08-19',
-    profileStatus: 'COMPLETE',
-    accountStatus: 'ACTIVE',
-    applicationsCount: 7,
-  },
-  {
-    id: 'cand-204',
-    name: 'Ramesh Babu',
-    email: 'ramesh.babu@example.com',
-    phone: '+91 97014 77889',
-    district: 'NTR District',
-    mandal: 'Mylavaram',
-    village: 'Mylavaram Rural',
-    location: 'Mylavaram, NTR District',
-    headline: 'Electrical Diploma & Wiring Specialist',
-    experience: 'Fresher (0-1 Year)',
-    skills: ['Circuit Troubleshooting', 'Transformer Maintenance', 'Electrical Safety'],
-    qualificationLevel: 'INTER',
-    education: 'Diploma in Electrical (EEE), Polytechnic College, Mylavaram',
-    placementStatus: 'NOT_PLACED',
-    placedCompany: '',
-    placedRole: '',
-    placedSalary: '',
-    referenceAdmin: 'Mylavaram Field Counselor',
-    registrationDate: '2026-08-22',
-    profileStatus: 'COMPLETE',
-    accountStatus: 'ACTIVE',
-    applicationsCount: 3,
-  },
-
-  // ── UNDERGRADUATE (UG) STUDENTS ──
-  {
-    id: 'cand-1',
-    name: 'Priya Sharma',
-    email: 'priya.sharma@example.com',
-    phone: '+91 98765 43210',
-    district: 'NTR District',
-    mandal: 'Vijayawada Urban',
-    village: 'Kanuru',
-    location: 'Kanuru, Vijayawada Urban, NTR District',
-    headline: 'Senior React & Frontend Engineer',
-    experience: '4.2 Years',
-    skills: ['React.js', 'TypeScript', 'Redux', 'HTML/CSS'],
-    qualificationLevel: 'UG',
-    education: 'B.Tech in Computer Science, VR Siddhartha Engineering College',
-    placementStatus: 'PLACED',
-    placedCompany: 'Tata Consultancy Services',
-    placedRole: 'System Engineer (Frontend Lead)',
-    placedSalary: '₹4,80,000 / year',
-    referenceAdmin: 'Super Admin (Directorate of Employment)',
-    registrationDate: '2026-08-01',
-    profileStatus: 'COMPLETE',
-    accountStatus: 'ACTIVE',
-    applicationsCount: 12,
-  },
-  {
-    id: 'cand-2',
-    name: 'Rahul Kumar',
-    email: 'rahul.kumar@example.com',
-    phone: '+91 98123 45678',
-    district: 'NTR District',
-    mandal: 'Vijayawada Urban',
-    village: 'Patamata',
-    location: 'Patamata, Vijayawada Urban, NTR District',
-    headline: 'Backend & Cloud Python Engineer',
-    experience: '3.5 Years',
-    skills: ['Python', 'FastAPI', 'PostgreSQL', 'Docker', 'AWS'],
-    qualificationLevel: 'UG',
-    education: 'B.Tech in Information Technology, JNTU Kakinada',
-    placementStatus: 'PLACED',
-    placedCompany: 'HCL Technologies Ltd',
-    placedRole: 'Cloud Backend Developer',
-    placedSalary: '₹4,50,000 / year',
-    referenceAdmin: 'Admin User (State Operations)',
-    registrationDate: '2026-08-05',
-    profileStatus: 'COMPLETE',
-    accountStatus: 'ACTIVE',
-    applicationsCount: 8,
-  },
-  {
-    id: 'cand-6',
-    name: 'Karthik Varma',
-    email: 'karthik.v@example.com',
-    phone: '+91 98440 98765',
-    district: 'NTR District',
-    mandal: 'Vijayawada Urban',
-    village: 'Gunadala',
-    location: 'Gunadala, Vijayawada Urban, NTR District',
-    headline: 'Associate Full Stack Developer',
-    experience: '1.2 Years',
-    skills: ['React', 'Node.js', 'MongoDB', 'Express'],
-    qualificationLevel: 'UG',
-    education: 'B.Sc in Computer Science, Andhra Loyola College, Vijayawada',
-    placementStatus: 'PLACED',
-    placedCompany: 'Wipro Technologies',
-    placedRole: 'Project Engineer',
-    placedSalary: '₹3,60,000 / year',
-    referenceAdmin: 'District Nodal Officer (Vijayawada)',
-    registrationDate: '2026-08-20',
-    profileStatus: 'UNDER_REVIEW',
-    accountStatus: 'ACTIVE',
-    applicationsCount: 4,
-  },
-  {
-    id: 'cand-301',
-    name: 'Anusha Devi',
-    email: 'anusha.devi@example.com',
-    phone: '+91 97788 11223',
-    district: 'NTR District',
-    mandal: 'Vijayawada Urban',
-    village: 'Bhavanipuram',
-    location: 'Bhavanipuram, Vijayawada Urban, NTR District',
-    headline: 'Banking Operations & Financial Accounting Graduate',
-    experience: '1.0 Year',
-    skills: ['Tally Prime', 'Financial Reconciliation', 'Banking Operations'],
-    qualificationLevel: 'UG',
-    education: 'B.Com Computer Applications, Maris Stella College, Vijayawada',
-    placementStatus: 'PLACED',
-    placedCompany: 'ICICI Bank Regional Operations',
-    placedRole: 'Banking Operations Officer',
-    placedSalary: '₹3,40,000 / year',
-    referenceAdmin: 'Admin User (State Operations)',
-    registrationDate: '2026-08-23',
-    profileStatus: 'COMPLETE',
-    accountStatus: 'ACTIVE',
-    applicationsCount: 6,
-  },
-  {
-    id: 'cand-302',
-    name: 'Manoj Kumar',
-    email: 'manoj.kumar@example.com',
-    phone: '+91 98877 22334',
-    district: 'NTR District',
-    mandal: 'Vijayawada Rural',
-    village: 'Enikepadu',
-    location: 'Enikepadu, Vijayawada Rural, NTR District',
-    headline: 'Graduate Mechanical Engineer — CAD & QA',
-    experience: 'Fresher (0-1 Year)',
-    skills: ['SolidWorks', 'ANSYS', 'Production Planning', 'GD&T'],
-    qualificationLevel: 'UG',
-    education: 'B.Tech in Mechanical Engineering, Dhanekula College of Engg',
-    placementStatus: 'NOT_PLACED',
-    placedCompany: '',
-    placedRole: '',
-    placedSalary: '',
-    referenceAdmin: 'Mandal Placement Officer (Ibrahimpatnam)',
-    registrationDate: '2026-08-25',
-    profileStatus: 'COMPLETE',
-    accountStatus: 'ACTIVE',
-    applicationsCount: 9,
-  },
-  {
-    id: 'cand-303',
-    name: 'Deepika Sri',
-    email: 'deepika.sri@example.com',
-    phone: '+91 99665 33445',
-    district: 'NTR District',
-    mandal: 'Vijayawada Urban',
-    village: 'Moghalrajpuram',
-    location: 'Moghalrajpuram, Vijayawada Urban, NTR District',
-    headline: 'BCA Cloud & Web Technology Aspirant',
-    experience: 'Fresher (0-1 Year)',
-    skills: ['JavaScript', 'HTML5', 'SQL Database', 'Java Basics'],
-    qualificationLevel: 'UG',
-    education: 'BCA, PB Siddhartha College of Arts & Science, Vijayawada',
-    placementStatus: 'NOT_PLACED',
-    placedCompany: '',
-    placedRole: '',
-    placedSalary: '',
-    referenceAdmin: 'Super Admin (Directorate of Employment)',
-    registrationDate: '2026-08-27',
-    profileStatus: 'COMPLETE',
-    accountStatus: 'ACTIVE',
-    applicationsCount: 5,
-  },
-
-  // ── POSTGRADUATE (PG) STUDENTS ──
-  {
-    id: 'cand-4',
-    name: 'Ananya Roy',
-    email: 'ananya.roy@example.com',
-    phone: '+91 97765 11223',
-    district: 'NTR District',
-    mandal: 'Vijayawada Urban',
-    village: 'Governorpet',
-    location: 'Governorpet, Vijayawada Urban, NTR District',
-    headline: 'AI / Machine Learning Engineer',
-    experience: '2.5 Years',
-    skills: ['PyTorch', 'Python', 'NLP', 'TensorFlow', 'LLMs'],
-    qualificationLevel: 'PG',
-    education: 'M.Tech in Data Science & Artificial Intelligence, IIIT',
-    placementStatus: 'PLACED',
-    placedCompany: 'Tech Mahindra AI Labs',
-    placedRole: 'Associate Data Scientist',
-    placedSalary: '₹7,50,000 / year',
-    referenceAdmin: 'Super Admin (Directorate of Employment)',
-    registrationDate: '2026-08-14',
-    profileStatus: 'COMPLETE',
-    accountStatus: 'ACTIVE',
-    applicationsCount: 7,
-  },
-  {
-    id: 'cand-3',
-    name: 'Vikram Sethi',
-    email: 'vikram.sethi@example.com',
-    phone: '+91 99887 66554',
-    district: 'NTR District',
-    mandal: 'Vijayawada Urban',
-    village: 'Moghalrajpuram',
-    location: 'Moghalrajpuram, Vijayawada Urban, NTR District',
-    headline: 'DevOps & Kubernetes SRE Specialist',
-    experience: '5.0 Years',
-    skills: ['Kubernetes', 'Terraform', 'AWS', 'CI/CD', 'Docker'],
-    qualificationLevel: 'PG',
-    education: 'MCA in Software Architecture, PB Siddhartha College, Vijayawada',
-    placementStatus: 'PLACED',
-    placedCompany: 'Infosys Ltd',
-    placedRole: 'Senior Associate Consultant — DevOps',
-    placedSalary: '₹6,20,000 / year',
-    referenceAdmin: 'Admin User (State Operations)',
-    registrationDate: '2026-08-10',
-    profileStatus: 'COMPLETE',
-    accountStatus: 'ACTIVE',
-    applicationsCount: 5,
-  },
-  {
-    id: 'cand-401',
-    name: 'Naveen Teja',
-    email: 'naveen.teja@example.com',
-    phone: '+91 98485 55667',
-    district: 'NTR District',
-    mandal: 'Vijayawada Urban',
-    village: 'Gandhinagar',
-    location: 'Gandhinagar, Vijayawada Urban, NTR District',
-    headline: 'MBA Human Resources & Industrial Relations',
-    experience: '2.0 Years',
-    skills: ['Talent Acquisition', 'HRIS Systems', 'Labor Compliance', 'Employee Relations'],
-    qualificationLevel: 'PG',
-    education: 'MBA in HR & General Management, Andhra University PG Center',
-    placementStatus: 'PLACED',
-    placedCompany: "Dr. Reddy's Laboratories AP",
-    placedRole: 'Assistant Manager — Talent Acquisition',
-    placedSalary: '₹5,40,000 / year',
-    referenceAdmin: 'District Nodal Officer (Vijayawada)',
-    registrationDate: '2026-08-15',
-    profileStatus: 'COMPLETE',
-    accountStatus: 'ACTIVE',
-    applicationsCount: 8,
-  },
-  {
-    id: 'cand-402',
-    name: 'Harika V',
-    email: 'harika.v@example.com',
-    phone: '+91 97003 66778',
-    district: 'NTR District',
-    mandal: 'Mylavaram',
-    village: 'Chandrala',
-    location: 'Chandrala, Mylavaram, NTR District',
-    headline: 'M.Sc Organic Chemistry Research Scholar',
-    experience: 'Fresher (0-1 Year)',
-    skills: ['HPLC Chromatography', 'Spectroscopy', 'Quality Control Lab'],
-    qualificationLevel: 'PG',
-    education: 'M.Sc in Organic Chemistry, Acharya Nagarjuna University',
-    placementStatus: 'NOT_PLACED',
-    placedCompany: '',
-    placedRole: '',
-    placedSalary: '',
-    referenceAdmin: 'Mylavaram Field Counselor',
-    registrationDate: '2026-08-28',
-    profileStatus: 'COMPLETE',
-    accountStatus: 'ACTIVE',
-    applicationsCount: 6,
-  }
-];
-
-// ─── 3. SEED RECRUITERS ────────────────────────────────────────────────────
-const SEED_RECRUITERS = [
-  {
-    id: 'rec-u-1',
-    name: 'Arjun Reddy',
-    email: 'recruiter1@ntrvikasa.com',
-    company: 'ABC Technologies Pvt Ltd',
-    designation: 'Director of Talent Acquisition',
-    phone: '+91 98765 00112',
-    registrationDate: '2026-08-01',
-    verificationStatus: 'VERIFIED',
-    accountStatus: 'ACTIVE',
-    postedJobsCount: 5,
-  },
-  {
-    id: 'rec-u-2',
-    name: 'Sneha Rao',
-    email: 'recruiter2@ntrvikasa.com',
-    company: 'Tech Solutions Global Ltd',
-    designation: 'Head of People & University Talent',
-    phone: '+91 91234 88776',
-    registrationDate: '2026-08-03',
-    verificationStatus: 'VERIFIED',
-    accountStatus: 'ACTIVE',
-    postedJobsCount: 4,
-  },
-  {
-    id: 'rec-u-3',
-    name: 'Rahul Mehta',
-    email: 'rahul.mehta@fintechcorp.example.com',
-    company: 'Fintech Corp India Pvt Ltd',
-    designation: 'Lead Technical Recruiter',
-    phone: '+91 98111 22334',
-    registrationDate: '2026-09-01',
-    verificationStatus: 'PENDING',
-    accountStatus: 'ACTIVE',
-    postedJobsCount: 0,
-    documentsSubmitted: ['Certificate of Incorporation', 'Company GSTIN', 'Official Work Email'],
-  },
-  {
-    id: 'rec-u-4',
-    name: 'Divya Iyer',
-    email: 'divya.iyer@healthplus.example.com',
-    company: 'HealthPlus Systems Ltd',
-    designation: 'Senior HR Talent Manager',
-    phone: '+91 98222 33445',
-    registrationDate: '2026-09-02',
-    verificationStatus: 'PENDING',
-    accountStatus: 'ACTIVE',
-    postedJobsCount: 0,
-    documentsSubmitted: ['CIN Certificate', 'Official Board ID'],
-  },
-  {
-    id: 'rec-u-5',
-    name: 'Manoj Kumar',
-    email: 'manoj.k@fraudventures.xyz',
-    company: 'Fast Cash Enterprises',
-    designation: 'Hiring Agent',
-    phone: '+91 99999 00000',
-    registrationDate: '2026-08-25',
-    verificationStatus: 'REJECTED',
-    accountStatus: 'SUSPENDED',
-    postedJobsCount: 0,
-    rejectionReason: 'Invalid CIN and unverified corporate address.',
-  }
-];
-
-// ─── 4. SEED COMPANIES ─────────────────────────────────────────────────────
-const SEED_COMPANIES = [
-  {
-    id: 'comp-1',
-    name: 'ABC Technologies Pvt Ltd',
-    recruiter: 'Arjun Reddy',
-    industry: 'Information Technology & Cloud',
-    location: 'Vijayawada Urban, NTR District',
-    district: 'NTR District',
-    mandal: 'Vijayawada Urban',
-    village: 'Auto Nagar IT Zone',
-    eligibleMandals: ['Vijayawada Urban', 'Vijayawada Rural', 'Ibrahimpatnam', 'Mylavaram'],
-    eligibleVillages: ['All Villages & Wards'],
-    size: '1000-5000 employees',
-    cin: 'U72200AP2015PTC078912',
-    gstin: '37ABCDE1234F1Z5',
-    verificationStatus: 'VERIFIED',
-    registrationDate: '2026-08-01',
-    activeJobsCount: 5,
-  },
-  {
-    id: 'comp-2',
-    name: 'Tech Solutions Global Ltd',
-    recruiter: 'Sneha Rao',
-    industry: 'Fintech & Banking Systems',
-    location: 'MG Road, Vijayawada Urban, NTR District',
-    district: 'NTR District',
-    mandal: 'Vijayawada Urban',
-    village: 'MG Road Commercial Hub',
-    eligibleMandals: ['All Mandals of NTR District'],
-    eligibleVillages: ['All Villages & Wards'],
-    size: '500-1000 employees',
-    cin: 'U72900AP2018PTC099142',
-    gstin: '37ABCDE9876F1Z2',
-    verificationStatus: 'VERIFIED',
-    registrationDate: '2026-08-03',
-    activeJobsCount: 4,
-  },
-  {
-    id: 'comp-3',
-    name: 'Hero MotoCorp AP Manufacturing',
-    recruiter: 'Akash Chouhan',
-    industry: 'Automotive & Heavy Assembly',
-    location: 'Kondapalli Industrial Area, Ibrahimpatnam',
-    district: 'NTR District',
-    mandal: 'Ibrahimpatnam',
-    village: 'Kondapalli Industrial Corridor',
-    eligibleMandals: ['Ibrahimpatnam', 'Vijayawada Rural', 'Mylavaram', 'G.Konduru'],
-    eligibleVillages: ['Kondapalli', 'Ibrahimpatnam', 'Gollapudi', 'Nunna', 'Velagaleru'],
-    size: '2000-5000 employees',
-    cin: 'U34100AP2019PTC112345',
-    gstin: '37ABCDE5678F1Z9',
-    verificationStatus: 'VERIFIED',
-    registrationDate: '2026-08-10',
-    activeJobsCount: 3,
-  },
-  {
-    id: 'comp-4',
-    name: 'Ultratech Cement & Infrastructure',
-    recruiter: 'Girish Chand',
-    industry: 'Manufacturing & Civil Testing',
-    location: 'Industrial Corridor, Jaggaiahpet, NTR District',
-    district: 'NTR District',
-    mandal: 'Jaggaiahpet',
-    village: 'Cement Nagar Industrial Area',
-    eligibleMandals: ['Jaggaiahpet', 'Nandigama', 'Tiruvuru', 'Kanchikacherla'],
-    eligibleVillages: ['All Local Mandal Villages'],
-    size: '500-1500 employees',
-    cin: 'U26940AP2016PTC087654',
-    gstin: '37ABCDE4321F1Z8',
-    verificationStatus: 'VERIFIED',
-    registrationDate: '2026-08-15',
-    activeJobsCount: 2,
-  },
-  {
-    id: 'comp-5',
-    name: 'DMart Retail AP Operations',
-    recruiter: 'Kiran Deshmukh',
-    industry: 'Retail Chain & Supply Chain',
-    location: 'Bhavanipuram & Patamata, Vijayawada Urban',
-    district: 'NTR District',
-    mandal: 'Vijayawada Urban',
-    village: 'Bhavanipuram Central',
-    eligibleMandals: ['All Mandals of NTR District'],
-    eligibleVillages: ['All Villages & Wards'],
-    size: '250-500 employees',
-    cin: 'U52100AP2020PTC112233',
-    gstin: '37ABCDE1122F1Z1',
-    verificationStatus: 'VERIFIED',
-    registrationDate: '2026-09-03',
-    activeJobsCount: 2,
-  },
-];
-
-// ─── 5. SEED JOBS ──────────────────────────────────────────────────────────
-const SEED_JOBS = [
-  {
-    id: 'job-101',
-    title: 'Senior Frontend Engineer (React / TypeScript)',
-    company: 'ABC Technologies Pvt Ltd',
-    location: 'Bengaluru, Karnataka',
-    experience: '3-5 years',
-    salary: '₹16,00,000 - ₹24,00,000 / year',
-    recruiter: 'Arjun Reddy',
-    postedDate: '2026-08-15',
-    status: 'ACTIVE',
-    applicantsCount: 78,
-    type: 'Full-time',
-  },
-  {
-    id: 'job-102',
-    title: 'Senior Python & Cloud Backend Developer',
-    company: 'ABC Technologies Pvt Ltd',
-    location: 'Hyderabad, Telangana',
-    experience: '3-6 years',
-    salary: '₹14,00,000 - ₹22,00,000 / year',
-    recruiter: 'Arjun Reddy',
-    postedDate: '2026-08-18',
-    status: 'ACTIVE',
-    applicantsCount: 45,
-    type: 'Full-time',
-  },
-  {
-    id: 'job-103',
-    title: 'DevOps & Cloud Infrastructure Specialist',
-    company: 'ABC Technologies Pvt Ltd',
-    location: 'Remote (India)',
-    experience: '4-7 years',
-    salary: '₹20,00,000 - ₹30,00,000 / year',
-    recruiter: 'Arjun Reddy',
-    postedDate: '2026-08-20',
-    status: 'ACTIVE',
-    applicantsCount: 32,
-    type: 'Full-time',
-  },
-  {
-    id: 'job-104',
-    title: 'AI / ML Engineer — Computer Vision & NLP',
-    company: 'ABC Technologies Pvt Ltd',
-    location: 'Bengaluru, Karnataka',
-    experience: '2-4 years',
-    salary: '₹18,00,000 - ₹26,00,000 / year',
-    recruiter: 'Arjun Reddy',
-    postedDate: '2026-08-24',
-    status: 'PENDING',
-    applicantsCount: 12,
-    type: 'Full-time',
-  },
-  {
-    id: 'job-201',
-    title: 'Full Stack UI Architect (React / Node.js)',
-    company: 'Tech Solutions Global Ltd',
-    location: 'Hyderabad, Telangana',
-    experience: '4-8 years',
-    salary: '₹18,00,000 - ₹28,00,000 / year',
-    recruiter: 'Sneha Rao',
-    postedDate: '2026-08-10',
-    status: 'ACTIVE',
-    applicantsCount: 64,
-    type: 'Full-time',
-  },
-  {
-    id: 'job-202',
-    title: 'Cloud Data Platform Engineer (Snowflake/PySpark)',
-    company: 'Tech Solutions Global Ltd',
-    location: 'Visakhapatnam, AP',
-    experience: '3-5 years',
-    salary: '₹15,00,000 - ₹22,00,000 / year',
-    recruiter: 'Sneha Rao',
-    postedDate: '2026-08-16',
-    status: 'ACTIVE',
-    applicantsCount: 38,
-    type: 'Full-time',
-  },
-  {
-    id: 'job-301',
-    title: 'Senior Blockchain & Solidity Engineer',
-    company: 'Fintech Corp India Pvt Ltd',
-    location: 'Mumbai, Maharashtra',
-    experience: '3-6 years',
-    salary: '₹22,00,000 - ₹35,00,000 / year',
-    recruiter: 'Rahul Mehta',
-    postedDate: '2026-09-02',
-    status: 'PENDING',
-    applicantsCount: 0,
-    type: 'Full-time',
-  },
-  {
-    id: 'job-302',
-    title: 'Clinical Data Pipeline Lead',
-    company: 'HealthPlus Systems Ltd',
-    location: 'Bengaluru, Karnataka',
-    experience: '4-7 years',
-    salary: '₹18,00,000 - ₹25,00,000 / year',
-    recruiter: 'Divya Iyer',
-    postedDate: '2026-09-03',
-    status: 'PENDING',
-    applicantsCount: 0,
-    type: 'Full-time',
-  }
-];
-
-// ─── 6. SEED INTERNSHIPS ───────────────────────────────────────────────────
-const SEED_INTERNSHIPS = [
-  {
-    id: 'int-101',
-    title: 'Frontend React Development Intern',
-    company: 'ABC Technologies Pvt Ltd',
-    duration: '6 Months',
-    stipend: '₹25,000 / month',
-    location: 'Bengaluru, Karnataka',
-    submittedDate: '2026-08-16',
-    status: 'ACTIVE',
-    openings: 4,
-    applicantsCount: 42,
-  },
-  {
-    id: 'int-102',
-    title: 'Cloud Infrastructure & DevOps Intern',
-    company: 'ABC Technologies Pvt Ltd',
-    duration: '6 Months',
-    stipend: '₹30,000 / month',
-    location: 'Hyderabad, Telangana',
-    submittedDate: '2026-08-19',
-    status: 'ACTIVE',
-    openings: 2,
-    applicantsCount: 28,
-  },
-  {
-    id: 'int-103',
-    title: 'AI & Data Science Engineering Intern',
-    company: 'ABC Technologies Pvt Ltd',
-    duration: '6 Months',
-    stipend: '₹28,000 / month',
-    location: 'Remote (India)',
-    submittedDate: '2026-08-25',
-    status: 'PENDING',
-    openings: 2,
-    applicantsCount: 19,
-  },
-  {
-    id: 'int-201',
-    title: 'Fintech Microservices & Backend Intern',
-    company: 'Tech Solutions Global Ltd',
-    duration: '6 Months',
-    stipend: '₹22,000 / month',
-    location: 'Hyderabad, Telangana',
-    submittedDate: '2026-08-18',
-    status: 'ACTIVE',
-    openings: 3,
-    applicantsCount: 35,
-  },
-  {
-    id: 'int-301',
-    title: 'Smart Medical Devices Firmware Intern',
-    company: 'HealthPlus Systems Ltd',
-    duration: '3 Months',
-    stipend: '₹20,000 / month',
-    location: 'Bengaluru, Karnataka',
-    submittedDate: '2026-09-02',
-    status: 'PENDING',
-    openings: 2,
-    applicantsCount: 0,
-  }
-];
-
-// ─── 7. SEED APPLICATIONS MONITORING ──────────────────────────────────────
-const SEED_APPLICATIONS = [
-  {
-    id: 'app-1',
-    candidate: 'Priya Sharma',
-    candidateEmail: 'priya.sharma@example.com',
-    job: 'Senior Frontend Engineer (React / TypeScript)',
-    company: 'ABC Technologies Pvt Ltd',
-    appliedDate: '2026-08-20',
-    status: 'SHORTLISTED',
-  },
-  {
-    id: 'app-2',
-    candidate: 'Rahul Kumar',
-    candidateEmail: 'rahul.kumar@example.com',
-    job: 'Senior Python & Cloud Backend Developer',
-    company: 'ABC Technologies Pvt Ltd',
-    appliedDate: '2026-08-21',
-    status: 'INTERVIEW',
-  },
-  {
-    id: 'app-3',
-    candidate: 'Vikram Sethi',
-    candidateEmail: 'vikram.sethi@example.com',
-    job: 'DevOps & Cloud Infrastructure Specialist',
-    company: 'ABC Technologies Pvt Ltd',
-    appliedDate: '2026-08-22',
-    status: 'SELECTED',
-  },
-  {
-    id: 'app-4',
-    candidate: 'Ananya Roy',
-    candidateEmail: 'ananya.roy@example.com',
-    job: 'AI / ML Engineer — Computer Vision & NLP',
-    company: 'ABC Technologies Pvt Ltd',
-    appliedDate: '2026-08-24',
-    status: 'APPLIED',
-  },
-  {
-    id: 'app-5',
-    candidate: 'Sneha Kulkarni',
-    candidateEmail: 'sneha.kulkarni@example.com',
-    job: 'Full Stack UI Architect (React / Node.js)',
-    company: 'Tech Solutions Global Ltd',
-    appliedDate: '2026-08-25',
-    status: 'SHORTLISTED',
-  },
-  {
-    id: 'app-6',
-    candidate: 'Karthik Varma',
-    candidateEmail: 'karthik.v@example.com',
-    job: 'Cloud Data Platform Engineer',
-    company: 'Tech Solutions Global Ltd',
-    appliedDate: '2026-08-26',
-    status: 'APPLIED',
-  },
-];
-
-// ─── 8. SEED JOB MELAS & REGISTRATIONS ────────────────────────────────────
-const SEED_JOB_MELAS = [
-  {
-    id: 'mela-1',
-    event: 'Bengaluru Mega IT & Cloud Career Expo 2026',
-    title: 'Bengaluru Mega IT & Cloud Career Expo 2026',
-    description: "South India's premier multi-sector recruitment drive bringing together leading IT, Cloud, and Product companies. Walk-in technical interviews and spot offer letters.",
-    date: '2026-09-18',
-    startTime: '09:00 AM',
-    endTime: '05:30 PM',
-    time: '09:00 AM - 05:30 PM',
-    regStartDate: '2026-08-01',
-    regEndDate: '2026-09-15',
-    maxCapacity: 5000,
-    venue: 'Bengaluru International Exhibition Centre (BIEC), Hall 3 & 4',
-    city: 'Bengaluru',
-    state: 'Karnataka',
-    location: 'Bengaluru, Karnataka',
-    organizer: 'NTR Vikasa State Employment Authority',
-    companiesCount: 84,
-    vacanciesCount: 4200,
-    status: 'APPROVED',
-    registeredCandidatesCount: 1420,
-    createdByAdmin: true,
-    banner: '/hero2.jpg',
-    posterImage: '/hero2.jpg',
-    image: '/hero2.jpg',
-    participatingCompanies: [
-      {
-        id: 'pmc-1',
-        companyId: 'comp-foxconn',
-        company: 'Foxconn',
-        recruiter: 'Arjun Reddy',
-        position: 'Mobile Operator',
-        qualification: 'ITI / Diploma',
-        experience: '—',
-        salary: '₹18,279',
-        vacancies: 100,
-        applications: 22,
-        location: 'Hall 3, Booth A-01',
-        notes: 'Assembly line operations and electronic device inspection.'
-      },
-      {
-        id: 'pmc-2',
-        companyId: 'comp-seoyon',
-        company: 'Seoyon E-Hwa Summit',
-        recruiter: 'Sneha Rao',
-        position: 'GET',
-        qualification: 'B.E/B.Tech',
-        experience: '0–1',
-        salary: '₹18,500',
-        vacancies: 20,
-        applications: 21,
-        location: 'Hall 3, Booth A-02',
-        notes: 'Automotive interior component manufacturing & quality control.'
-      },
-      {
-        id: 'pmc-3',
-        companyId: 'comp-icici',
-        company: 'ICICI Bank',
-        recruiter: 'Rahul Mehta',
-        position: 'Relationship Manager',
-        qualification: 'Any Graduation',
-        experience: '0–1',
-        salary: '₹32,000–₹38,000',
-        vacancies: 20,
-        applications: 15,
-        location: 'Hall 3, Booth A-03',
-        notes: 'Retail branch relationship management and customer onboarding.'
-      },
-      {
-        id: 'pmc-4',
-        companyId: 'comp-1',
-        company: 'ABC Technologies Pvt Ltd',
-        recruiter: 'Arjun Reddy',
-        position: 'Senior Frontend Engineer / Cloud Developer',
-        qualification: 'B.Tech / B.E / MCA in CS / IT',
-        experience: '2-5 Years',
-        salary: '₹12,00,000 - ₹20,00,000 / year',
-        vacancies: 45,
-        applications: 120,
-        location: 'Stall B-14 (Hall 3)',
-        notes: 'Conducting direct spot technical coding screenings on-site.'
-      },
-      {
-        id: 'pmc-5',
-        companyId: 'comp-2',
-        company: 'Tech Solutions Global Ltd',
-        recruiter: 'Sneha Rao',
-        position: 'Full Stack UI Architect & Backend Lead',
-        qualification: 'B.Tech / MCA / M.Sc',
-        experience: '3-6 Years',
-        salary: '₹15,00,000 - ₹24,00,000 / year',
-        vacancies: 30,
-        applications: 85,
-        location: 'Stall A-08 (Hall 3)',
-        notes: 'Bring 3 printed resumes and photo ID.'
-      },
-      {
-        id: 'pmc-6',
-        companyId: 'comp-3',
-        company: 'Fintech Corp India Pvt Ltd',
-        recruiter: 'Rahul Mehta',
-        position: 'Blockchain Engineer & Smart Contract Dev',
-        qualification: 'B.Tech / B.E Computer Science',
-        experience: '1-4 Years',
-        salary: '₹14,00,000 - ₹22,00,000 / year',
-        vacancies: 20,
-        applications: 60,
-        location: 'Stall C-02 (Hall 4)',
-        notes: 'Walk-in technical assessment between 10 AM - 3 PM.'
-      },
-      {
-        id: 'pmc-7',
-        companyId: 'comp-4',
-        company: 'HealthPlus Systems Ltd',
-        recruiter: 'Divya Iyer',
-        position: 'Clinical Data Pipeline Lead & Bio-Informatics',
-        qualification: 'B.Tech / M.Tech / M.Sc Bioinformatics',
-        experience: '2-5 Years',
-        salary: '₹10,00,000 - ₹18,00,000 / year',
-        vacancies: 15,
-        applications: 40,
-        location: 'Stall D-05 (Hall 4)',
-        notes: 'Immediate spot offers for qualified candidates.'
-      },
-      {
-        id: 'pmc-8',
-        companyId: 'comp-tcs',
-        company: 'Tata Consultancy Services',
-        recruiter: 'Pooja Sharma',
-        position: 'Systems Engineer & Digital Developer',
-        qualification: 'B.Tech / B.E / MCA',
-        experience: '0-2 Years',
-        salary: '₹4,50,000 - ₹7,00,000 / year',
-        vacancies: 150,
-        applications: 180,
-        location: 'Hall 3, Booth B-01',
-        notes: 'Ninja and Digital track on-spot interview.'
-      },
-      {
-        id: 'pmc-9',
-        companyId: 'comp-infosys',
-        company: 'Infosys Limited',
-        recruiter: 'Vikram Malhotra',
-        position: 'Digital Specialist Engineer',
-        qualification: 'B.Tech / B.E / M.Tech',
-        experience: '0-3 Years',
-        salary: '₹6,50,000 - ₹9,50,000 / year',
-        vacancies: 120,
-        applications: 145,
-        location: 'Hall 3, Booth B-02',
-        notes: 'Python, Java, and Cloud microservices technical rounds.'
-      },
-      {
-        id: 'pmc-10',
-        companyId: 'comp-wipro',
-        company: 'Wipro Technologies',
-        recruiter: 'Kavita Nair',
-        position: 'Project Engineer (Cloud & Cybersecurity)',
-        qualification: 'B.Tech / B.E / MCA',
-        experience: '1-3 Years',
-        salary: '₹4,00,000 - ₹6,50,000 / year',
-        vacancies: 80,
-        applications: 95,
-        location: 'Hall 3, Booth B-03',
-        notes: 'Spot coding evaluation on laptops.'
-      },
-      {
-        id: 'pmc-11',
-        companyId: 'comp-hcl',
-        company: 'HCL Technologies',
-        recruiter: 'Suresh Menon',
-        position: 'Associate Cloud Support Engineer',
-        qualification: 'Any Graduate / B.Tech',
-        experience: '0-2 Years',
-        salary: '₹4,25,000 - ₹6,00,000 / year',
-        vacancies: 65,
-        applications: 78,
-        location: 'Hall 3, Booth B-04',
-        notes: '24x7 rotation shifts with transport allowance.'
-      },
-      {
-        id: 'pmc-12',
-        companyId: 'comp-techm',
-        company: 'Tech Mahindra',
-        recruiter: 'Anjali Deshmukh',
-        position: 'Telecom Network & 5G Operations Trainee',
-        qualification: 'Diploma / B.Sc / BCA / B.Tech',
-        experience: '0-1 Year',
-        salary: '₹3,60,000 - ₹4,80,000 / year',
-        vacancies: 50,
-        applications: 62,
-        location: 'Hall 3, Booth B-05',
-        notes: 'Immediate deployment in Bangalore & Hyderabad.'
-      },
-      {
-        id: 'pmc-13',
-        companyId: 'comp-ltts',
-        company: 'L&T Technology Services',
-        recruiter: 'Ramesh Patel',
-        position: 'Embedded Firmware Developer',
-        qualification: 'B.E / B.Tech Electronics & Comm',
-        experience: '1-3 Years',
-        salary: '₹5,50,000 - ₹8,50,000 / year',
-        vacancies: 40,
-        applications: 52,
-        location: 'Hall 3, Booth C-01',
-        notes: 'Embedded C, RTOS, and CAN bus protocols.'
-      },
-      {
-        id: 'pmc-14',
-        companyId: 'comp-lt',
-        company: 'Larsen & Toubro (L&T)',
-        recruiter: 'Sunil Verma',
-        position: 'Graduate Engineer Trainee - Infrastructure',
-        qualification: 'B.Tech / B.E (Civil / Mech / Electrical)',
-        experience: '0-1 Year',
-        salary: '₹6,00,000 - ₹8,00,000 / year',
-        vacancies: 75,
-        applications: 110,
-        location: 'Hall 3, Booth C-02',
-        notes: 'Project site leadership & engineering operations.'
-      },
-      {
-        id: 'pmc-15',
-        companyId: 'comp-reliance',
-        company: 'Reliance Retail',
-        recruiter: 'Meera Nambiar',
-        position: 'Store Operations & Logistics Lead',
-        qualification: 'Any Degree / MBA',
-        experience: '0-2 Years',
-        salary: '₹3,50,000 - ₹5,50,000 / year',
-        vacancies: 90,
-        applications: 84,
-        location: 'Hall 3, Booth C-03',
-        notes: 'Smart Bazaar and Digital retail stores.'
-      },
-      {
-        id: 'pmc-16',
-        companyId: 'comp-hdfc',
-        company: 'HDFC Bank',
-        recruiter: 'Karthik Swaminathan',
-        position: 'Customer Service & Branch Operations',
-        qualification: 'Any Graduate',
-        experience: '0-2 Years',
-        salary: '₹3,80,000 - ₹5,00,000 / year',
-        vacancies: 55,
-        applications: 68,
-        location: 'Hall 3, Booth C-04',
-        notes: 'Direct branch banking and account management.'
-      },
-      {
-        id: 'pmc-17',
-        companyId: 'comp-axis',
-        company: 'Axis Bank',
-        recruiter: 'Deepak Joshi',
-        position: 'Business Development Executive',
-        qualification: 'Any Degree',
-        experience: '0-1 Year',
-        salary: '₹3,20,000 - ₹4,50,000 / year',
-        vacancies: 45,
-        applications: 54,
-        location: 'Hall 3, Booth C-05',
-        notes: 'Retail financial products and SME loans.'
-      },
-      {
-        id: 'pmc-18',
-        companyId: 'comp-sbi',
-        company: 'State Bank of India (SBI Cards)',
-        recruiter: 'Priya Namboodiri',
-        position: 'Credit Risk Analyst',
-        qualification: 'B.Com / MBA Finance / Statistics',
-        experience: '1-3 Years',
-        salary: '₹5,00,000 - ₹7,50,000 / year',
-        vacancies: 35,
-        applications: 42,
-        location: 'Hall 3, Booth D-01',
-        notes: 'Portfolio risk and delinquency modeling.'
-      },
-      {
-        id: 'pmc-19',
-        companyId: 'comp-mahindra',
-        company: 'Mahindra & Mahindra',
-        recruiter: 'Rajesh Kulkarni',
-        position: 'Quality Control Inspector',
-        qualification: 'Diploma / B.Tech Mechanical',
-        experience: '0-2 Years',
-        salary: '₹4,00,000 - ₹5,50,000 / year',
-        vacancies: 60,
-        applications: 71,
-        location: 'Hall 3, Booth D-02',
-        notes: 'Automotive vehicle assembly testing.'
-      },
-      {
-        id: 'pmc-20',
-        companyId: 'comp-hyundai',
-        company: 'Hyundai Motor India',
-        recruiter: 'Vijay Anand',
-        position: 'Production Line Supervisor',
-        qualification: 'Diploma / B.E Automobile / Mech',
-        experience: '1-3 Years',
-        salary: '₹4,20,000 - ₹6,00,000 / year',
-        vacancies: 50,
-        applications: 59,
-        location: 'Hall 3, Booth D-03',
-        notes: 'Body shop and paint shop operations.'
-      },
-      {
-        id: 'pmc-21',
-        companyId: 'comp-ashok',
-        company: 'Ashok Leyland',
-        recruiter: 'Manoj Bhat',
-        position: 'Assembly Line Technician',
-        qualification: 'ITI / Diploma',
-        experience: 'Fresher',
-        salary: '₹19,500 - ₹24,000 / month',
-        vacancies: 70,
-        applications: 83,
-        location: 'Hall 3, Booth D-04',
-        notes: 'Commercial chassis assembly and powertrain integration.'
-      },
-      {
-        id: 'pmc-22',
-        companyId: 'comp-bosch',
-        company: 'Bosch India',
-        recruiter: 'Harish Rao',
-        position: 'Automotive Software QA & Validation',
-        qualification: 'B.Tech / M.Tech ECE / CS',
-        experience: '1-4 Years',
-        salary: '₹7,00,000 - ₹12,00,000 / year',
-        vacancies: 30,
-        applications: 48,
-        location: 'Hall 4, Booth A-01',
-        notes: 'ADAS and ECU automated test rigs.'
-      },
-      {
-        id: 'pmc-23',
-        companyId: 'comp-schneider',
-        company: 'Schneider Electric',
-        recruiter: 'Shweta Sengupta',
-        position: 'Industrial Automation Engineer',
-        qualification: 'B.E Electrical / EEE / Instrumentation',
-        experience: '2-4 Years',
-        salary: '₹6,50,000 - ₹10,50,000 / year',
-        vacancies: 25,
-        applications: 36,
-        location: 'Hall 4, Booth A-02',
-        notes: 'PLC, SCADA, and IoT energy management.'
-      },
-      {
-        id: 'pmc-24',
-        companyId: 'comp-havells',
-        company: 'Havells India',
-        recruiter: 'Alok Mishra',
-        position: 'Electrical Testing & Standards Engineer',
-        qualification: 'Diploma / B.Tech Electrical',
-        experience: '1-3 Years',
-        salary: '₹4,00,000 - ₹6,00,000 / year',
-        vacancies: 35,
-        applications: 41,
-        location: 'Hall 4, Booth A-03',
-        notes: 'Switchgear and circuit breaker testing.'
-      },
-      {
-        id: 'pmc-25',
-        companyId: 'comp-drreddys',
-        company: "Dr. Reddy's Laboratories",
-        recruiter: 'Dr. Swati Sen',
-        position: 'QC Chemist & Formulation Scientist',
-        qualification: 'B.Pharm / M.Pharm / M.Sc Chemistry',
-        experience: '1-3 Years',
-        salary: '₹4,80,000 - ₹7,20,000 / year',
-        vacancies: 40,
-        applications: 49,
-        location: 'Hall 4, Booth A-04',
-        notes: 'HPLC, GC, and GMP documentation.'
-      },
-      {
-        id: 'pmc-26',
-        companyId: 'comp-sunpharma',
-        company: 'Sun Pharmaceutical Industries',
-        recruiter: 'Venkatesh Prasad',
-        position: 'Production Chemist',
-        qualification: 'B.Sc Chemistry / B.Pharm',
-        experience: '0-2 Years',
-        salary: '₹3,80,000 - ₹5,20,000 / year',
-        vacancies: 50,
-        applications: 58,
-        location: 'Hall 4, Booth B-01',
-        notes: 'Bulk drug synthesis and regulatory compliance.'
-      },
-      {
-        id: 'pmc-27',
-        companyId: 'comp-cipla',
-        company: 'Cipla Limited',
-        recruiter: 'Neha Singhania',
-        position: 'Regulatory Affairs Associate',
-        qualification: 'M.Pharm / B.Pharm',
-        experience: '1-3 Years',
-        salary: '₹5,00,000 - ₹7,50,000 / year',
-        vacancies: 25,
-        applications: 33,
-        location: 'Hall 4, Booth B-02',
-        notes: 'USFDA and EMA dossier filings.'
-      },
-      {
-        id: 'pmc-28',
-        companyId: 'comp-biocon',
-        company: 'Biocon Limited',
-        recruiter: 'Dr. Arvind Hegde',
-        position: 'Bioprocess Technician',
-        qualification: 'M.Sc Biotech / B.Tech Biotech',
-        experience: '0-2 Years',
-        salary: '₹4,50,000 - ₹6,80,000 / year',
-        vacancies: 30,
-        applications: 39,
-        location: 'Hall 4, Booth B-03',
-        notes: 'Bioreactor scaling and chromatography purification.'
-      },
-      {
-        id: 'pmc-29',
-        companyId: 'comp-apollo',
-        company: 'Apollo Hospitals Group',
-        recruiter: 'Preeti Roy',
-        position: 'Healthcare Administration Associate',
-        qualification: 'Any Graduate / MHA / BHM',
-        experience: '0-2 Years',
-        salary: '₹3,20,000 - ₹4,80,000 / year',
-        vacancies: 45,
-        applications: 52,
-        location: 'Hall 4, Booth B-04',
-        notes: 'Hospital guest relations and billing desk operations.'
-      },
-      {
-        id: 'pmc-30',
-        companyId: 'comp-amazon',
-        company: 'Amazon Development Centre',
-        recruiter: 'Karan Kapoor',
-        position: 'Cloud Support Associate (AWS)',
-        qualification: 'B.Tech / BCA / B.Sc IT',
-        experience: '0-2 Years',
-        salary: '₹8,00,000 - ₹14,00,000 / year',
-        vacancies: 40,
-        applications: 115,
-        location: 'Hall 4, Booth C-01',
-        notes: 'Linux, Networking, and AWS core services troubleshooting.'
-      },
-      {
-        id: 'pmc-31',
-        companyId: 'comp-flipkart',
-        company: 'Flipkart Internet',
-        recruiter: 'Rohit Agarwal',
-        position: 'Warehouse Operations Executive',
-        qualification: 'Any Graduate',
-        experience: '0-2 Years',
-        salary: '₹3,60,000 - ₹5,00,000 / year',
-        vacancies: 80,
-        applications: 92,
-        location: 'Hall 4, Booth C-02',
-        notes: 'Supply chain automation and inventory tracking.'
-      },
-      {
-        id: 'pmc-32',
-        companyId: 'comp-swiggy',
-        company: 'Swiggy (Bundl Technologies)',
-        recruiter: 'Siddharth Jain',
-        position: 'City Logistics Lead',
-        qualification: 'Any Graduate',
-        experience: '1-3 Years',
-        salary: '₹4,50,000 - ₹6,50,000 / year',
-        vacancies: 35,
-        applications: 47,
-        location: 'Hall 4, Booth C-03',
-        notes: 'Instamart delivery dark-store optimization.'
-      },
-      {
-        id: 'pmc-33',
-        companyId: 'comp-zomato',
-        company: 'Zomato Limited',
-        recruiter: 'Prashant Saxena',
-        position: 'Merchant Acquisition Manager',
-        qualification: 'Any Graduate',
-        experience: '0-2 Years',
-        salary: '₹4,00,000 - ₹6,00,000 / year',
-        vacancies: 40,
-        applications: 55,
-        location: 'Hall 4, Booth C-04',
-        notes: 'B2B restaurant onboarding and POS rollout.'
-      },
-      {
-        id: 'pmc-34',
-        companyId: 'comp-razorpay',
-        company: 'Razorpay Software',
-        recruiter: 'Gaurav Tandon',
-        position: 'Tech Support Specialist',
-        qualification: 'BCA / B.Tech / B.Sc',
-        experience: '0-2 Years',
-        salary: '₹5,50,000 - ₹8,00,000 / year',
-        vacancies: 25,
-        applications: 41,
-        location: 'Hall 4, Booth D-01',
-        notes: 'Payment gateway API integrations and webhook debugging.'
-      },
-      {
-        id: 'pmc-35',
-        companyId: 'comp-paytm',
-        company: 'PayTM (One97 Communications)',
-        recruiter: 'Aditya Sen',
-        position: 'Field Sales Executive (Soundbox & POS)',
-        qualification: '10+2 / Any Degree',
-        experience: '0-1 Year',
-        salary: '₹2,80,000 - ₹4,00,000 / year',
-        vacancies: 100,
-        applications: 88,
-        location: 'Hall 4, Booth D-02',
-        notes: 'Offline merchant payment qr-code expansion.'
-      },
-      {
-        id: 'pmc-36',
-        companyId: 'comp-phonepe',
-        company: 'PhonePe Private Limited',
-        recruiter: 'Richa Chadha',
-        position: 'Operations Analyst',
-        qualification: 'B.Com / B.Sc / B.Tech',
-        experience: '0-2 Years',
-        salary: '₹4,50,000 - ₹6,80,000 / year',
-        vacancies: 30,
-        applications: 46,
-        location: 'Hall 4, Booth D-03',
-        notes: 'Reconciliation and UPI chargeback investigations.'
-      },
-      {
-        id: 'pmc-37',
-        companyId: 'comp-delhivery',
-        company: 'Delhivery Limited',
-        recruiter: 'Santosh Gowda',
-        position: 'Hub Operations Supervisor',
-        qualification: 'Any Degree',
-        experience: '1-3 Years',
-        salary: '₹3,80,000 - ₹5,20,000 / year',
-        vacancies: 60,
-        applications: 67,
-        location: 'Pavilion 1, Stall 01',
-        notes: 'Express parcel sortation center line-haul dispatch.'
-      },
-      {
-        id: 'pmc-38',
-        companyId: 'comp-shadowfax',
-        company: 'Shadowfax Technologies',
-        recruiter: 'Naveen Kumar',
-        position: 'Fleet Operations Associate',
-        qualification: 'Any Degree / 10+2',
-        experience: '0-1 Year',
-        salary: '₹2,60,000 - ₹3,60,000 / year',
-        vacancies: 70,
-        applications: 74,
-        location: 'Pavilion 1, Stall 02',
-        notes: 'Hyperlocal rider onboarding and route dispatch.'
-      },
-      {
-        id: 'pmc-39',
-        companyId: 'comp-bluedart',
-        company: 'Blue Dart Express',
-        recruiter: 'Mahesh Pillai',
-        position: 'Dispatch Logistics Coordinator',
-        qualification: '10+2 / Any Degree',
-        experience: '0-2 Years',
-        salary: '₹2,80,000 - ₹3,80,000 / year',
-        vacancies: 50,
-        applications: 53,
-        location: 'Pavilion 1, Stall 03',
-        notes: 'Air-cargo cargo handling and barcode tracking.'
-      },
-      {
-        id: 'pmc-40',
-        companyId: 'comp-zoho',
-        company: 'Zoho Corporation',
-        recruiter: 'Shruti Natarajan',
-        position: 'Junior Technical Support Engineer',
-        qualification: 'Any Degree / B.Tech',
-        experience: '0-2 Years',
-        salary: '₹5,00,000 - ₹7,50,000 / year',
-        vacancies: 45,
-        applications: 82,
-        location: 'Pavilion 1, Stall 04',
-        notes: 'Zoho CRM & Books cloud suite support.'
-      },
-      {
-        id: 'pmc-41',
-        companyId: 'comp-freshworks',
-        company: 'Freshworks Technologies',
-        recruiter: 'Varun Murthy',
-        position: 'Customer Success Associate',
-        qualification: 'Any Graduate',
-        experience: '0-2 Years',
-        salary: '₹5,50,000 - ₹8,50,000 / year',
-        vacancies: 30,
-        applications: 54,
-        location: 'Pavilion 1, Stall 05',
-        notes: 'SaaS client relationship and product onboarding.'
-      },
-      {
-        id: 'pmc-42',
-        companyId: 'comp-postman',
-        company: 'Postman Software',
-        recruiter: 'Tarun Gill',
-        position: 'Developer Support Engineer',
-        qualification: 'B.Tech / BCA',
-        experience: '1-3 Years',
-        salary: '₹8,00,000 - ₹14,00,000 / year',
-        vacancies: 15,
-        applications: 38,
-        location: 'Pavilion 1, Stall 06',
-        notes: 'REST, GraphQL, and WebSocket API client troubleshooting.'
-      },
-      {
-        id: 'pmc-43',
-        companyId: 'comp-browserstack',
-        company: 'BrowserStack',
-        recruiter: 'Nikhil Bansal',
-        position: 'SDET / Automation Engineer',
-        qualification: 'B.Tech / MCA',
-        experience: '1-3 Years',
-        salary: '₹9,00,000 - ₹16,00,000 / year',
-        vacancies: 20,
-        applications: 44,
-        location: 'Pavilion 1, Stall 07',
-        notes: 'Selenium, Appium, and Cypress test infrastructure.'
-      },
-      {
-        id: 'pmc-44',
-        companyId: 'comp-ola',
-        company: 'Ola Electric',
-        recruiter: 'Ritu Raj',
-        position: 'Battery Assembly Technician',
-        qualification: 'ITI / Diploma',
-        experience: '0-2 Years',
-        salary: '₹20,000 - ₹26,00,000 / year',
-        vacancies: 80,
-        applications: 91,
-        location: 'Pavilion 1, Stall 08',
-        notes: 'EV 4680 cell pack automated welding & BMS tests.'
-      },
-      {
-        id: 'pmc-45',
-        companyId: 'comp-ather',
-        company: 'Ather Energy',
-        recruiter: 'Sanjay Somani',
-        position: 'EV Diagnostic Specialist',
-        qualification: 'Diploma / B.Tech Mech/EEE',
-        experience: '0-2 Years',
-        salary: '₹3,80,000 - ₹5,50,000 / year',
-        vacancies: 40,
-        applications: 49,
-        location: 'Pavilion 1, Stall 09',
-        notes: 'Smart scooter telematics and motor controller maintenance.'
-      },
-      {
-        id: 'pmc-46',
-        companyId: 'comp-tataelxsi',
-        company: 'Tata Elxsi',
-        recruiter: 'Bhavna Seth',
-        position: 'Embedded Linux Developer',
-        qualification: 'B.Tech / M.Tech ECE',
-        experience: '1-4 Years',
-        salary: '₹6,50,000 - ₹11,00,000 / year',
-        vacancies: 35,
-        applications: 52,
-        location: 'Pavilion 1, Stall 10',
-        notes: 'Connected vehicle infotainment systems.'
-      },
-      {
-        id: 'pmc-47',
-        companyId: 'comp-titan',
-        company: 'Titan Company',
-        recruiter: 'Mansi Gupta',
-        position: 'Retail Merchandising Associate',
-        qualification: 'Any Graduate',
-        experience: '0-2 Years',
-        salary: '₹3,40,000 - ₹4,80,000 / year',
-        vacancies: 30,
-        applications: 37,
-        location: 'Pavilion 2, Stall 01',
-        notes: 'Tanishq and Fastrack retail distribution management.'
-      },
-      {
-        id: 'pmc-48',
-        companyId: 'comp-godrej',
-        company: 'Godrej Consumer Products',
-        recruiter: 'Chandan Roy',
-        position: 'Territory Sales Executive',
-        qualification: 'Any Degree / MBA',
-        experience: '1-3 Years',
-        salary: '₹4,20,000 - ₹6,00,000 / year',
-        vacancies: 40,
-        applications: 48,
-        location: 'Pavilion 2, Stall 02',
-        notes: 'FMCG distributor network and channel sales.'
-      },
-      {
-        id: 'pmc-49',
-        companyId: 'comp-asianpaints',
-        company: 'Asian Paints',
-        recruiter: 'Nishant Kaushik',
-        position: 'Color Consultant & Technical Sales',
-        qualification: 'B.Sc / Any Degree',
-        experience: '0-2 Years',
-        salary: '₹3,60,000 - ₹5,00,000 / year',
-        vacancies: 45,
-        applications: 51,
-        location: 'Pavilion 2, Stall 03',
-        notes: 'Architectural finishes and dealer partner management.'
-      },
-      {
-        id: 'pmc-50',
-        companyId: 'comp-britannia',
-        company: 'Britannia Industries',
-        recruiter: 'Pallavi Reddy',
-        position: 'Food Quality Inspector',
-        qualification: 'B.Sc / M.Sc Food Tech',
-        experience: '0-2 Years',
-        salary: '₹3,80,000 - ₹5,20,000 / year',
-        vacancies: 30,
-        applications: 36,
-        location: 'Pavilion 2, Stall 04',
-        notes: 'FSSAI standards audit and automated packaging lines.'
-      },
-      {
-        id: 'pmc-51',
-        companyId: 'comp-marico',
-        company: 'Marico Limited',
-        recruiter: 'Kushal Dutta',
-        position: 'Supply Chain Trainee',
-        qualification: 'B.Tech / MBA Supply Chain',
-        experience: '0-2 Years',
-        salary: '₹4,50,000 - ₹6,50,000 / year',
-        vacancies: 25,
-        applications: 34,
-        location: 'Pavilion 2, Stall 05',
-        notes: 'Demand forecasting and warehouse inventory flow.'
-      },
-      {
-        id: 'pmc-52',
-        companyId: 'comp-itc',
-        company: 'ITC Limited',
-        recruiter: 'Subhashish Ghosh',
-        position: 'Brand Marketing Executive',
-        qualification: 'Any Graduate / MBA',
-        experience: '1-3 Years',
-        salary: '₹5,00,000 - ₹7,50,000 / year',
-        vacancies: 35,
-        applications: 47,
-        location: 'Pavilion 2, Stall 06',
-        notes: 'Consumer goods trade promotions & retail branding.'
-      },
-      {
-        id: 'pmc-53',
-        companyId: 'comp-ltimindtree',
-        company: 'LTIMindtree Limited',
-        recruiter: 'Vidya Sagar',
-        position: 'Java Microservices Developer',
-        qualification: 'B.Tech / MCA',
-        experience: '1-4 Years',
-        salary: '₹6,00,000 - ₹10,50,000 / year',
-        vacancies: 50,
-        applications: 72,
-        location: 'Pavilion 2, Stall 07',
-        notes: 'Spring Boot, Kafka, and Kubernetes cloud applications.'
-      },
-      {
-        id: 'pmc-54',
-        companyId: 'comp-capgemini',
-        company: 'Capgemini India',
-        recruiter: 'Prateek Shukla',
-        position: 'Cloud Infrastructure Analyst',
-        qualification: 'B.Tech / B.Sc / BCA',
-        experience: '0-2 Years',
-        salary: '₹4,50,000 - ₹7,00,000 / year',
-        vacancies: 70,
-        applications: 89,
-        location: 'Pavilion 2, Stall 08',
-        notes: 'Azure & AWS cloud migration support.'
-      },
-      {
-        id: 'pmc-55',
-        companyId: 'comp-cognizant',
-        company: 'Cognizant Technology Solutions',
-        recruiter: 'Kavya Shree',
-        position: 'Programmer Analyst Trainee',
-        qualification: 'B.Tech / MCA / M.Sc',
-        experience: '0-1 Year',
-        salary: '₹4,20,000 - ₹6,50,000 / year',
-        vacancies: 90,
-        applications: 112,
-        location: 'Pavilion 2, Stall 09',
-        notes: 'Full stack web development & cloud operations.'
-      },
-      {
-        id: 'pmc-56',
-        companyId: 'comp-accenture',
-        company: 'Accenture Solutions',
-        recruiter: 'Amol Chitnis',
-        position: 'Associate Software Engineer',
-        qualification: 'B.Tech / B.E (All Branches)',
-        experience: '0-1 Year',
-        salary: '₹4,80,000 - ₹7,50,000 / year',
-        vacancies: 100,
-        applications: 130,
-        location: 'Pavilion 2, Stall 10',
-        notes: 'Enterprise platform engineering and data analytics.'
-      },
-      {
-        id: 'pmc-57',
-        companyId: 'comp-ibm',
-        company: 'IBM India',
-        recruiter: 'Shailesh Gokhale',
-        position: 'System Administrator (Red Hat Linux)',
-        qualification: 'BCA / B.Tech / B.Sc',
-        experience: '1-3 Years',
-        salary: '₹5,50,000 - ₹9,00,000 / year',
-        vacancies: 40,
-        applications: 58,
-        location: 'Pavilion 3, Stall 01',
-        notes: 'Red Hat Enterprise Linux cluster maintenance.'
-      },
-      {
-        id: 'pmc-58',
-        companyId: 'comp-dell',
-        company: 'Dell Technologies',
-        recruiter: 'Tanvi Mathur',
-        position: 'Technical Support Specialist',
-        qualification: 'Any Graduate / BCA',
-        experience: '0-2 Years',
-        salary: '₹4,50,000 - ₹7,00,000 / year',
-        vacancies: 50,
-        applications: 68,
-        location: 'Pavilion 3, Stall 02',
-        notes: 'Enterprise server hardware and storage support.'
-      },
-      {
-        id: 'pmc-59',
-        companyId: 'comp-oracle',
-        company: 'Oracle India',
-        recruiter: 'Abhishek Pandey',
-        position: 'Database Support Engineer',
-        qualification: 'B.Tech / MCA',
-        experience: '1-3 Years',
-        salary: '₹7,50,000 - ₹13,00,000 / year',
-        vacancies: 30,
-        applications: 52,
-        location: 'Pavilion 3, Stall 03',
-        notes: 'Oracle Autonomous Database and SQL tuning.'
-      },
-      {
-        id: 'pmc-60',
-        companyId: 'comp-cisco',
-        company: 'Cisco Systems India',
-        recruiter: 'Radhika Menon',
-        position: 'TAC Network Support Engineer',
-        qualification: 'B.Tech ECE / CS',
-        experience: '1-3 Years',
-        salary: '₹9,00,000 - ₹15,00,000 / year',
-        vacancies: 25,
-        applications: 47,
-        location: 'Pavilion 3, Stall 04',
-        notes: 'Routing, switching, firewall, and SD-WAN troubleshooting.'
-      },
-      {
-        id: 'pmc-61',
-        companyId: 'comp-intel',
-        company: 'Intel Technology India',
-        recruiter: 'Vinod Nair',
-        position: 'SoC Validation Trainee',
-        qualification: 'B.Tech / M.Tech VLSI',
-        experience: '0-2 Years',
-        salary: '₹10,00,000 - ₹17,00,000 / year',
-        vacancies: 20,
-        applications: 39,
-        location: 'Pavilion 3, Stall 05',
-        notes: 'SystemVerilog and UVM chip verification.'
-      },
-      {
-        id: 'pmc-62',
-        companyId: 'comp-qualcomm',
-        company: 'Qualcomm India',
-        recruiter: 'Anirudh Das',
-        position: 'Wireless Modem QA Engineer',
-        qualification: 'B.E / B.Tech ECE',
-        experience: '1-3 Years',
-        salary: '₹9,50,000 - ₹16,00,000 / year',
-        vacancies: 20,
-        applications: 42,
-        location: 'Pavilion 3, Stall 06',
-        notes: '5G NR and LTE protocol stack testing.'
-      },
-      {
-        id: 'pmc-63',
-        companyId: 'comp-ti',
-        company: 'Texas Instruments',
-        recruiter: 'Kavitha Raman',
-        position: 'Analog Design Testing Engineer',
-        qualification: 'B.Tech / M.Tech Electronics',
-        experience: '1-3 Years',
-        salary: '₹11,00,000 - ₹18,00,000 / year',
-        vacancies: 15,
-        applications: 31,
-        location: 'Pavilion 3, Stall 07',
-        notes: 'Power management ICs and mixed-signal verification.'
-      },
-      {
-        id: 'pmc-64',
-        companyId: 'comp-amd',
-        company: 'AMD India',
-        recruiter: 'Girish Iyer',
-        position: 'Silicon Design Trainee',
-        qualification: 'B.Tech / M.Tech Microelectronics',
-        experience: '0-2 Years',
-        salary: '₹10,50,000 - ₹17,50,000 / year',
-        vacancies: 15,
-        applications: 33,
-        location: 'Pavilion 3, Stall 08',
-        notes: 'GPU architecture RTL synthesis and timing closure.'
-      },
-      {
-        id: 'pmc-65',
-        companyId: 'comp-nvidia',
-        company: 'Nvidia Graphics India',
-        recruiter: 'Sameer Khan',
-        position: 'Deep Learning Solutions QA',
-        qualification: 'B.Tech / M.Tech CS',
-        experience: '1-3 Years',
-        salary: '₹12,00,000 - ₹20,00,000 / year',
-        vacancies: 15,
-        applications: 40,
-        location: 'Pavilion 3, Stall 09',
-        notes: 'CUDA and TensorRT performance benchmarking.'
-      },
-      {
-        id: 'pmc-66',
-        companyId: 'comp-msft',
-        company: 'Microsoft India',
-        recruiter: 'Priyanka Chopra',
-        position: 'Cloud Solution Architect (Azure)',
-        qualification: 'B.Tech / MCA',
-        experience: '2-5 Years',
-        salary: '₹16,00,000 - ₹28,00,000 / year',
-        vacancies: 20,
-        applications: 65,
-        location: 'Pavilion 3, Stall 10',
-        notes: 'Azure cloud native app modernization.'
-      },
-      {
-        id: 'pmc-67',
-        companyId: 'comp-google',
-        company: 'Google India',
-        recruiter: 'Rahul Sundaram',
-        position: 'Partner Technical Solutions Engineer',
-        qualification: 'B.Tech / B.E',
-        experience: '2-5 Years',
-        salary: '₹18,00,000 - ₹32,00,000 / year',
-        vacancies: 15,
-        applications: 58,
-        location: 'Pavilion 4, Stall 01',
-        notes: 'Google Cloud Platform partner integrations.'
-      },
-      {
-        id: 'pmc-68',
-        companyId: 'comp-siemens',
-        company: 'Siemens Technology India',
-        recruiter: 'Madhusudan Rao',
-        position: 'PLC & SCADA Engineer',
-        qualification: 'B.Tech Electrical / Instrumentation',
-        experience: '1-3 Years',
-        salary: '₹5,50,000 - ₹9,00,000 / year',
-        vacancies: 30,
-        applications: 41,
-        location: 'Pavilion 4, Stall 02',
-        notes: 'TIA Portal automation and digital factory drives.'
-      },
-      {
-        id: 'pmc-69',
-        companyId: 'comp-abb',
-        company: 'ABB India',
-        recruiter: 'Geeta Krishnan',
-        position: 'Robotics Automation Technician',
-        qualification: 'Diploma / B.E Mechatronics',
-        experience: '1-3 Years',
-        salary: '₹4,80,000 - ₹7,80,000 / year',
-        vacancies: 25,
-        applications: 36,
-        location: 'Pavilion 4, Stall 03',
-        notes: 'Industrial robot programming & commissioning.'
-      },
-      {
-        id: 'pmc-70',
-        companyId: 'comp-honeywell',
-        company: 'Honeywell Technology',
-        recruiter: 'Sridhar Balan',
-        position: 'Aerospace Avionics QA',
-        qualification: 'B.E Aeronautical / ECE',
-        experience: '1-4 Years',
-        salary: '₹7,00,000 - ₹12,00,000 / year',
-        vacancies: 20,
-        applications: 34,
-        location: 'Pavilion 4, Stall 04',
-        notes: 'DO-178C software flight safety verification.'
-      },
-      {
-        id: 'pmc-71',
-        companyId: 'comp-bel',
-        company: 'Bharat Electronics Limited (BEL)',
-        recruiter: 'Vijay Kumar',
-        position: 'Trainee Engineer (Radar Systems)',
-        qualification: 'B.Tech ECE / EEE',
-        experience: '0-2 Years',
-        salary: '₹4,50,000 - ₹6,50,000 / year',
-        vacancies: 40,
-        applications: 62,
-        location: 'Pavilion 4, Stall 05',
-        notes: 'Defense electronics and RF test engineering.'
-      },
-      {
-        id: 'pmc-72',
-        companyId: 'comp-bhel',
-        company: 'Bharat Heavy Electricals (BHEL)',
-        recruiter: 'Anupama Sen',
-        position: 'Graduate Apprentice Trainee',
-        qualification: 'B.Tech Mech / Electrical',
-        experience: 'Fresher',
-        salary: '₹3,80,000 - ₹5,00,000 / year',
-        vacancies: 50,
-        applications: 75,
-        location: 'Pavilion 4, Stall 06',
-        notes: 'Power turbine and generator manufacturing.'
-      },
-      {
-        id: 'pmc-73',
-        companyId: 'comp-hal',
-        company: 'Hindustan Aeronautics (HAL)',
-        recruiter: 'Devendra Rathore',
-        position: 'Aircraft Technician',
-        qualification: 'Diploma Aeronautical / Mech',
-        experience: '0-2 Years',
-        salary: '₹3,60,000 - ₹5,20,000 / year',
-        vacancies: 45,
-        applications: 68,
-        location: 'Pavilion 4, Stall 07',
-        notes: 'Aircraft assembly and avionics integration.'
-      },
-      {
-        id: 'pmc-74',
-        companyId: 'comp-gail',
-        company: 'GAIL India',
-        recruiter: 'Mithun Das',
-        position: 'Pipeline Maintenance Engineer',
-        qualification: 'B.Tech Chemical / Mech',
-        experience: '1-3 Years',
-        salary: '₹6,00,000 - ₹9,50,000 / year',
-        vacancies: 25,
-        applications: 38,
-        location: 'Pavilion 4, Stall 08',
-        notes: 'Natural gas pipeline pressure and SCADA monitoring.'
-      },
-      {
-        id: 'pmc-75',
-        companyId: 'comp-ntpc',
-        company: 'NTPC Limited',
-        recruiter: 'Shubham Tiwari',
-        position: 'Power Plant Operations Trainee',
-        qualification: 'B.Tech Electrical / Mech',
-        experience: '0-2 Years',
-        salary: '₹5,50,000 - ₹8,50,000 / year',
-        vacancies: 35,
-        applications: 54,
-        location: 'Pavilion 4, Stall 09',
-        notes: 'Thermal power plant boiler and grid operations.'
-      },
-      {
-        id: 'pmc-76',
-        companyId: 'comp-ongc',
-        company: 'ONGC',
-        recruiter: 'Saurabh Mukhopadhyay',
-        position: 'Petroleum Geologist Trainee',
-        qualification: 'M.Sc Geology / M.Tech',
-        experience: '0-2 Years',
-        salary: '₹7,00,000 - ₹11,00,000 / year',
-        vacancies: 20,
-        applications: 33,
-        location: 'Pavilion 4, Stall 10',
-        notes: 'Offshore drilling and reservoir seismic analysis.'
-      },
-      {
-        id: 'pmc-77',
-        companyId: 'comp-tatamotors',
-        company: 'Tata Motors',
-        recruiter: 'Hemant Sawant',
-        position: 'Commercial Vehicle Design Trainee',
-        qualification: 'B.Tech Automobile / Mech',
-        experience: '0-2 Years',
-        salary: '₹5,00,000 - ₹7,50,000 / year',
-        vacancies: 50,
-        applications: 67,
-        location: 'Pavilion 5, Stall 01',
-        notes: 'Electric bus and heavy truck CAD prototyping.'
-      },
-      {
-        id: 'pmc-78',
-        companyId: 'comp-tvs',
-        company: 'TVS Motor Company',
-        recruiter: 'Kalyan Chakravarthy',
-        position: 'Two-Wheeler Assembly Engineer',
-        qualification: 'Diploma / B.Tech Mech',
-        experience: '0-2 Years',
-        salary: '₹4,00,000 - ₹5,80,000 / year',
-        vacancies: 60,
-        applications: 72,
-        location: 'Pavilion 5, Stall 02',
-        notes: 'iQube EV assembly lines and quality checkpoints.'
-      },
-      {
-        id: 'pmc-79',
-        companyId: 'comp-royalenfield',
-        company: 'Royal Enfield (Eicher Motors)',
-        recruiter: 'Bikram Singh',
-        position: 'Dealership Service Lead',
-        qualification: 'Diploma / B.Tech Mech',
-        experience: '1-3 Years',
-        salary: '₹3,80,000 - ₹5,40,000 / year',
-        vacancies: 40,
-        applications: 49,
-        location: 'Pavilion 5, Stall 03',
-        notes: 'Cruiser motorcycle maintenance & technical support.'
-      },
-      {
-        id: 'pmc-80',
-        companyId: 'comp-maruti',
-        company: 'Maruti Suzuki India',
-        recruiter: 'Rohit Bakshi',
-        position: 'Service Workshop Supervisor',
-        qualification: 'Diploma Automobile / Mech',
-        experience: '0-2 Years',
-        salary: '₹3,60,000 - ₹5,00,000 / year',
-        vacancies: 70,
-        applications: 81,
-        location: 'Pavilion 5, Stall 04',
-        notes: 'Arena & Nexa authorized service centers.'
-      },
-      {
-        id: 'pmc-81',
-        companyId: 'comp-heromotocorp',
-        company: 'Hero MotoCorp',
-        recruiter: 'Akash Chouhan',
-        position: 'Quality Audit Associate',
-        qualification: 'Diploma / ITI',
-        experience: '0-2 Years',
-        salary: '₹2,80,000 - ₹4,00,000 / year',
-        vacancies: 80,
-        applications: 88,
-        location: 'Pavilion 5, Stall 05',
-        notes: 'Engine dyno testing and assembly tolerance inspection.'
-      },
-      {
-        id: 'pmc-82',
-        companyId: 'comp-apollotyres',
-        company: 'Apollo Tyres',
-        recruiter: 'Lalit Mohan',
-        position: 'Rubber Polymer Chemist',
-        qualification: 'B.Sc Chemistry / B.Tech Polymer',
-        experience: '1-3 Years',
-        salary: '₹4,50,000 - ₹6,80,000 / year',
-        vacancies: 30,
-        applications: 39,
-        location: 'Pavilion 5, Stall 06',
-        notes: 'Tread compound development and vulcanization testing.'
-      },
-      {
-        id: 'pmc-83',
-        companyId: 'comp-ultratech',
-        company: 'Ultratech Cement',
-        recruiter: 'Girish Chand',
-        position: 'Civil Quality Testing Engineer',
-        qualification: 'Diploma / B.Tech Civil',
-        experience: '0-2 Years',
-        salary: '₹3,80,000 - ₹5,50,000 / year',
-        vacancies: 45,
-        applications: 56,
-        location: 'Pavilion 5, Stall 07',
-        notes: 'Concrete compressive strength and slump testing.'
-      },
-      {
-        id: 'pmc-84',
-        companyId: 'comp-jsw',
-        company: 'JSW Steel',
-        recruiter: 'Vikas Shinde',
-        position: 'Metallurgy Process Trainee',
-        qualification: 'B.Tech Metallurgy / Mech',
-        experience: '0-2 Years',
-        salary: '₹4,80,000 - ₹7,20,000 / year',
-        vacancies: 50,
-        applications: 64,
-        location: 'Pavilion 5, Stall 08',
-        notes: 'Blast furnace operations and hot strip mill rolling.'
-      }
-    ]
-  },
-  {
-    id: 'mela-2',
-    event: 'AP Mega IT & Engineering Job Mela 2026',
-    title: 'AP Mega IT & Engineering Job Mela 2026',
-    description: 'State-wide employment initiative organized by APSSDC connecting engineering and polytechnic graduates with top corporate hiring teams.',
-    date: '2026-10-05',
-    startTime: '09:00 AM',
-    endTime: '06:00 PM',
-    time: '09:00 AM - 06:00 PM',
-    regStartDate: '2026-09-01',
-    regEndDate: '2026-10-01',
-    maxCapacity: 4000,
-    venue: 'AU Convention Center, Beach Road, Visakhapatnam',
-    city: 'Visakhapatnam',
-    state: 'Andhra Pradesh',
-    location: 'Visakhapatnam, Andhra Pradesh',
-    organizer: 'Andhra Pradesh Skill Development Corp',
-    companiesCount: 12,
-    vacanciesCount: 1800,
-    status: 'APPROVED',
-    registeredCandidatesCount: 950,
-    createdByAdmin: true,
-    participatingCompanies: [
-      {
-        id: 'pmc-201',
-        companyId: 'comp-1',
-        company: 'ABC Technologies Pvt Ltd',
-        recruiter: 'Arjun Reddy',
-        position: 'Graduate Engineer Trainee (GET)',
-        qualification: 'B.Tech / B.E (All Branches) / MCA',
-        experience: 'Fresher (0-1 Year)',
-        salary: '₹4,50,000 - ₹6,50,000 / year',
-        vacancies: 60,
-        applications: 180,
-        location: 'Pavilion 1, Stall 12',
-        notes: 'Aptitude and coding assessment on spot.'
-      },
-      {
-        id: 'pmc-202',
-        companyId: 'comp-2',
-        company: 'Tech Solutions Global Ltd',
-        recruiter: 'Sneha Rao',
-        position: 'Associate Cloud Support & Operations',
-        qualification: 'B.Sc / BCA / B.Tech / Diploma',
-        experience: '0-2 Years',
-        salary: '₹4,00,000 - ₹5,50,000 / year',
-        vacancies: 40,
-        applications: 110,
-        location: 'Pavilion 1, Stall 15',
-        notes: 'Immediate joining required.'
-      },
-      {
-        id: 'pmc-203',
-        companyId: 'comp-4',
-        company: 'HealthPlus Systems Ltd',
-        recruiter: 'Divya Iyer',
-        position: 'Healthcare Operations & Tech Support',
-        qualification: 'Any Degree / B.Com / B.Sc / B.Tech',
-        experience: '0-2 Years',
-        salary: '₹3,50,000 - ₹5,00,000 / year',
-        vacancies: 25,
-        applications: 75,
-        location: 'Pavilion 2, Stall 04',
-        notes: 'Multiple shifts available.'
-      },
-      {
-        id: 'pmc-204',
-        companyId: 'comp-foxconn',
-        company: 'Foxconn',
-        recruiter: 'Arjun Reddy',
-        position: 'Electronics Assembly Line Operator',
-        qualification: 'ITI / Diploma (ECE/EEE/Mech)',
-        experience: 'Fresher',
-        salary: '₹19,200 / month',
-        vacancies: 80,
-        applications: 140,
-        location: 'Pavilion 2, Stall 08',
-        notes: 'Subsidized hostel and transportation provided.'
-      },
-      {
-        id: 'pmc-205',
-        companyId: 'comp-tcs',
-        company: 'Tata Consultancy Services',
-        recruiter: 'Pooja Sharma',
-        position: 'Smart Hiring Trainee (B.Sc / BCA)',
-        qualification: 'B.Sc / BCA / B.Voc',
-        experience: 'Fresher (2026 Batch)',
-        salary: '₹3,50,000 - ₹4,80,000 / year',
-        vacancies: 50,
-        applications: 160,
-        location: 'Pavilion 3, Stall 01',
-        notes: 'Direct technical interview.'
-      }
-    ]
-  },
-  {
-    id: 'mela-3',
-    event: 'Hyderabad Healthcare & Biotech Hiring Summit',
-    title: 'Hyderabad Healthcare & Biotech Hiring Summit',
-    description: 'Specialized healthcare, pharmaceutical, and medical device recruitment drive for graduates and experienced professionals.',
-    date: '2026-10-20',
-    startTime: '09:30 AM',
-    endTime: '05:00 PM',
-    time: '09:30 AM - 05:00 PM',
-    regStartDate: '2026-09-15',
-    regEndDate: '2026-10-18',
-    maxCapacity: 2500,
-    venue: 'HITEX Exhibition Center, Hitec City, Hyderabad',
-    city: 'Hyderabad',
-    state: 'Telangana',
-    location: 'Hyderabad, Telangana',
-    organizer: 'Telangana Life Sciences Board',
-    companiesCount: 8,
-    vacanciesCount: 800,
-    status: 'PENDING',
-    registeredCandidatesCount: 320,
-    createdByAdmin: false,
-    participatingCompanies: [
-      {
-        id: 'pmc-301',
-        companyId: 'comp-4',
-        company: 'HealthPlus Systems Ltd',
-        recruiter: 'Divya Iyer',
-        position: 'Biomedical Informatics & Data Analyst',
-        qualification: 'B.Pharm / M.Pharm / M.Sc / B.Tech Biotech',
-        experience: '1-3 Years',
-        salary: '₹5,50,000 - ₹9,00,000 / year',
-        vacancies: 20,
-        applications: 45,
-        location: 'Hall 2, Stall B-05',
-        notes: 'Technical panel interview on spot.'
-      },
-      {
-        id: 'pmc-302',
-        companyId: 'comp-1',
-        company: 'ABC Technologies Pvt Ltd',
-        recruiter: 'Arjun Reddy',
-        position: 'HealthTech Platform QA Engineer',
-        qualification: 'B.Tech / B.E / MCA',
-        experience: '2-4 Years',
-        salary: '₹8,00,000 - ₹13,00,000 / year',
-        vacancies: 15,
-        applications: 32,
-        location: 'Hall 2, Stall B-08',
-        notes: 'Automation testing experience preferred.'
-      }
-    ]
-  }
-];
-
-const SEED_REGISTRATIONS = [
-  {
-    id: 'reg-1',
-    candidate: 'Priya Sharma',
-    candidateEmail: 'priya.sharma@example.com',
-    phone: '+91 98765 43210',
-    event: 'Bengaluru Mega IT & Cloud Career Expo 2026',
-    registrationDate: '2026-08-28',
-    status: 'CONFIRMED',
-    entryToken: 'TKN-BLR-0042',
-  },
-  {
-    id: 'reg-2',
-    candidate: 'Rahul Kumar',
-    candidateEmail: 'rahul.kumar@example.com',
-    phone: '+91 98123 45678',
-    event: 'Bengaluru Mega IT & Cloud Career Expo 2026',
-    registrationDate: '2026-08-29',
-    status: 'CONFIRMED',
-    entryToken: 'TKN-BLR-0043',
-  },
-  {
-    id: 'reg-3',
-    candidate: 'Karthik Varma',
-    candidateEmail: 'karthik.v@example.com',
-    phone: '+91 98440 98765',
-    event: 'AP Mega IT & Engineering Job Mela 2026',
-    registrationDate: '2026-09-01',
-    status: 'CONFIRMED',
-    entryToken: 'TKN-VIZ-0012',
-  },
-  {
-    id: 'reg-4',
-    candidate: 'Ananya Roy',
-    candidateEmail: 'ananya.roy@example.com',
-    phone: '+91 97765 11223',
-    event: 'Hyderabad Healthcare & Biotech Hiring Summit',
-    registrationDate: '2026-09-02',
-    status: 'WAITLISTED',
-    entryToken: 'TKN-HYD-0008',
-  }
-];
-
-// ─── 9. SEED REPORTS / COMPLAINTS ─────────────────────────────────────────
-const SEED_REPORTS = [
-  {
-    id: 'rep-1',
-    reportType: 'Job Scam / Fee Request',
-    reportedEntity: 'Fast Cash Enterprises (Manoj Kumar)',
-    reportedUserType: 'RECRUITER',
-    reporter: 'Candidate User (Anonymous)',
-    reporterEmail: 'cand.verify@example.com',
-    date: '2026-08-26',
-    status: 'RESOLVED',
-    details: 'Recruiter asked for ₹500 registration fee before releasing interview schedule.',
-    actionTaken: 'Recruiter account suspended and company blacklisted from platform.',
-  },
-  {
-    id: 'rep-2',
-    reportType: 'Misleading Job Description',
-    reportedEntity: 'AI Model Trainer (TechGlobal)',
-    reportedUserType: 'RECRUITER',
-    reporter: 'Sneha Kulkarni',
-    reporterEmail: 'sneha.kulkarni@example.com',
-    date: '2026-09-01',
-    status: 'PENDING',
-    details: 'Listed as hybrid engineering job, but actually required door-to-door direct sales.',
-    actionTaken: 'Under active moderator review.',
-  },
-  {
-    id: 'rep-3',
-    reportType: 'Profile Harassment in Messages',
-    reportedEntity: 'Unverified Candidate ID #409',
-    reportedUserType: 'CANDIDATE',
-    reporter: 'ABC Technologies HR Team',
-    reporterEmail: 'careers@abctechnologies.example.com',
-    date: '2026-09-03',
-    status: 'PENDING',
-    details: 'Repeated offensive spam submissions through application portal.',
-    actionTaken: 'Awaiting admin disciplinary review.',
-  }
-];
-
-// ─── 10. SEED AUDIT LOGS ──────────────────────────────────────────────────
-const SEED_AUDIT_LOGS = [
-  {
-    id: 'log-1',
-    action: 'Job Approved',
-    adminUser: 'Admin User',
-    target: 'Senior Frontend Engineer (React / TypeScript)',
-    entityType: 'JOB',
-    date: '2026-09-04',
-    time: '10:32 AM IST',
-    result: 'SUCCESS',
-    ip: '10.200.45.12',
-  },
-  {
-    id: 'log-2',
-    action: 'Company Verified',
-    adminUser: 'Admin User',
-    target: 'ABC Technologies Pvt Ltd (U72200KA2015PTC078912)',
-    entityType: 'COMPANY',
-    date: '2026-09-04',
-    time: '09:15 AM IST',
-    result: 'SUCCESS',
-    ip: '10.200.45.12',
-  },
-  {
-    id: 'log-3',
-    action: 'Recruiter Suspended',
-    adminUser: 'Super Admin',
-    target: 'Manoj Kumar (Fast Cash Enterprises)',
-    entityType: 'RECRUITER',
-    date: '2026-09-03',
-    time: '04:45 PM IST',
-    result: 'SUCCESS',
-    ip: '10.200.45.1',
-  },
-  {
-    id: 'log-4',
-    action: 'Job Mela Approved',
-    adminUser: 'Super Admin',
-    target: 'AP Mega IT & Engineering Job Mela 2026',
-    entityType: 'JOB_MELA',
-    date: '2026-09-02',
-    time: '02:20 PM IST',
-    result: 'SUCCESS',
-    ip: '10.200.45.1',
-  },
-  {
-    id: 'log-5',
-    action: 'Admin System Login',
-    adminUser: 'Admin User',
-    target: 'Admin Control Panel Dashboard',
-    entityType: 'AUTH',
-    date: '2026-09-04',
-    time: '08:00 AM IST',
-    result: 'SUCCESS',
-    ip: '10.200.45.12',
-  }
-];
-
-// ─── 11. SEED NOTIFICATIONS ───────────────────────────────────────────────
-const SEED_NOTIFICATIONS = [
-  {
-    id: 'notif-1',
-    title: 'New Recruiter Verification Request',
-    message: 'Rahul Mehta (Fintech Corp India Pvt Ltd) submitted verification documents.',
-    time: '15 mins ago',
-    unread: true,
-    link: '/admin/recruiter-verification',
-    category: 'APPROVAL',
-  },
-  {
-    id: 'notif-2',
-    title: 'Pending Job Posting Review',
-    message: 'Clinical Data Pipeline Lead by HealthPlus Systems Ltd requires approval.',
-    time: '1 hour ago',
-    unread: true,
-    link: '/admin/job-approvals',
-    category: 'APPROVAL',
-  },
-  {
-    id: 'notif-3',
-    title: 'Urgent Moderation Report Filed',
-    message: 'A candidate submitted a complaint regarding misleading job description.',
-    time: '3 hours ago',
-    unread: true,
-    link: '/admin/reports',
-    category: 'MODERATION',
-  },
-  {
-    id: 'notif-4',
-    title: 'Job Mela Registration Milestone',
-    message: 'Bengaluru Mega IT Career Expo has crossed 1,400 registered candidates.',
-    time: '1 day ago',
-    unread: false,
-    link: '/admin/job-melas',
-    category: 'EVENT',
-  }
-];
+// ─── 2. PLATFORM DATASETS (EMPTY INITIAL LIVE STATE) ───────────────────────
+export const SEED_CANDIDATES = [];
+const SEED_RECRUITERS = [];
+const SEED_COMPANIES = [];
+const SEED_JOBS = [];
+const SEED_INTERNSHIPS = [];
+const SEED_APPLICATIONS = [];
+const SEED_JOB_MELAS = [];
+const SEED_REGISTRATIONS = [];
+const SEED_REPORTS = [];
+const SEED_AUDIT_LOGS = [];
+const SEED_NOTIFICATIONS = [];
 
 // ─── 12. SEED SYSTEM SETTINGS ─────────────────────────────────────────────
 const SEED_SETTINGS = {
@@ -2432,10 +97,10 @@ export const DEFAULT_HOME_CONTENT = {
     heroImage: null,
   },
   stats: [
-    { id: 'stat-1', label: 'Active Jobs', value: '52,480+', icon: 'Briefcase' },
-    { id: 'stat-2', label: 'Verified Companies', value: '14,200+', icon: 'Building2' },
-    { id: 'stat-3', label: 'Registered Candidates', value: '2,80,000+', icon: 'Users' },
-    { id: 'stat-4', label: 'Successful Placements', value: '1,95,000+', icon: 'TrendingUp' },
+    { id: 'stat-1', label: 'Active Jobs', value: '0', icon: 'Briefcase' },
+    { id: 'stat-2', label: 'Verified Companies', value: '0', icon: 'Building2' },
+    { id: 'stat-3', label: 'Registered Candidates', value: '0', icon: 'Users' },
+    { id: 'stat-4', label: 'Successful Placements', value: '0', icon: 'TrendingUp' },
   ],
   whyChoose: {
     heading1: 'Why Choose',
@@ -2462,130 +127,15 @@ export const DEFAULT_HOME_CONTENT = {
     heading1: 'NTR VIKASA Event &',
     heading2: 'Media Gallery',
     subtitle: 'Explore glimpses from our mega job fairs, candidate felicitations, skill training batches, and industry partner summits across Andhra Pradesh.',
-    images: [
-      {
-        id: 'img-1',
-        title: 'Mega Job Mela Vijayawada 2026',
-        category: 'Job Melas',
-        imageUrl: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800&auto=format&fit=crop&q=80',
-        date: '15 Sep 2026',
-        description: 'Over 120 recruiters and 4,500+ candidates attended the grand employment summit in Vijayawada.'
-      },
-      {
-        id: 'img-2',
-        title: 'Advanced Skill Training Lab',
-        category: 'Skill Training',
-        imageUrl: 'https://images.unsplash.com/photo-1531482615713-2afd69097998?w=800&auto=format&fit=crop&q=80',
-        date: '08 Sep 2026',
-        description: 'Enrolled students engaging in practical simulated software engineering and web development modules.'
-      },
-      {
-        id: 'img-3',
-        title: 'Spot Offer Letter Distribution Ceremony',
-        category: 'Placements',
-        imageUrl: 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=800&auto=format&fit=crop&q=80',
-        date: '28 Aug 2026',
-        description: 'Selected candidates receiving immediate appointment orders from attending enterprise hiring teams.'
-      },
-      {
-        id: 'img-4',
-        title: 'Corporate HR & Recruiter Summit',
-        category: 'Conferences',
-        imageUrl: 'https://images.unsplash.com/photo-1511578314322-379afb476865?w=800&auto=format&fit=crop&q=80',
-        date: '18 Aug 2026',
-        description: 'Industry leaders discussing youth employability, tech apprenticeships, and regional hiring targets.'
-      },
-      {
-        id: 'img-5',
-        title: 'Candidate Counselling & Guidance Booth',
-        category: 'Job Melas',
-        imageUrl: 'https://images.unsplash.com/photo-1577495508048-b635879837f1?w=800&auto=format&fit=crop&q=80',
-        date: '02 Aug 2026',
-        description: 'Free resume evaluation, soft-skill mock interviews, and career counseling for rural youth.'
-      },
-      {
-        id: 'img-6',
-        title: 'Women in Tech Empowerment Program',
-        category: 'Skill Training',
-        imageUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=800&auto=format&fit=crop&q=80',
-        date: '20 Jul 2026',
-        description: 'Empowering women engineers and technicians with cloud computing and AI certification courses.'
-      }
-    ],
-    videos: [
-      {
-        id: 'vid-1',
-        title: 'Mega Job Mela Vijayawada Highlights & Walk-in Drives',
-        youtubeUrl: 'https://www.youtube.com/watch?v=kYI_t91Z6oA',
-        category: 'Job Melas',
-        date: '16 Sep 2026',
-        description: 'Watch the energetic atmosphere, recruiter interviews, and joyful candidate reactions at our mega recruitment drive.'
-      },
-      {
-        id: 'vid-2',
-        title: 'Candidate Success Journey & Spot Offer Letters — NTR VIKASA',
-        youtubeUrl: 'https://www.youtube.com/watch?v=SqcY0GlETPk',
-        category: 'Placements',
-        date: '05 Sep 2026',
-        description: 'Hear from our alumni who transitioned from college freshers to placed professionals in top corporations.'
-      },
-      {
-        id: 'vid-3',
-        title: 'Skill Development Labs & Practical Industry Training Batch',
-        youtubeUrl: 'https://www.youtube.com/watch?v=tgbNymZ7vqY',
-        category: 'Skill Training',
-        date: '22 Aug 2026',
-        description: 'Hands-on training, expert mentor guidance, and real-world project development at our modern center.'
-      }
-    ]
+    images: [],
+    videos: []
   },
   newsArticles: {
     badge: 'In The Media & Press',
     heading1: 'Official Newspaper &',
     heading2: 'Press Highlights',
     subtitle: 'Read authentic press coverage, newspaper clippings, and administrative reports of NTR VIKASA Mega Job Melas across Andhra Pradesh.',
-    articles: [
-      {
-        id: 'news-1',
-        newspaper: 'Sakshi',
-        title: 'జాబ్‌మేళాలో 68 మందికి ఉద్యోగాలు',
-        date: '08 Feb 2026',
-        edition: 'Tiruvuru Edition | Page 9',
-        imageUrl: '/news/news-sakshi-job-mela.png',
-        sourceUrl: 'https://epaper.sakshi.com/',
-        summary: 'ఆంధ్రప్రదేశ్ రాష్ట్ర నైపుణ్యాభివృద్ధి సంస్థ ఆధ్వర్యంలో జిల్లాలోని నిరుద్యోగ యువతకు గుంటుపల్లిలో నిర్వహించిన జాబ్ మేళాలో 68 మందికి ఉద్యోగాలు లభించాయి. జిల్లా కలెక్టర్ జి. లక్ష్మీశ స్వయంగా నియామక పత్రాలు అందజేశారు.'
-      },
-      {
-        id: 'news-2',
-        newspaper: 'Eenadu',
-        title: '18న ప్రత్యేక ఉద్యోగ మేళా',
-        date: '14 Feb 2026',
-        edition: 'Andhra Pradesh State Edition',
-        imageUrl: '/news/news-eenadu-job-mela.png',
-        sourceUrl: 'https://epaper.eenadu.net/',
-        summary: 'కరెన్సీనగర్: రూరల్ ఇంక్యుబేషన్ స్కిల్లింగ్ అండ్ ఎంట్రప్రెన్యూర్ సెంటర్ (రైజ్), ఏపీఎస్ఎస్డీసీ, ఎన్టీఆర్ వికాస, జిల్లా ఉపాధి కల్పన శాఖ సంయుక్తంగా నిర్వహించనున్న ప్రత్యేక డ్రైవ్.'
-      },
-      {
-        id: 'news-3',
-        newspaper: 'Special Press Bulletin',
-        title: 'గుంటుపల్లిలో “రైజ్” ఆధ్వర్యంలో ఎన్టీఆర్ వికాస జాబ్ మేళా — యువత సద్వినియోగం చేసుకోవాలి',
-        date: '07 Feb 2026',
-        edition: 'Ibrahimpatnam - Udayatara',
-        imageUrl: '/news/news-rise-job-mela.png',
-        sourceUrl: 'https://naipunyam.ap.gov.in/',
-        summary: 'ఎన్టీఆర్ వికాస జాబ్ మేళా ద్వారా నిరుద్యోగ యువతకు 10కి పైగా ప్రముఖ కంపెనీలలో నెలకు రూ.12,000 నుండి రూ.35,000 వరకు వేతనంతో ఉద్యోగ అవకాశాలు.'
-      },
-      {
-        id: 'news-4',
-        newspaper: 'Suryaa',
-        title: 'ఎన్టీఆర్ వికాస జాబ్ మేళా నిర్వహణ విజయవంతం',
-        date: '08 Feb 2026',
-        edition: 'Major News | Page 2',
-        imageUrl: '/news/news-surya-job-mela.png',
-        sourceUrl: 'https://www.suryaa.com/',
-        summary: 'విజయవాడ: గుంటుపల్లిలో నిర్వహించిన జాబ్ మేళాలో 91 మంది హాజరు కాగా 68 మంది అభ్యర్థులకు ప్రైవేట్ కంపెనీలలో ఉద్యోగాలు లభించాయి, 14 మంది షార్ట్‌లిస్ట్ అయ్యారు. కలెక్టర్ డా. జి.లక్ష్మీశ ప్రశంసలు.'
-      }
-    ]
+    articles: []
   },
 };
 
@@ -2703,10 +253,10 @@ export const DEFAULT_ABOUT_CONTENT = {
     description: 'NTR VIKASA Job Portal was founded on a simple principle: every candidate deserves fair, direct access to employment opportunities without scam fees, opaque processes, or dead ends.',
   },
   stats: [
-    { id: 'ab-stat-1', label: 'Registered Job Seekers', value: '2,80,000+', color: 'var(--color-primary-600)' },
-    { id: 'ab-stat-2', label: 'Confirmed Placements', value: '1,95,000+', color: 'var(--color-success-600)' },
-    { id: 'ab-stat-3', label: 'Verified Hiring Employers', value: '14,200+', color: 'var(--color-warning-600)' },
-    { id: 'ab-stat-4', label: 'State-Wide Job Melas Held', value: '24+', color: 'var(--color-info-600)' },
+    { id: 'ab-stat-1', label: 'Registered Job Seekers', value: '0', color: 'var(--color-primary-600)' },
+    { id: 'ab-stat-2', label: 'Confirmed Placements', value: '0', color: 'var(--color-success-600)' },
+    { id: 'ab-stat-3', label: 'Verified Hiring Employers', value: '0', color: 'var(--color-warning-600)' },
+    { id: 'ab-stat-4', label: 'State-Wide Job Melas Held', value: '0', color: 'var(--color-info-600)' },
   ],
   whatWeStandFor: {
     heading: 'What We Stand For',
@@ -2829,6 +379,46 @@ export const DEFAULT_ABOUT_CONTENT = {
 const AdminContext = createContext(null);
 
 export function AdminProvider({ children }) {
+  // Evict legacy cached mock/seed records from localStorage
+  useEffect(() => {
+    const isLegacyDummy = (item) => {
+      if (!item) return false;
+      const id = String(item.id || item.mela_id || '');
+      if (/^(cand-\d+|rec-\d+|comp-\d+|job-\d+|int-\d+|app-\d+|mela-\d+|reg-\d+|rep-\d+|aud-\d+|notif-\d+)$/i.test(id)) return true;
+      if (item.email && /@(example\.com|techsolutionsglobal\.com|amaravaticyber\.com|fastcashenterprises\.com)/i.test(item.email)) return true;
+      if (item.company && /(Tech Solutions Global|NextGen Autonomous|Amaravati Cyber|Fast Cash Enterprises|ABC Technologies)/i.test(item.company)) return true;
+      if (item.company_name && /(Tech Solutions Global|NextGen Autonomous|Amaravati Cyber|Fast Cash Enterprises|ABC Technologies)/i.test(item.company_name)) return true;
+      if (item.title && /(Bengaluru Mega IT|AP Mega IT|Vijayawada Capital Region|Tirupati Rayalaseema|Guntur & Amaravati|Hyderabad Cyberabad)/i.test(item.title)) return true;
+      return false;
+    };
+
+    [
+      'ntr_admin_candidates_v1',
+      'ntr_admin_recruiters_v1',
+      'ntr_admin_companies_v1',
+      'ntr_admin_jobs_v1',
+      'ntr_admin_internships_v1',
+      'ntr_admin_applications_v1',
+      'ntr_admin_job_melas_v1',
+      'ntr_admin_registrations_v1',
+      'ntr_admin_reports_v1',
+      'ntr_admin_audit_logs_v1',
+      'ntr_admin_notifications_v1',
+    ].forEach((key) => {
+      try {
+        const raw = localStorage.getItem(key);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed) && parsed.some(isLegacyDummy)) {
+            localStorage.removeItem(key);
+          }
+        }
+      } catch (e) {
+        // ignore
+      }
+    });
+  }, []);
+
   const { addNotification } = useNotifications();
 
   // 1. Admin Users & Auth Session
@@ -2858,24 +448,25 @@ export function AdminProvider({ children }) {
       const stored = localStorage.getItem('ntr_admin_candidates_v1');
       if (stored) {
         const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed) && parsed.length > 0 && parsed[0].qualificationLevel) {
-          return parsed;
-        }
+        if (Array.isArray(parsed)) return parsed;
       }
     } catch (e) {
       // ignore
     }
-    return SEED_CANDIDATES;
+    return [];
   });
 
   const [recruiters, setRecruiters] = useState(() => {
     try {
       const stored = localStorage.getItem('ntr_admin_recruiters_v1');
-      if (stored) return JSON.parse(stored);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) return parsed;
+      }
     } catch (e) {
       // ignore
     }
-    return SEED_RECRUITERS;
+    return [];
   });
 
   const [companies, setCompanies] = useState(() => {
@@ -2883,7 +474,7 @@ export function AdminProvider({ children }) {
       const stored = localStorage.getItem('ntr_admin_companies_v1');
       if (stored) {
         const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed)) return parsed;
       }
     } catch (e) {
       // ignore
@@ -2894,81 +485,105 @@ export function AdminProvider({ children }) {
   const [jobs, setJobs] = useState(() => {
     try {
       const stored = localStorage.getItem('ntr_admin_jobs_v1');
-      if (stored) return JSON.parse(stored);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) return parsed;
+      }
     } catch (e) {
       // ignore
     }
-    return SEED_JOBS;
+    return [];
   });
 
   const [internships, setInternships] = useState(() => {
     try {
       const stored = localStorage.getItem('ntr_admin_internships_v1');
-      if (stored) return JSON.parse(stored);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) return parsed;
+      }
     } catch (e) {
       // ignore
     }
-    return SEED_INTERNSHIPS;
+    return [];
   });
 
   const [applications, setApplications] = useState(() => {
     try {
       const stored = localStorage.getItem('ntr_admin_applications_v1');
-      if (stored) return JSON.parse(stored);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) return parsed;
+      }
     } catch (e) {
       // ignore
     }
-    return SEED_APPLICATIONS;
+    return [];
   });
 
   const [jobMelas, setJobMelas] = useState(() => {
     try {
       const stored = localStorage.getItem('ntr_admin_job_melas_v1');
-      if (stored) return JSON.parse(stored);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) return parsed;
+      }
     } catch (e) {
       // ignore
     }
-    return SEED_JOB_MELAS;
+    return [];
   });
 
   const [registrations, setRegistrations] = useState(() => {
     try {
       const stored = localStorage.getItem('ntr_admin_registrations_v1');
-      if (stored) return JSON.parse(stored);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) return parsed;
+      }
     } catch (e) {
       // ignore
     }
-    return SEED_REGISTRATIONS;
+    return [];
   });
 
   const [reports, setReports] = useState(() => {
     try {
       const stored = localStorage.getItem('ntr_admin_reports_v1');
-      if (stored) return JSON.parse(stored);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) return parsed;
+      }
     } catch (e) {
       // ignore
     }
-    return SEED_REPORTS;
+    return [];
   });
 
   const [auditLogs, setAuditLogs] = useState(() => {
     try {
       const stored = localStorage.getItem('ntr_admin_audit_logs_v1');
-      if (stored) return JSON.parse(stored);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) return parsed;
+      }
     } catch (e) {
       // ignore
     }
-    return SEED_AUDIT_LOGS;
+    return [];
   });
 
   const [notifications, setNotifications] = useState(() => {
     try {
       const stored = localStorage.getItem('ntr_admin_notifications_v1');
-      if (stored) return JSON.parse(stored);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) return parsed;
+      }
     } catch (e) {
       // ignore
     }
-    return SEED_NOTIFICATIONS;
+    return [];
   });
 
   const [settings, setSettings] = useState(() => {
@@ -3187,86 +802,75 @@ export function AdminProvider({ children }) {
           const rawRecs = Array.isArray(recruitersRes.value)
             ? recruitersRes.value
             : (recruitersRes.value.items || []);
-          if (rawRecs.length > 0) {
-            const mappedRecs = rawRecs.map(r => ({
-              id: r.id,
-              user_id: r.user_id,
-              name: r.name || r.recruiter_name,
-              recruiter_name: r.name || r.recruiter_name,
-              email: r.email || r.work_email,
-              work_email: r.email || r.work_email,
-              phone: r.phone || r.mobile_phone,
-              mobile_phone: r.phone || r.mobile_phone,
-              designation: r.designation || 'Talent Acquisition Manager',
-              company: r.company || r.company_name,
-              company_name: r.company || r.company_name,
-              companyId: r.company_id,
-              company_id: r.company_id,
-              industry: r.industry || 'Information Technology & Services',
-              location: r.location || 'Vijayawada, NTR District',
-              district: r.district || 'NTR District',
-              mandal: r.mandal || 'Vijayawada Urban',
-              village: r.village || '',
-              registrationDate: r.registrationDate || r.registration_date || r.created_at?.split(' ')[0] || new Date().toISOString().split('T')[0],
-              verificationStatus: r.verificationStatus || r.verification_status || 'VERIFIED',
-              accountStatus: r.accountStatus || r.account_status || 'ACTIVE',
-              postedJobsCount: r.postedJobsCount !== undefined ? r.postedJobsCount : (r.posted_jobs_count || 0),
-              open_jobs: r.open_jobs || 0,
-              onboarded_by: r.onboarded_by || 'ADMIN',
-            }));
-            setRecruiters(prev => {
-              const liveKeys = new Set(mappedRecs.map(mr => mr.id));
-              const retained = prev.filter(p => !liveKeys.has(p.id));
-              return [...mappedRecs, ...retained];
-            });
-          }
+          const mappedRecs = rawRecs.map(r => ({
+            id: r.id,
+            user_id: r.user_id,
+            name: r.name || r.recruiter_name,
+            recruiter_name: r.name || r.recruiter_name,
+            email: r.email || r.work_email,
+            work_email: r.email || r.work_email,
+            phone: r.phone || r.mobile_phone,
+            mobile_phone: r.phone || r.mobile_phone,
+            designation: r.designation || 'Talent Acquisition Manager',
+            company: r.company || r.company_name,
+            company_name: r.company || r.company_name,
+            companyId: r.company_id,
+            company_id: r.company_id,
+            industry: r.industry || 'Information Technology & Services',
+            location: r.location || 'Vijayawada, NTR District',
+            district: r.district || 'NTR District',
+            mandal: r.mandal || 'Vijayawada Urban',
+            village: r.village || '',
+            registrationDate: r.registrationDate || r.registration_date || r.created_at?.split(' ')[0] || new Date().toISOString().split('T')[0],
+            verificationStatus: r.verificationStatus || r.verification_status || 'VERIFIED',
+            accountStatus: r.accountStatus || r.account_status || 'ACTIVE',
+            postedJobsCount: r.postedJobsCount !== undefined ? r.postedJobsCount : (r.posted_jobs_count || 0),
+            open_jobs: r.open_jobs || 0,
+            onboarded_by: r.onboarded_by || 'ADMIN',
+          }));
+          setRecruiters(mappedRecs);
         }
 
         if (candidatesRes.status === 'fulfilled' && candidatesRes.value) {
           const rawCands = Array.isArray(candidatesRes.value)
             ? candidatesRes.value
             : (candidatesRes.value.items || []);
-          if (rawCands.length > 0) {
-            const mappedCands = rawCands.map(c => ({
-              id: c.id,
-              user_id: c.user_id,
-              name: c.name,
-              email: c.email,
-              phone: c.phone,
-              gender: c.gender || 'Male',
-              aadhaarNumber: c.aadhaar_masked || c.aadhaar_number || 'XXXX XXXX 1234',
-              district: c.district || 'NTR District',
-              mandal: c.mandal || '',
-              village: c.village || '',
-              location: c.location || (c.village ? `${c.village}, ${c.mandal}` : (c.mandal || 'NTR District')),
-              qualificationLevel: c.qualification_level,
-              education: c.education || (c.qualification_level ? `${c.qualification_level} Class` : 'Pending Profile Completion'),
-              headline: c.headline || 'Registered Candidate',
-              experience: c.experience || 'Fresher (0-1 Year)',
-              skills: Array.isArray(c.skills) ? c.skills : [],
-              placementStatus: c.placement_status || 'NOT_PLACED',
-              placedCompany: c.placed_company || '',
-              placedRole: c.placed_role || '',
-              placedSalary: c.placed_salary || '',
-              placedDate: c.placed_date || null,
-              referenceAdmin: c.reference_admin || 'Admin User (State Operations)',
-              customReferrer: c.custom_referrer || '',
-              registrationDate: c.registration_date || c.created_at?.split(' ')[0] || new Date().toISOString().split('T')[0],
-              profileStatus: c.profile_status || (c.profile_completion >= 80 ? 'COMPLETE' : 'BASIC_REGISTERED'),
-              profileCompletion: c.profile_completion || 35,
-              accountStatus: c.account_status || 'ACTIVE',
-              applicationsCount: c.applications_count || 0
-            }));
-            setCandidates(prev => {
-              const liveKeys = new Set(mappedCands.map(mc => mc.id));
-              const retained = prev.filter(p => !liveKeys.has(p.id));
-              return [...mappedCands, ...retained];
-            });
-          }
+          const mappedCands = rawCands.map(c => ({
+            id: c.id,
+            user_id: c.user_id,
+            name: c.name,
+            email: c.email,
+            phone: c.phone,
+            gender: c.gender || 'Male',
+            aadhaarNumber: c.aadhaar_masked || c.aadhaar_number || 'XXXX XXXX 1234',
+            district: c.district || 'NTR District',
+            mandal: c.mandal || '',
+            village: c.village || '',
+            location: c.location || (c.village ? `${c.village}, ${c.mandal}` : (c.mandal || 'NTR District')),
+            qualificationLevel: c.qualification_level,
+            education: c.education || (c.qualification_level ? `${c.qualification_level} Class` : 'Pending Profile Completion'),
+            headline: c.headline || 'Registered Candidate',
+            experience: c.experience || 'Fresher (0-1 Year)',
+            skills: Array.isArray(c.skills) ? c.skills : [],
+            placementStatus: c.placement_status || 'NOT_PLACED',
+            placedCompany: c.placed_company || '',
+            placedRole: c.placed_role || '',
+            placedSalary: c.placed_salary || '',
+            placedDate: c.placed_date || null,
+            referenceAdmin: c.reference_admin || 'Admin User (State Operations)',
+            customReferrer: c.custom_referrer || '',
+            registrationDate: c.registration_date || c.created_at?.split(' ')[0] || new Date().toISOString().split('T')[0],
+            profileStatus: c.profile_status || (c.profile_completion >= 80 ? 'COMPLETE' : 'BASIC_REGISTERED'),
+            profileCompletion: c.profile_completion || 35,
+            accountStatus: c.account_status || 'ACTIVE',
+            applicationsCount: c.applications_count || 0
+          }));
+          setCandidates(mappedCands);
         }
 
-        if (jobsRes.status === 'fulfilled' && jobsRes.value?.items?.length) {
-          const mappedJobs = jobsRes.value.items.map(j => ({
+        if (jobsRes.status === 'fulfilled' && jobsRes.value) {
+          const rawJobs = Array.isArray(jobsRes.value) ? jobsRes.value : (jobsRes.value.items || []);
+          const mappedJobs = rawJobs.map(j => ({
             id: j.job_id || j.id,
             job_id: j.job_id,
             job_number: j.job_number,
@@ -3288,15 +892,12 @@ export function AdminProvider({ children }) {
             rejectionReason: j.rejection_reason || null,
             skills: j.skills || [],
           }));
-          setJobs(prev => {
-            const liveKeys = new Set(mappedJobs.map(mj => mj.id));
-            const retained = prev.filter(p => !liveKeys.has(p.id) && !liveKeys.has(p.job_id));
-            return [...mappedJobs, ...retained];
-          });
+          setJobs(mappedJobs);
         }
 
-        if (internshipsRes.status === 'fulfilled' && internshipsRes.value?.items?.length) {
-          const mappedInterns = internshipsRes.value.items.map(i => ({
+        if (internshipsRes.status === 'fulfilled' && internshipsRes.value) {
+          const rawInterns = Array.isArray(internshipsRes.value) ? internshipsRes.value : (internshipsRes.value.items || []);
+          const mappedInterns = rawInterns.map(i => ({
             id: i.internship_number || i.id,
             internship_number: i.internship_number,
             rawId: i.id,
@@ -3313,17 +914,13 @@ export function AdminProvider({ children }) {
             rejectionReason: i.rejection_reason || null,
             createdAt: i.created_at?.split(' ')[0] || i.postedOn || new Date().toISOString().split('T')[0],
           }));
-          setInternships(prev => {
-            const liveKeys = new Set(mappedInterns.map(mi => mi.id));
-            const retained = prev.filter(p => !liveKeys.has(p.id) && !liveKeys.has(p.internship_number));
-            return [...mappedInterns, ...retained];
-          });
+          setInternships(mappedInterns);
         }
 
         const rawComps = Array.isArray(companiesRes.value)
           ? companiesRes.value
           : (companiesRes.value?.items || []);
-        if (companiesRes.status === 'fulfilled' && rawComps.length) {
+        if (companiesRes.status === 'fulfilled') {
           const mappedComps = rawComps.map(c => ({
             id: c.id,
             name: c.company_name || c.name,
@@ -3368,8 +965,9 @@ export function AdminProvider({ children }) {
           setCompanies(mappedComps);
         }
 
-        if (melasRes.status === 'fulfilled' && Array.isArray(melasRes.value) && melasRes.value.length) {
-          const mappedMelas = melasRes.value.map(m => ({
+        let combinedMelas = [];
+        if (melasRes.status === 'fulfilled' && Array.isArray(melasRes.value)) {
+          combinedMelas = melasRes.value.map(m => ({
             id: m.id,
             mela_number: m.mela_number,
             event: m.event || m.title,
@@ -3404,15 +1002,9 @@ export function AdminProvider({ children }) {
             eligibleVillages: m.eligibleVillages || 'All villages in selected mandals',
             eligibleQualifications: m.eligibleQualifications || ['10TH', 'INTER', 'UG', 'PG'],
           }));
-
-          setJobMelas(prev => {
-            const liveKeys = new Set(mappedMelas.map(mm => mm.id));
-            const retained = prev.filter(p => !liveKeys.has(p.id));
-            return [...mappedMelas, ...retained];
-          });
         }
 
-        if (requestsRes.status === 'fulfilled' && Array.isArray(requestsRes.value) && requestsRes.value.length) {
+        if (requestsRes.status === 'fulfilled' && Array.isArray(requestsRes.value)) {
           const mappedRequests = requestsRes.value.map(r => ({
             id: r.id,
             request_number: r.request_number,
@@ -3443,15 +1035,14 @@ export function AdminProvider({ children }) {
             participatingCompanies: r.participatingCompanies || [],
             createdByAdmin: false,
           }));
-
-          setJobMelas(prev => {
-            const reqKeys = new Set(mappedRequests.map(mr => mr.id));
-            const retained = prev.filter(p => !reqKeys.has(p.id));
-            return [...mappedRequests, ...retained];
-          });
+          combinedMelas = [...combinedMelas, ...mappedRequests];
         }
 
-        if (photosRes.status === 'fulfilled' && Array.isArray(photosRes.value) && photosRes.value.length > 0) {
+        if (melasRes.status === 'fulfilled' || requestsRes.status === 'fulfilled') {
+          setJobMelas(combinedMelas);
+        }
+
+        if (photosRes.status === 'fulfilled' && Array.isArray(photosRes.value)) {
           const liveImages = photosRes.value.map(p => ({
             id: p.id,
             title: p.title,
@@ -3469,7 +1060,7 @@ export function AdminProvider({ children }) {
           }));
         }
 
-        if (videosRes.status === 'fulfilled' && Array.isArray(videosRes.value) && videosRes.value.length > 0) {
+        if (videosRes.status === 'fulfilled' && Array.isArray(videosRes.value)) {
           const liveVideos = videosRes.value.map(v => ({
             id: v.id,
             title: v.title,
@@ -3487,7 +1078,7 @@ export function AdminProvider({ children }) {
           }));
         }
 
-        if (pressRes.status === 'fulfilled' && Array.isArray(pressRes.value) && pressRes.value.length > 0) {
+        if (pressRes.status === 'fulfilled' && Array.isArray(pressRes.value)) {
           const liveArticles = pressRes.value.map(a => ({
             id: a.id,
             newspaper: a.newspaper || a.publication_name,

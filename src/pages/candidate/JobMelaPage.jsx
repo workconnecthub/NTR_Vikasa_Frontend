@@ -17,7 +17,6 @@ import { useCandidate } from '../../context/CandidateContext';
 import { useAdmin } from '../../context/AdminContext';
 import { useNotifications } from '../../context/NotificationContext';
 import { dispatchCandidateEvent, NOTIFICATION_EVENTS } from '../../services/notificationEventService';
-import { MOCK_JOB_MELAS } from '../../data/mockData';
 import ApplicationDetailsModal from '../../components/ui/ApplicationDetailsModal';
 import { formatMelaId, formatJobId, formatRegistrationId } from '../../utils/applicationUtils';
 import candidateJobMelaService from '../../services/candidateJobMelaService';
@@ -102,9 +101,9 @@ export default function CandidateJobMelaPage() {
     getMelaStats
   } = useAdmin();
 
-  // Combine admin jobMelas with fallback to MOCK_JOB_MELAS
+  // Live admin jobMelas
   const allMelas = useMemo(() => {
-    return jobMelas && jobMelas.length > 0 ? jobMelas : MOCK_JOB_MELAS;
+    return jobMelas || [];
   }, [jobMelas]);
 
   // API State

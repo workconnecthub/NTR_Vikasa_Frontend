@@ -17,7 +17,7 @@ import FileUpload from '../../components/ui/FileUpload';
 import { InternshipCard } from '../../components/ui/EntityCards';
 import { useToast } from '../../context/ToastContext';
 import { useCandidate } from '../../context/CandidateContext';
-import { MOCK_INTERNSHIPS, MOCK_COMPANIES } from '../../data/mockData';
+import publicService from '../../services/publicService';
 
 export default function InternshipDetailPage() {
   const { id } = useParams();
@@ -31,6 +31,8 @@ export default function InternshipDetailPage() {
   const [applyModalOpen, setApplyModalOpen] = useState(false);
   const [applied, setApplied] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [liveInternship, setLiveInternship] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Form fields
   const [name, setName] = useState('');
@@ -40,17 +42,60 @@ export default function InternshipDetailPage() {
   const [gradYear, setGradYear] = useState('');
   const [coverNote, setCoverNote] = useState('');
 
-  const internship = useMemo(() => {
-    return MOCK_INTERNSHIPS.find((i) => i.id === id) || MOCK_INTERNSHIPS[0];
+  useEffect(() => {
+    let isMounted = true;
+    async function fetchInternship() {
+      setIsLoading(true);
+      try {
+        const data = await publicService.getPublishedInternship(id);
+        if (isMounted && data) {
+          setLiveInternship(data);
+        }
+      } catch (err) {
+        console.warn('InternshipDetailPage load error:', err);
+      } finally {
+        if (isMounted) setIsLoading(false);
+      }
+    }
+    fetchInternship();
+    return () => { isMounted = false; };
   }, [id]);
 
+  const internship = useMemo(() => {
+    if (!liveInternship) return null;
+    return {
+      ...liveInternship,
+      id: liveInternship.internship_id || liveInternship.id,
+      title: liveInternship.title,
+      company: liveInternship.company_name || liveInternship.company?.name || 'Employer',
+      companyId: liveInternship.company_id || 'comp-1',
+      location: liveInternship.location || 'India',
+      stipend: liveInternship.stipend || (liveInternship.stipend_amount ? `₹${liveInternship.stipend_amount.toLocaleString()}/mo` : 'Unpaid'),
+      duration: liveInternship.duration || '3 Months',
+      type: liveInternship.employment_type || 'Internship',
+      mode: liveInternship.work_mode || 'Hybrid',
+      skills: liveInternship.skills || [],
+      description: liveInternship.description || '',
+      requirements: liveInternship.requirements ? (Array.isArray(liveInternship.requirements) ? liveInternship.requirements : [liveInternship.requirements]) : [],
+      perks: liveInternship.perks ? (Array.isArray(liveInternship.perks) ? liveInternship.perks : [liveInternship.perks]) : [],
+      startDate: liveInternship.start_date || 'Immediately',
+      applicationDeadline: liveInternship.deadline || '2026-11-30',
+      openings: liveInternship.vacancies || liveInternship.openings || 1,
+    };
+  }, [liveInternship]);
+
   const company = useMemo(() => {
-    return MOCK_COMPANIES.find((c) => c.id === internship.companyId) || MOCK_COMPANIES[0];
+    if (!internship) return null;
+    return {
+      id: internship.companyId,
+      name: internship.company,
+      location: internship.location,
+      industry: internship.department || 'Technology',
+      description: 'Verified employer partner on NTR Vikasa Job Portal.',
+    };
   }, [internship]);
 
-  const similar = useMemo(() => {
-    return MOCK_INTERNSHIPS.filter((i) => i.id !== internship.id).slice(0, 2);
-  }, [internship]);
+  const similar = useMemo(() => [], []);
 
   // If user returned from login with ?apply=true, automatically open the apply modal
   useEffect(() => {
@@ -112,6 +157,32 @@ export default function InternshipDetailPage() {
       });
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="internship-detail-page" style={{ padding: 'var(--space-12) 0', textAlign: 'center' }}>
+        <div className="container">
+          <p style={{ color: 'var(--color-text-muted)' }}>Loading internship details...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!internship) {
+    return (
+      <div className="internship-detail-page" style={{ padding: 'var(--space-12) 0', textAlign: 'center' }}>
+        <div className="container">
+          <h2 style={{ fontSize: 'var(--text-xl)', fontWeight: 800 }}>Internship Not Found</h2>
+          <p style={{ color: 'var(--color-text-muted)', margin: 'var(--space-2) 0 var(--space-4)' }}>
+            The requested internship opening is not available or has expired.
+          </p>
+          <Link to="/internships">
+            <Button variant="outline">Back to Internships</Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="internship-detail-page" style={{ background: 'var(--color-bg)', minHeight: '100vh', paddingBottom: 'var(--space-20)' }}>

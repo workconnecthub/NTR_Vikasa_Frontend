@@ -16,7 +16,7 @@ import JobMelaPosterModal, { downloadPosterImage } from '../../components/ui/Job
 import { useToast } from '../../context/ToastContext';
 import { useAdmin } from '../../context/AdminContext';
 import { useCandidate } from '../../context/CandidateContext';
-import { MOCK_JOB_MELAS } from '../../data/mockData';
+import publicService from '../../services/publicService';
 
 export default function JobMelaDetailPage() {
   const { id } = useParams();
@@ -31,6 +31,8 @@ export default function JobMelaDetailPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isRegistered, setIsRegistered] = useState(false);
   const [posterModalOpen, setPosterModalOpen] = useState(false);
+  const [liveMela, setLiveMela] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Form inputs - prepopulate from candidate profile if logged in
   const [candidateName, setCandidateName] = useState(candidate?.name || '');
@@ -39,47 +41,71 @@ export default function JobMelaDetailPage() {
   const [qualification, setQualification] = useState("Bachelor's Degree (B.Tech, B.E, B.Sc, B.Com, BCA)");
   const [experience, setExperience] = useState('Fresher (0-1 yr)');
 
-  const mela = useMemo(() => {
-    const fromAdmin = (jobMelas || []).find((m) => String(m.id) === String(id));
-    if (fromAdmin) {
-      const companies = (fromAdmin.participatingCompanies && fromAdmin.participatingCompanies.length > 0)
-        ? fromAdmin.participatingCompanies
-        : (fromAdmin.availableJobs && fromAdmin.availableJobs.length > 0
-          ? fromAdmin.availableJobs.map((j, idx) => ({
-              id: `${fromAdmin.id}-c-${idx}`,
-              company: j.company,
-              position: j.title,
-              salary: j.salary,
-              vacancies: j.vacancies,
-              qualification: 'Graduate',
-              experience: '0-2 Yrs'
-            }))
-          : []);
-
-      return {
-        ...fromAdmin,
-        title: fromAdmin.title || fromAdmin.event,
-        venue: fromAdmin.venue || fromAdmin.location,
-        city: fromAdmin.city || (fromAdmin.location ? fromAdmin.location.split(',')[0].trim() : 'City'),
-        state: fromAdmin.state || (fromAdmin.location && fromAdmin.location.includes(',') ? fromAdmin.location.split(',')[1].trim() : 'Andhra Pradesh'),
-        time: fromAdmin.time || `${fromAdmin.startTime || '09:00 AM'} - ${fromAdmin.endTime || '06:00 PM'}`,
-        registrationDeadline: fromAdmin.regEndDate || fromAdmin.registrationDeadline || '2026-11-10',
-        participatingCompanies: companies,
-        companiesCount: companies.length || fromAdmin.companiesCount || fromAdmin.companies || 0,
-        availableJobs: companies.map(c => ({
-          title: c.position || c.title || c.role || 'Walk-in Role',
-          company: c.company || c.name || 'Participating Company',
-          salary: c.salary || 'Best in Industry',
-          vacancies: c.vacancies ? (typeof c.vacancies === 'number' ? `${c.vacancies} Spots` : String(c.vacancies)) : 'Multiple',
-        }))
-      };
+  useEffect(() => {
+    let isMounted = true;
+    async function loadMela() {
+      setIsLoading(true);
+      try {
+        const foundInContext = (jobMelas || []).find((m) => String(m.id) === String(id));
+        if (foundInContext) {
+          if (isMounted) {
+            setLiveMela(foundInContext);
+            setIsLoading(false);
+          }
+          return;
+        }
+        const melas = await publicService.getPublishedJobMelas();
+        if (isMounted && Array.isArray(melas)) {
+          const match = melas.find(m => String(m.id || m.job_mela_id) === String(id));
+          if (match) setLiveMela(match);
+        }
+      } catch (err) {
+        console.warn('Failed to load job mela details:', err);
+      } finally {
+        if (isMounted) setIsLoading(false);
+      }
     }
-    const fallback = MOCK_JOB_MELAS.find((m) => String(m.id) === String(id)) || MOCK_JOB_MELAS[0];
-    return {
-      ...fallback,
-      companiesCount: (fallback.participatingCompanies && fallback.participatingCompanies.length) || fallback.companiesCount || 0
-    };
+    loadMela();
+    return () => { isMounted = false; };
   }, [id, jobMelas]);
+
+  const mela = useMemo(() => {
+    const raw = liveMela || (jobMelas || []).find((m) => String(m.id) === String(id));
+    if (!raw) return null;
+
+    const companies = (raw.participatingCompanies && raw.participatingCompanies.length > 0)
+      ? raw.participatingCompanies
+      : (raw.availableJobs && raw.availableJobs.length > 0
+        ? raw.availableJobs.map((j, idx) => ({
+            id: `${raw.id || raw.job_mela_id}-c-${idx}`,
+            company: j.company,
+            position: j.title,
+            salary: j.salary,
+            vacancies: j.vacancies,
+            qualification: 'Graduate',
+            experience: '0-2 Yrs'
+          }))
+        : []);
+
+    return {
+      ...raw,
+      id: raw.job_mela_id || raw.id,
+      title: raw.title || raw.event || raw.name || 'Job Mela',
+      venue: raw.venue || raw.location || 'Venue TBD',
+      city: raw.city || (raw.location ? raw.location.split(',')[0].trim() : 'City'),
+      state: raw.state || (raw.location && raw.location.includes(',') ? raw.location.split(',')[1].trim() : 'Andhra Pradesh'),
+      time: raw.time || `${raw.startTime || raw.start_time || '09:00 AM'} - ${raw.endTime || raw.end_time || '06:00 PM'}`,
+      registrationDeadline: raw.regEndDate || raw.registrationDeadline || raw.registration_deadline || '2026-11-10',
+      participatingCompanies: companies,
+      companiesCount: companies.length || raw.companiesCount || raw.companies || 0,
+      availableJobs: companies.map(c => ({
+        title: c.position || c.title || c.role || 'Walk-in Role',
+        company: c.company || c.name || 'Participating Company',
+        salary: c.salary || 'Best in Industry',
+        vacancies: c.vacancies ? (typeof c.vacancies === 'number' ? `${c.vacancies} Spots` : String(c.vacancies)) : 'Multiple',
+      }))
+    };
+  }, [id, jobMelas, liveMela]);
 
   const stats = useMemo(() => {
     return getMelaStats ? getMelaStats(mela?.id) : null;
@@ -184,6 +210,32 @@ export default function JobMelaDetailPage() {
       });
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="job-mela-detail-page" style={{ padding: 'var(--space-12) 0', textAlign: 'center' }}>
+        <div className="container">
+          <p style={{ color: 'var(--color-text-muted)' }}>Loading job mela details...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!mela) {
+    return (
+      <div className="job-mela-detail-page" style={{ padding: 'var(--space-12) 0', textAlign: 'center' }}>
+        <div className="container">
+          <h2 style={{ fontSize: 'var(--text-xl)', fontWeight: 800 }}>Job Mela Not Found</h2>
+          <p style={{ color: 'var(--color-text-muted)', margin: 'var(--space-2) 0 var(--space-4)' }}>
+            The requested Job Mela event is not available or has concluded.
+          </p>
+          <Link to="/job-melas">
+            <Button variant="outline">Back to Job Melas</Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   const isRegistrationOpen = mela.status === 'REGISTRATION_OPEN' || mela.status === 'UPCOMING' || mela.status === 'APPROVED';
 

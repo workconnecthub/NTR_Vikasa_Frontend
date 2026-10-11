@@ -11,7 +11,6 @@ import Button from '../../components/ui/Button';
 import { EmptyState } from '../../components/ui/States';
 import Pagination from '../../components/ui/Pagination';
 import JobMelaPosterModal, { downloadPosterImage } from '../../components/ui/JobMelaPosterModal';
-import { MOCK_JOB_MELAS } from '../../data/mockData';
 import { useAdmin, DEFAULT_JOB_MELA_CONTENT } from '../../context/AdminContext';
 import publicService from '../../services/publicService';
 
@@ -64,10 +63,10 @@ export default function JobMelasPage() {
   }, []);
 
 
-  // Combine live backend published jobMelas with admin context or fallback mock data
+  // Combine live backend published jobMelas with admin context
   const allMelas = useMemo(() => {
     if (liveMelas && liveMelas.length > 0) return liveMelas;
-    return jobMelas && jobMelas.length > 0 ? jobMelas : MOCK_JOB_MELAS;
+    return jobMelas || [];
   }, [liveMelas, jobMelas]);
 
   // Dynamic unique cities list from all melas

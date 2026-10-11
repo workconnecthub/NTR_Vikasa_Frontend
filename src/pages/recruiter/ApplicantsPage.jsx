@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import {
   Users, Search, Filter, Eye, CheckCircle2, XCircle, CalendarCheck,
@@ -15,95 +15,73 @@ import Select from '../../components/ui/Select';
 import Textarea from '../../components/ui/Textarea';
 import { EmptyState } from '../../components/ui/States';
 import { useToast } from '../../context/ToastContext';
-
-const INITIAL_APPLICANTS = [
-  {
-    id: 'CAND-01',
-    name: 'Priya Sharma',
-    headline: 'Senior React & Frontend Engineer | 4+ Years Experience',
-    email: 'priya.sharma@example.com',
-    phone: '+91 98765 43210',
-    location: 'Bengaluru, Karnataka',
-    experience: '4.2 Years',
-    education: "B.Tech Computer Science, VTU (8.8 CGPA)",
-    skills: ['React', 'TypeScript', 'Node.js', 'Redux Toolkit', 'Tailwind CSS', 'GraphQL'],
-    appliedDate: '2026-08-22',
-    status: 'SHORTLISTED',
-    matchScore: 94,
-    resumeName: 'Priya_Sharma_Resume_2026.pdf',
-    coverNote: 'I have 4+ years of hands-on experience building performant frontend architectures at scale. I led the micro-frontend migration at Infosys and would love to bring my skills to TechCorp.',
-    currentCompany: 'Infosys Ltd',
-    currentSalary: '₹14.5 LPA',
-    expectedSalary: '₹22.0 LPA',
-    noticePeriod: '30 Days',
-  },
-  {
-    id: 'CAND-02',
-    name: 'Amitav Ghosh',
-    headline: 'Staff Software Engineer | Full-Stack & Distributed Systems',
-    email: 'amitav.ghosh@example.com',
-    phone: '+91 98123 45678',
-    location: 'Bengaluru, Karnataka',
-    experience: '8.5 Years',
-    education: "B.E. Information Technology, Jadavpur University",
-    skills: ['React', 'Java', 'Spring Boot', 'Kafka', 'TypeScript', 'AWS'],
-    appliedDate: '2026-08-21',
-    status: 'UNDER_REVIEW',
-    matchScore: 89,
-    resumeName: 'Amitav_Ghosh_Staff_Engineer.pdf',
-    coverNote: 'Experienced in high-throughput transactional architectures and leading distributed engineering squads.',
-    currentCompany: 'Flipkart',
-    currentSalary: '₹28.0 LPA',
-    expectedSalary: '₹38.0 LPA',
-    noticePeriod: '60 Days',
-  },
-  {
-    id: 'CAND-03',
-    name: 'Sneha Kulkarni',
-    headline: 'Frontend & UI Guild Lead | React, Next.js, Design Systems',
-    email: 'sneha.kulkarni@example.com',
-    phone: '+91 97654 32109',
-    location: 'Pune, Maharashtra (Open to relocate)',
-    experience: '5.0 Years',
-    education: "M.Tech Software Systems, BITS Pilani",
-    skills: ['React', 'Next.js', 'TypeScript', 'Storybook', 'Figma', 'Jest'],
-    appliedDate: '2026-08-19',
-    status: 'INTERVIEW',
-    matchScore: 96,
-    resumeName: 'Sneha_Kulkarni_UI_Lead.pdf',
-    coverNote: 'Passionate about design tokens, component architecture, and engineering excellence.',
-    currentCompany: 'Swiggy',
-    currentSalary: '₹18.0 LPA',
-    expectedSalary: '₹26.0 LPA',
-    noticePeriod: 'Immediate (Serving notice)',
-  },
-  {
-    id: 'CAND-04',
-    name: 'Rohan Verma',
-    headline: 'Junior Software Engineer | Frontend Enthusiast',
-    email: 'rohan.verma@example.com',
-    phone: '+91 91234 56780',
-    location: 'Bengaluru, Karnataka',
-    experience: '1.2 Years',
-    education: "B.Tech Computer Science, PES University",
-    skills: ['JavaScript', 'HTML5', 'CSS3', 'React basics'],
-    appliedDate: '2026-08-18',
-    status: 'REJECTED',
-    matchScore: 58,
-    resumeName: 'Rohan_Verma_Resume.pdf',
-    coverNote: 'Eager to learn and grow in a fast-paced product company.',
-    currentCompany: 'TCS',
-    currentSalary: '₹5.5 LPA',
-    expectedSalary: '₹9.0 LPA',
-    noticePeriod: '30 Days',
-  },
-];
+import recruiterApplicationService from '../../services/recruiterApplicationService';
+import recruiterJobService from '../../services/recruiterJobService';
+import { Loader2 } from 'lucide-react';
 
 export default function RecruiterApplicantsPage() {
   const { id } = useParams();
   const { toast } = useToast();
 
-  const [applicants, setApplicants] = useState(INITIAL_APPLICANTS);
+  const [applicants, setApplicants] = useState([]);
+  const [jobTitle, setJobTitle] = useState('Job Opening');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+    async function loadApplicantsAndJob() {
+      setLoading(true);
+      try {
+        const [appRes, jobRes] = await Promise.allSettled([
+          recruiterApplicationService.getApplications({ job_id: id }),
+          recruiterJobService.getJob(id)
+        ]);
+
+        if (!isMounted) return;
+
+        if (jobRes.status === 'fulfilled' && jobRes.value) {
+          setJobTitle(jobRes.value.title || 'Job Opening');
+        }
+
+        if (appRes.status === 'fulfilled' && appRes.value) {
+          const rawItems = appRes.value.items || appRes.value || [];
+          const mapped = rawItems.map(app => {
+            const c = app.candidate || {};
+            return {
+              id: app.id || app.application_id,
+              applicationId: app.id || app.application_id,
+              candidateId: c.id,
+              name: c.full_name || c.name || app.candidate_name || 'Applicant',
+              headline: c.headline || `${c.experience_years ? `${c.experience_years} Yrs` : ''} ${c.current_role || ''}`.trim() || 'Candidate',
+              email: c.email || app.candidate_email || 'candidate@example.com',
+              phone: c.phone || app.candidate_phone || 'N/A',
+              location: c.current_location || c.location || 'India',
+              experience: c.experience_years ? `${c.experience_years} Years` : (c.experience || 'Fresher'),
+              education: c.education || (c.highest_qualification ? `${c.highest_qualification}` : 'Degree Holder'),
+              skills: Array.isArray(c.skills) ? c.skills : (c.skills ? String(c.skills).split(',').map(s => s.trim()).filter(Boolean) : (app.skills || [])),
+              appliedDate: app.applied_at?.split('T')[0] || app.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
+              status: app.status || 'UNDER_REVIEW',
+              matchScore: app.match_score ?? app.match_percentage ?? 85,
+              resumeName: c.resume_filename || app.resume_filename || 'Candidate_Resume.pdf',
+              resumeUrl: c.resume_url || app.resume_url,
+              coverNote: app.cover_letter || app.cover_note || 'No cover note provided.',
+              currentCompany: c.current_company || 'N/A',
+              currentSalary: c.current_salary || 'Competitive',
+              expectedSalary: c.expected_salary || 'Competitive',
+              noticePeriod: c.notice_period || 'Immediate',
+            };
+          });
+          setApplicants(mapped);
+        }
+      } catch (err) {
+        console.warn('Failed to load applicants:', err);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    }
+    loadApplicantsAndJob();
+    return () => { isMounted = false; };
+  }, [id]);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
 
@@ -151,7 +129,12 @@ export default function RecruiterApplicantsPage() {
     setDetailsModalOpen(true);
   };
 
-  const handleShortlist = (candId, candName) => {
+  const handleShortlist = async (candId, candName) => {
+    try {
+      await recruiterApplicationService.updateStatus(candId, 'SHORTLISTED');
+    } catch (err) {
+      console.warn('Status update API error:', err);
+    }
     setApplicants(applicants.map(c => c.id === candId ? { ...c, status: 'SHORTLISTED' } : c));
     if (selectedCandidate?.id === candId) {
       setSelectedCandidate({ ...selectedCandidate, status: 'SHORTLISTED' });
@@ -163,7 +146,12 @@ export default function RecruiterApplicantsPage() {
     });
   };
 
-  const handleReject = (candId, candName) => {
+  const handleReject = async (candId, candName) => {
+    try {
+      await recruiterApplicationService.updateStatus(candId, 'REJECTED');
+    } catch (err) {
+      console.warn('Status update API error:', err);
+    }
     setApplicants(applicants.map(c => c.id === candId ? { ...c, status: 'REJECTED' } : c));
     if (selectedCandidate?.id === candId) {
       setSelectedCandidate({ ...selectedCandidate, status: 'REJECTED' });
@@ -281,7 +269,7 @@ export default function RecruiterApplicantsPage() {
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginBottom: 2 }}>
               <Users size={20} style={{ color: 'var(--color-primary-600)' }} />
-              <h1 style={{ fontSize: 'var(--text-2xl)', fontWeight: 800 }}>Applicants: Senior Frontend Engineer</h1>
+              <h1 style={{ fontSize: 'var(--text-2xl)', fontWeight: 800 }}>Applicants: {jobTitle}</h1>
             </div>
             <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)' }}>
               Review resumes, shortlist top engineering talent, and schedule live interview rounds
@@ -348,7 +336,12 @@ export default function RecruiterApplicantsPage() {
         </div>
 
         <div className="card-body" style={{ padding: 0 }}>
-          {filteredApplicants.length === 0 ? (
+          {loading ? (
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: 'var(--space-12)', color: 'var(--color-text-muted)', gap: 8 }}>
+              <Loader2 size={24} className="animate-spin" />
+              <span>Loading applicants...</span>
+            </div>
+          ) : filteredApplicants.length === 0 ? (
             <div style={{ padding: 'var(--space-10)' }}>
               <EmptyState
                 icon="default"

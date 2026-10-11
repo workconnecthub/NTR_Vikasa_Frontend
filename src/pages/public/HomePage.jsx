@@ -12,11 +12,6 @@ import {
 import Button from '../../components/ui/Button';
 import { JobCard, CompanyCard, InternshipCard, JobMelaCard } from '../../components/ui/EntityCards';
 import {
-  MOCK_JOBS,
-  MOCK_COMPANIES,
-  MOCK_INTERNSHIPS,
-  MOCK_JOB_MELAS,
-  MOCK_STATS,
   WHY_CHOOSE_US,
   LOCATIONS
 } from '../../data/mockData';
@@ -181,7 +176,7 @@ export default function HomePage() {
         }
 
         if (photosRes.status === 'fulfilled' || videosRes.status === 'fulfilled' || galleryHdrRes.status === 'fulfilled') {
-          const imgs = photosRes.status === 'fulfilled' && Array.isArray(photosRes.value) && photosRes.value.length > 0
+          const imgs = photosRes.status === 'fulfilled' && Array.isArray(photosRes.value)
             ? photosRes.value.map(p => ({
                 id: p.id,
                 title: p.title,
@@ -190,9 +185,9 @@ export default function HomePage() {
                 date: p.date,
                 description: p.description || '',
               }))
-            : null;
+            : [];
 
-          const vids = videosRes.status === 'fulfilled' && Array.isArray(videosRes.value) && videosRes.value.length > 0
+          const vids = videosRes.status === 'fulfilled' && Array.isArray(videosRes.value)
             ? videosRes.value.map(v => ({
                 id: v.id,
                 title: v.title,
@@ -201,20 +196,18 @@ export default function HomePage() {
                 date: v.date || '',
                 description: v.description || '',
               }))
-            : null;
+            : [];
 
           const hdr = galleryHdrRes.status === 'fulfilled' && galleryHdrRes.value ? galleryHdrRes.value : null;
 
-          if (imgs || vids || hdr) {
-            setLiveGallery({
-              badge: hdr?.badge || galleryContent.badge,
-              heading1: hdr?.heading1 || galleryContent.heading1,
-              heading2: hdr?.heading2 || galleryContent.heading2,
-              subtitle: hdr?.subtitle || galleryContent.subtitle,
-              images: imgs || galleryContent.images || [],
-              videos: vids || galleryContent.videos || [],
-            });
-          }
+          setLiveGallery({
+            badge: hdr?.badge || galleryContent.badge,
+            heading1: hdr?.heading1 || galleryContent.heading1,
+            heading2: hdr?.heading2 || galleryContent.heading2,
+            subtitle: hdr?.subtitle || galleryContent.subtitle,
+            images: imgs,
+            videos: vids,
+          });
         }
 
         if (pressRes.status === 'fulfilled' || newsHdrRes.status === 'fulfilled') {
@@ -229,19 +222,17 @@ export default function HomePage() {
                 sourceUrl: a.sourceUrl || a.source_url || a.article_url || '',
                 summary: a.summary || a.description || '',
               }))
-            : null;
+            : [];
 
           const nhdr = newsHdrRes.status === 'fulfilled' && newsHdrRes.value ? newsHdrRes.value : null;
 
-          if (arts !== null || nhdr) {
-            setLiveNews({
-              badge: nhdr?.badge || newsContent.badge,
-              heading1: nhdr?.heading1 || newsContent.heading1,
-              heading2: nhdr?.heading2 || newsContent.heading2,
-              subtitle: nhdr?.subtitle || newsContent.subtitle,
-              articles: arts !== null ? arts : (newsContent.articles || []),
-            });
-          }
+          setLiveNews({
+            badge: nhdr?.badge || newsContent.badge,
+            heading1: nhdr?.heading1 || newsContent.heading1,
+            heading2: nhdr?.heading2 || newsContent.heading2,
+            subtitle: nhdr?.subtitle || newsContent.subtitle,
+            articles: arts,
+          });
         }
       } catch (e) {
         console.warn('HomePage public data load warning:', e);
@@ -252,10 +243,10 @@ export default function HomePage() {
     return () => { isMounted = false; };
   }, []);
 
-  const displayJobs = liveJobs.length > 0 ? liveJobs : MOCK_JOBS;
-  const displayCompanies = liveCompanies.length > 0 ? liveCompanies : MOCK_COMPANIES;
-  const displayInternships = liveInternships.length > 0 ? liveInternships : MOCK_INTERNSHIPS;
-  const displayMelas = liveJobMelas.length > 0 ? liveJobMelas : (jobMelas.length > 0 ? jobMelas : MOCK_JOB_MELAS);
+  const displayJobs = liveJobs;
+  const displayCompanies = liveCompanies;
+  const displayInternships = liveInternships;
+  const displayMelas = liveJobMelas;
 
   const featuredJobs = displayJobs.filter(j => j.isFeatured).slice(0, 3);
   const latestJobs = displayJobs.slice(0, 6);
@@ -723,140 +714,150 @@ export default function HomePage() {
       </section>
 
       {/* ── 3. Featured Jobs Section ── */}
-      <section style={{ padding: 'var(--space-16) 0', background: 'var(--color-bg)' }}>
-        <div className="container">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 'var(--space-8)', flexWrap: 'wrap', gap: 'var(--space-4)' }}>
-            <div>
-              <div className="badge badge-primary" style={{ marginBottom: 'var(--space-2)' }}>
-                <Sparkles size={12} style={{ marginRight: 4 }} /> Prime Opportunities
+      {featuredJobs.length > 0 && (
+        <section style={{ padding: 'var(--space-16) 0', background: 'var(--color-bg)' }}>
+          <div className="container">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 'var(--space-8)', flexWrap: 'wrap', gap: 'var(--space-4)' }}>
+              <div>
+                <div className="badge badge-primary" style={{ marginBottom: 'var(--space-2)' }}>
+                  <Sparkles size={12} style={{ marginRight: 4 }} /> Prime Opportunities
+                </div>
+                <h2 style={{ fontSize: 'var(--text-3xl)', fontWeight: 800 }}>Featured Jobs</h2>
+                <p style={{ color: 'var(--color-text-muted)', marginTop: 'var(--space-1)' }}>
+                  Curated high-growth roles from industry leaders and verified startups
+                </p>
               </div>
-              <h2 style={{ fontSize: 'var(--text-3xl)', fontWeight: 800 }}>Featured Jobs</h2>
-              <p style={{ color: 'var(--color-text-muted)', marginTop: 'var(--space-1)' }}>
-                Curated high-growth roles from industry leaders and verified startups
-              </p>
+              <Link to="/jobs">
+                <Button variant="outline" rightIcon={<ArrowRight size={16} />}>
+                  Explore All Jobs
+                </Button>
+              </Link>
             </div>
-            <Link to="/jobs">
-              <Button variant="outline" rightIcon={<ArrowRight size={16} />}>
-                Explore All Jobs
-              </Button>
-            </Link>
+            <div className="home-featured-jobs-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 'var(--space-6)' }}>
+              {featuredJobs.map((job) => (
+                <JobCard key={job.id} job={job} />
+              ))}
+            </div>
           </div>
-          <div className="home-featured-jobs-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 'var(--space-6)' }}>
-            {featuredJobs.map((job) => (
-              <JobCard key={job.id} job={job} />
-            ))}
-          </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* ── 4. Latest Jobs Section ── */}
-      <section style={{ padding: 'var(--space-16) 0', background: 'var(--color-surface)', borderTop: '1px solid var(--color-border)' }}>
-        <div className="container">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 'var(--space-8)', flexWrap: 'wrap', gap: 'var(--space-4)' }}>
-            <div>
-              <div className="badge badge-success" style={{ marginBottom: 'var(--space-2)' }}>
-                <Clock size={12} style={{ marginRight: 4 }} /> Fresh Openings
+      {latestJobs.length > 0 && (
+        <section style={{ padding: 'var(--space-16) 0', background: 'var(--color-surface)', borderTop: '1px solid var(--color-border)' }}>
+          <div className="container">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 'var(--space-8)', flexWrap: 'wrap', gap: 'var(--space-4)' }}>
+              <div>
+                <div className="badge badge-success" style={{ marginBottom: 'var(--space-2)' }}>
+                  <Clock size={12} style={{ marginRight: 4 }} /> Fresh Openings
+                </div>
+                <h2 style={{ fontSize: 'var(--text-3xl)', fontWeight: 800 }}>Latest Job Listings</h2>
+                <p style={{ color: 'var(--color-text-muted)', marginTop: 'var(--space-1)' }}>
+                  Recently posted openings across engineering, product, sales, and operations
+                </p>
               </div>
-              <h2 style={{ fontSize: 'var(--text-3xl)', fontWeight: 800 }}>Latest Job Listings</h2>
-              <p style={{ color: 'var(--color-text-muted)', marginTop: 'var(--space-1)' }}>
-                Recently posted openings across engineering, product, sales, and operations
-              </p>
+              <Link to="/jobs">
+                <Button variant="ghost" rightIcon={<ArrowRight size={16} />}>
+                  View All Jobs
+                </Button>
+              </Link>
             </div>
-            <Link to="/jobs">
-              <Button variant="ghost" rightIcon={<ArrowRight size={16} />}>
-                View All {MOCK_JOBS.length}+ Jobs
-              </Button>
-            </Link>
+            <div className="home-latest-jobs-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 'var(--space-6)' }}>
+              {latestJobs.map((job) => (
+                <JobCard key={job.id} job={job} />
+              ))}
+            </div>
           </div>
-          <div className="home-latest-jobs-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 'var(--space-6)' }}>
-            {latestJobs.map((job) => (
-              <JobCard key={job.id} job={job} />
-            ))}
-          </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* ── 5. Top Companies Section ── */}
-      <section style={{ padding: 'var(--space-16) 0', background: 'var(--color-bg)' }}>
-        <div className="container">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 'var(--space-8)', flexWrap: 'wrap', gap: 'var(--space-4)' }}>
-            <div>
-              <div className="badge badge-warning" style={{ marginBottom: 'var(--space-2)' }}>
-                <Building2 size={12} style={{ marginRight: 4 }} /> Top Employers
+      {topCompanies.length > 0 && (
+        <section style={{ padding: 'var(--space-16) 0', background: 'var(--color-bg)' }}>
+          <div className="container">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 'var(--space-8)', flexWrap: 'wrap', gap: 'var(--space-4)' }}>
+              <div>
+                <div className="badge badge-warning" style={{ marginBottom: 'var(--space-2)' }}>
+                  <Building2 size={12} style={{ marginRight: 4 }} /> Top Employers
+                </div>
+                <h2 style={{ fontSize: 'var(--text-3xl)', fontWeight: 800 }}>Top Companies Hiring Now</h2>
+                <p style={{ color: 'var(--color-text-muted)', marginTop: 'var(--space-1)' }}>
+                  Discover great workplaces with transparent culture ratings, perks, and open positions
+                </p>
               </div>
-              <h2 style={{ fontSize: 'var(--text-3xl)', fontWeight: 800 }}>Top Companies Hiring Now</h2>
-              <p style={{ color: 'var(--color-text-muted)', marginTop: 'var(--space-1)' }}>
-                Discover great workplaces with transparent culture ratings, perks, and open positions
-              </p>
+              <Link to="/companies">
+                <Button variant="outline" rightIcon={<ArrowRight size={16} />}>
+                  Browse All Companies
+                </Button>
+              </Link>
             </div>
-            <Link to="/companies">
-              <Button variant="outline" rightIcon={<ArrowRight size={16} />}>
-                Browse All Companies
-              </Button>
-            </Link>
+            <div className="home-companies-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 'var(--space-6)' }}>
+              {topCompanies.map((company) => (
+                <CompanyCard key={company.id} company={company} />
+              ))}
+            </div>
           </div>
-          <div className="home-companies-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 'var(--space-6)' }}>
-            {topCompanies.map((company) => (
-              <CompanyCard key={company.id} company={company} />
-            ))}
-          </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* ── 6. Featured Internships Section ── */}
-      <section style={{ padding: 'var(--space-16) 0', background: 'var(--color-surface)', borderTop: '1px solid var(--color-border)' }}>
-        <div className="container">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 'var(--space-8)', flexWrap: 'wrap', gap: 'var(--space-4)' }}>
-            <div>
-              <div className="badge badge-info" style={{ marginBottom: 'var(--space-2)' }}>
-                <GraduationCap size={12} style={{ marginRight: 4 }} /> Early Career
+      {featuredInternships.length > 0 && (
+        <section style={{ padding: 'var(--space-16) 0', background: 'var(--color-surface)', borderTop: '1px solid var(--color-border)' }}>
+          <div className="container">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 'var(--space-8)', flexWrap: 'wrap', gap: 'var(--space-4)' }}>
+              <div>
+                <div className="badge badge-info" style={{ marginBottom: 'var(--space-2)' }}>
+                  <GraduationCap size={12} style={{ marginRight: 4 }} /> Early Career
+                </div>
+                <h2 style={{ fontSize: 'var(--text-3xl)', fontWeight: 800 }}>Featured Internships & Trainee Roles</h2>
+                <p style={{ color: 'var(--color-text-muted)', marginTop: 'var(--space-1)' }}>
+                  Paid stipends, pre-placement offers (PPOs), and real-world project mentorship
+                </p>
               </div>
-              <h2 style={{ fontSize: 'var(--text-3xl)', fontWeight: 800 }}>Featured Internships & Trainee Roles</h2>
-              <p style={{ color: 'var(--color-text-muted)', marginTop: 'var(--space-1)' }}>
-                Paid stipends, pre-placement offers (PPOs), and real-world project mentorship
-              </p>
+              <Link to="/internships">
+                <Button variant="outline" rightIcon={<ArrowRight size={16} />}>
+                  Explore Internships
+                </Button>
+              </Link>
             </div>
-            <Link to="/internships">
-              <Button variant="outline" rightIcon={<ArrowRight size={16} />}>
-                Explore Internships
-              </Button>
-            </Link>
+            <div className="home-internships-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 'var(--space-6)' }}>
+              {featuredInternships.map((internship) => (
+                <InternshipCard key={internship.id} internship={internship} />
+              ))}
+            </div>
           </div>
-          <div className="home-internships-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 'var(--space-6)' }}>
-            {featuredInternships.map((internship) => (
-              <InternshipCard key={internship.id} internship={internship} />
-            ))}
-          </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* ── 7. Upcoming Job Melas Section ── */}
-      <section style={{ padding: 'var(--space-16) 0', background: 'linear-gradient(135deg, #f8fafc 0%, #eff6ff 100%)', borderTop: '1px solid var(--color-border)' }}>
-        <div className="container">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 'var(--space-8)', flexWrap: 'wrap', gap: 'var(--space-4)' }}>
-            <div>
-              <div className="badge badge-primary" style={{ marginBottom: 'var(--space-2)' }}>
-                <CalendarDays size={12} style={{ marginRight: 4 }} /> Mega Career Fairs
+      {upcomingJobMelas.length > 0 && (
+        <section style={{ padding: 'var(--space-16) 0', background: 'linear-gradient(135deg, #f8fafc 0%, #eff6ff 100%)', borderTop: '1px solid var(--color-border)' }}>
+          <div className="container">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 'var(--space-8)', flexWrap: 'wrap', gap: 'var(--space-4)' }}>
+              <div>
+                <div className="badge badge-primary" style={{ marginBottom: 'var(--space-2)' }}>
+                  <CalendarDays size={12} style={{ marginRight: 4 }} /> Mega Career Fairs
+                </div>
+                <h2 style={{ fontSize: 'var(--text-3xl)', fontWeight: 800 }}>Upcoming & Active Job Melas</h2>
+                <p style={{ color: 'var(--color-text-muted)', marginTop: 'var(--space-1)' }}>
+                  Meet 100+ recruiters face-to-face, attend spot interview rounds, and receive offer letters
+                </p>
               </div>
-              <h2 style={{ fontSize: 'var(--text-3xl)', fontWeight: 800 }}>Upcoming & Active Job Melas</h2>
-              <p style={{ color: 'var(--color-text-muted)', marginTop: 'var(--space-1)' }}>
-                Meet 100+ recruiters face-to-face, attend spot interview rounds, and receive offer letters
-              </p>
+              <Link to="/job-melas">
+                <Button variant="primary" rightIcon={<ArrowRight size={16} />}>
+                  View All Job Melas
+                </Button>
+              </Link>
             </div>
-            <Link to="/job-melas">
-              <Button variant="primary" rightIcon={<ArrowRight size={16} />}>
-                View All Job Melas
-              </Button>
-            </Link>
-          </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 'var(--space-6)' }}>
-            {upcomingJobMelas.map((event) => (
-              <JobMelaCard key={event.id} event={event} />
-            ))}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 'var(--space-6)' }}>
+              {upcomingJobMelas.map((event) => (
+                <JobMelaCard key={event.id} event={event} />
+              ))}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* ── 8. Media & Event Gallery (Photos & Interactive Hover-to-Play Videos) ── */}
       <GallerySection galleryContent={liveGallery || galleryContent} />

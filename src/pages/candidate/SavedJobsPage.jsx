@@ -11,7 +11,6 @@ import Pagination from '../../components/ui/Pagination';
 import ApplyModal from '../../components/ui/ApplyModal';
 import { useCandidate } from '../../context/CandidateContext';
 import { useToast } from '../../context/ToastContext';
-import { MOCK_JOBS } from '../../data/mockData';
 import { formatJobId } from '../../utils/applicationUtils';
 import authService from '../../services/authService';
 import candidateSavedJobsService from '../../services/candidateSavedJobsService';
@@ -64,9 +63,9 @@ export default function CandidateSavedJobsPage() {
   // Candidate full name: API takes priority; CandidateContext fallback
   const candidateName = savedData?.candidate?.full_name || candidate?.name || 'Candidate';
 
-  // Derive saved jobs list: API data first; fallback to CandidateContext savedJobIds
+  // Derive saved jobs list: API data first; empty array if none
   const savedJobsList = useMemo(() => {
-    if (savedData?.saved_jobs) {
+    if (savedData?.saved_jobs && Array.isArray(savedData.saved_jobs)) {
       return savedData.saved_jobs.map((item) => ({
         ...item,
         id: item.job_id || item.id,
@@ -77,25 +76,8 @@ export default function CandidateSavedJobsPage() {
         tags: item.skills || item.tags || [],
       }));
     }
-
-    // Fallback if not authenticated
-    return (candidate.savedJobIds || []).map((id) => {
-      const found = MOCK_JOBS.find((j) => String(j.id) === String(id));
-      if (found) return found;
-      return {
-        id,
-        title: 'Senior Software Engineer',
-        company: 'TechCorp India',
-        location: 'Hyderabad',
-        salary: '₹14 - ₹22 LPA',
-        experience: '2-4 Years',
-        type: 'Full-time',
-        mode: 'Hybrid',
-        tags: ['React', 'Python', 'SQL'],
-        createdAt: '2026-09-01',
-      };
-    });
-  }, [savedData, candidate.savedJobIds]);
+    return [];
+  }, [savedData]);
 
   // Total saved jobs count
   const savedJobsCount = savedData
