@@ -30,6 +30,7 @@ const FOOTER_LINKS = {
   'Company & Helpdesk': [
     { label: 'About Us',              href: '/about' },
     { label: 'Media & Gallery',       href: '/gallery' },
+    { label: 'News & Press',          href: '/news' },
     { label: 'Skill Development',     href: '/skill-development' },
     { label: 'Contact & Helpdesk',    href: '/contact' },
     { label: 'Privacy Policy',        href: '/privacy' },

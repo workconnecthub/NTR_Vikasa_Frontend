@@ -18,7 +18,8 @@ import publicService from '../../services/publicService';
 export default function JobMelasPage() {
   const { jobMelaContent, jobMelas = [], getMelaStats } = useAdmin();
   const currentContent = jobMelaContent || DEFAULT_JOB_MELA_CONTENT;
-  const hero = currentContent.hero || DEFAULT_JOB_MELA_CONTENT.hero;
+  const [liveHero, setLiveHero] = useState(null);
+  const hero = liveHero || currentContent.hero || DEFAULT_JOB_MELA_CONTENT.hero;
 
   const [activeTab, setActiveTab] = useState('upcoming');
   const [cityFilter, setCityFilter] = useState('');
@@ -29,24 +30,39 @@ export default function JobMelasPage() {
 
   useEffect(() => {
     let isMounted = true;
-    const fetchPublicMelas = async () => {
+    const fetchPublicData = async () => {
       try {
-        const data = await publicService.getPublishedJobMelas();
-        if (isMounted && Array.isArray(data) && data.length > 0) {
-          const formatted = data.map(m => ({
+        const [melasRes, heroRes] = await Promise.allSettled([
+          publicService.getPublishedJobMelas(),
+          publicService.getPublishedJobMelaHeroContent(),
+        ]);
+        if (!isMounted) return;
+
+        if (melasRes.status === 'fulfilled' && Array.isArray(melasRes.value) && melasRes.value.length > 0) {
+          const formatted = melasRes.value.map(m => ({
             ...m,
             date: m.date || m.event_date || '2026-10-15',
             time: m.time || `${m.start_time || '09:00 AM'} - ${m.end_time || '05:30 PM'}`
           }));
           setLiveMelas(formatted);
         }
+
+        if (heroRes.status === 'fulfilled' && heroRes.value) {
+          const hd = heroRes.value;
+          setLiveHero({
+            badge: hd.hero?.badge || hd.badge || hd.hero_badge || DEFAULT_JOB_MELA_CONTENT.hero.badge,
+            heading: hd.hero?.heading || hd.heading || hd.hero_heading || DEFAULT_JOB_MELA_CONTENT.hero.heading,
+            description: hd.hero?.description || hd.description || hd.hero_description || DEFAULT_JOB_MELA_CONTENT.hero.description,
+          });
+        }
       } catch (err) {
-        console.warn('Failed to load published job melas from backend:', err);
+        console.warn('Failed to load published job melas data from backend:', err);
       }
     };
-    fetchPublicMelas();
+    fetchPublicData();
     return () => { isMounted = false; };
   }, []);
+
 
   // Combine live backend published jobMelas with admin context or fallback mock data
   const allMelas = useMemo(() => {

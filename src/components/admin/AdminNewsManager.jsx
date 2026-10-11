@@ -24,6 +24,27 @@ const NEWSPAPER_PRESETS = [
   'Special Press Bulletin',
 ];
 
+const getSafeExternalUrl = (url) => {
+  if (!url || typeof url !== 'string') return null;
+  const trimmed = url.trim();
+  if (!trimmed) return null;
+  if (/^(https?:\/\/)/i.test(trimmed)) return trimmed;
+  if (trimmed.startsWith('//')) return `https:${trimmed}`;
+  return `https://${trimmed}`;
+};
+
+const formatImageUrl = (url) => {
+  if (!url) return '';
+  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) {
+    return url;
+  }
+  if (url.startsWith('/uploads')) {
+    const backendBase = (import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api/v1').replace(/\/api\/v1\/?$/, '');
+    return `${backendBase}${url}`;
+  }
+  return url;
+};
+
 export default function AdminNewsManager() {
   const { addToast } = useToast();
   const {
@@ -41,6 +62,8 @@ export default function AdminNewsManager() {
   const [searchQuery, setSearchQuery] = useState('');
 
   // Async & Loading states
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [savingArticle, setSavingArticle] = useState(false);
   const [savingHeader, setSavingHeader] = useState(false);
@@ -55,6 +78,8 @@ export default function AdminNewsManager() {
 
   // ── Load Backend News Data ──
   const loadBackendNews = useCallback(async () => {
+    setLoading(true);
+    setLoadError(null);
     try {
       const [articlesRes, headerRes] = await Promise.allSettled([
         adminService.getPressArticles({ page_size: 100 }),
@@ -63,7 +88,7 @@ export default function AdminNewsManager() {
 
       const updatedNews = { ...newsContent };
 
-      if (articlesRes.status === 'fulfilled' && Array.isArray(articlesRes.value) && articlesRes.value.length > 0) {
+      if (articlesRes.status === 'fulfilled' && Array.isArray(articlesRes.value)) {
         updatedNews.articles = articlesRes.value.map(a => ({
           id: a.id,
           newspaper: a.newspaper || a.publication_name,
@@ -74,20 +99,22 @@ export default function AdminNewsManager() {
           sourceUrl: a.sourceUrl || a.source_url || a.article_url || '',
           summary: a.summary || a.description || '',
         }));
+      } else if (articlesRes.status === 'rejected') {
+        setLoadError('Failed to fetch press clippings from database.');
       }
 
       if (headerRes.status === 'fulfilled' && headerRes.value) {
         const h = headerRes.value;
-        if (h.heading1) {
-          updatedNews.badge = h.badge || updatedNews.badge;
-          updatedNews.heading1 = h.heading1 || updatedNews.heading1;
-          updatedNews.heading2 = h.heading2 || updatedNews.heading2;
-          updatedNews.subtitle = h.subtitle || updatedNews.subtitle;
+        if (h && (h.heading1 || h.badge || h.subtitle)) {
+          updatedNews.badge = h.badge !== undefined && h.badge !== null ? h.badge : updatedNews.badge;
+          updatedNews.heading1 = h.heading1 !== undefined && h.heading1 !== null ? h.heading1 : updatedNews.heading1;
+          updatedNews.heading2 = h.heading2 !== undefined && h.heading2 !== null ? h.heading2 : updatedNews.heading2;
+          updatedNews.subtitle = h.subtitle !== undefined && h.subtitle !== null ? h.subtitle : updatedNews.subtitle;
           setHeaderForm({
-            badge: updatedNews.badge,
-            heading1: updatedNews.heading1,
-            heading2: updatedNews.heading2,
-            subtitle: updatedNews.subtitle,
+            badge: updatedNews.badge || '',
+            heading1: updatedNews.heading1 || '',
+            heading2: updatedNews.heading2 || '',
+            subtitle: updatedNews.subtitle || '',
           });
         }
       }
@@ -95,6 +122,9 @@ export default function AdminNewsManager() {
       updateHomeContent({ newsArticles: updatedNews });
     } catch (err) {
       console.warn('Failed to load news from backend:', err);
+      setLoadError('Failed to connect to backend server.');
+    } finally {
+      setLoading(false);
     }
   }, []);
 
@@ -104,6 +134,7 @@ export default function AdminNewsManager() {
 
   const handleSaveHeader = async (e) => {
     e.preventDefault();
+    if (savingHeader) return;
     setSavingHeader(true);
     try {
       await adminService.updateWebsiteSectionHeader('news', headerForm);
@@ -128,6 +159,7 @@ export default function AdminNewsManager() {
   };
 
   const handleResetHeader = async () => {
+    if (!window.confirm('Reset News & Media section header settings to default values?')) return;
     const def = DEFAULT_HOME_CONTENT.newsArticles;
     setHeaderForm({
       badge: def.badge,
@@ -142,19 +174,19 @@ export default function AdminNewsManager() {
         heading2: def.heading2,
         subtitle: def.subtitle,
       });
-    } catch {
-      // ignore
+      updateHomeContent({
+        newsArticles: {
+          ...newsContent,
+          badge: def.badge,
+          heading1: def.heading1,
+          heading2: def.heading2,
+          subtitle: def.subtitle,
+        },
+      });
+      addToast('News header settings reset to default values.', 'info');
+    } catch (err) {
+      addToast(err.message || 'Failed to reset header settings in database.', 'error');
     }
-    updateHomeContent({
-      newsArticles: {
-        ...newsContent,
-        badge: def.badge,
-        heading1: def.heading1,
-        heading2: def.heading2,
-        subtitle: def.subtitle,
-      },
-    });
-    addToast('News header settings reset to default values.', 'info');
   };
 
   // ── Article Modal State ──
@@ -231,8 +263,14 @@ export default function AdminNewsManager() {
 
   const handleSaveArticle = async (e) => {
     e.preventDefault();
+    if (savingArticle || uploadingImage) return;
+
     if (!articleForm.title.trim()) {
       addToast('Headline / Title is required', 'error');
+      return;
+    }
+    if (!articleForm.newspaper.trim()) {
+      addToast('Newspaper / Publication is required', 'error');
       return;
     }
     if (!articleForm.imageUrl.trim()) {
@@ -244,8 +282,8 @@ export default function AdminNewsManager() {
     try {
       if (editingArticleId) {
         const updated = await adminService.updatePressArticle(editingArticleId, {
-          title: articleForm.title,
-          newspaper: articleForm.newspaper,
+          title: articleForm.title.trim(),
+          newspaper: articleForm.newspaper.trim(),
           date: articleForm.date,
           edition: articleForm.edition,
           imageUrl: articleForm.imageUrl,
@@ -256,8 +294,8 @@ export default function AdminNewsManager() {
         addToast('News article clipping updated successfully in database!', 'success');
       } else {
         const created = await adminService.createPressArticle({
-          title: articleForm.title,
-          newspaper: articleForm.newspaper,
+          title: articleForm.title.trim(),
+          newspaper: articleForm.newspaper.trim(),
           date: articleForm.date,
           edition: articleForm.edition,
           imageUrl: articleForm.imageUrl,
@@ -284,8 +322,7 @@ export default function AdminNewsManager() {
         addToast('News clipping deleted from database.', 'info');
         await loadBackendNews();
       } catch (err) {
-        deleteNewsArticle(art.id);
-        addToast('News clipping removed.', 'info');
+        addToast(err.message || 'Failed to delete clipping from database.', 'error');
       }
     }
   };
@@ -296,6 +333,7 @@ export default function AdminNewsManager() {
     return articles.filter(a =>
       (a.title || '').toLowerCase().includes(q) ||
       (a.newspaper || '').toLowerCase().includes(q) ||
+      (a.edition || '').toLowerCase().includes(q) ||
       (a.summary || '').toLowerCase().includes(q)
     );
   }, [articles, searchQuery]);
@@ -471,7 +509,37 @@ export default function AdminNewsManager() {
             />
           </div>
 
-          {filteredArticles.length === 0 ? (
+          {loading ? (
+            <div
+              style={{
+                textAlign: 'center',
+                padding: '48px 16px',
+                background: 'var(--color-surface)',
+                borderRadius: 'var(--radius-xl)',
+                border: '1px solid var(--color-border)',
+                color: 'var(--color-text-muted)',
+              }}
+            >
+              <div style={{ display: 'inline-block', width: 28, height: 28, border: '3px solid var(--color-border)', borderTopColor: 'var(--color-primary-600)', borderRadius: '50%', animation: 'spin 0.8s linear infinite', marginBottom: 12 }} />
+              <p style={{ fontSize: '13px', margin: 0 }}>Loading clippings from database...</p>
+            </div>
+          ) : loadError && articles.length === 0 ? (
+            <div
+              style={{
+                textAlign: 'center',
+                padding: '40px 16px',
+                background: 'var(--color-surface)',
+                borderRadius: 'var(--radius-xl)',
+                border: '1px solid var(--color-border)',
+                color: 'var(--color-text-muted)',
+              }}
+            >
+              <p style={{ fontSize: '14px', color: '#ef4444', marginBottom: 12 }}>{loadError}</p>
+              <Button variant="secondary" size="sm" onClick={loadBackendNews}>
+                Retry Loading
+              </Button>
+            </div>
+          ) : filteredArticles.length === 0 ? (
             <div
               style={{
                 textAlign: 'center',
@@ -526,7 +594,7 @@ export default function AdminNewsManager() {
 
                   <div style={{ position: 'relative', paddingTop: '58%', background: '#ffffff', overflow: 'hidden', borderBottom: '1px solid var(--color-border)' }}>
                     <img
-                      src={art.imageUrl}
+                      src={formatImageUrl(art.imageUrl)}
                       alt={art.title}
                       style={{
                         position: 'absolute',
@@ -558,9 +626,9 @@ export default function AdminNewsManager() {
                     )}
 
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 6, marginTop: 'auto', paddingTop: 10, borderTop: '1px solid var(--color-border)' }}>
-                      {art.sourceUrl && (
+                      {art.sourceUrl && getSafeExternalUrl(art.sourceUrl) && (
                         <a
-                          href={art.sourceUrl}
+                          href={getSafeExternalUrl(art.sourceUrl)}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="btn btn-secondary btn-xs"

@@ -15,6 +15,7 @@ import Select from '../../components/ui/Select';
 import { Modal } from '../../components/ui/Modal';
 import { useToast } from '../../context/ToastContext';
 import { useAdmin, DEFAULT_SKILL_PAGE_CONTENT } from '../../context/AdminContext';
+import adminService from '../../services/adminService';
 
 const AVAILABLE_ICONS = [
   'Award', 'BookOpen', 'TrendingUp', 'Users', 'Code2', 'Laptop',
@@ -110,79 +111,120 @@ export default function AdminSkillContentPage() {
   };
 
   // 1. Save Hero
-  const handleSaveHero = (e) => {
+  const handleSaveHero = async (e) => {
     e.preventDefault();
     setSaving(true);
-    setTimeout(() => {
-      updateSkillPageContent({ hero: heroForm });
-      setSaving(false);
+    try {
+      const res = await adminService.updateSkillDevelopmentSection('skills_hero', heroForm);
+      const saved = res.content || heroForm;
+      updateSkillPageContent({ hero: saved });
       setHeroModalOpen(false);
       addToast('Skill Development Hero section updated successfully!', 'success');
-    }, 250);
+    } catch (err) {
+      console.error('Save skill hero failed:', err);
+      addToast(err.message || 'Failed to update hero section', 'error');
+    } finally {
+      setSaving(false);
+    }
   };
 
   // 2. Save Highlights
-  const handleSaveHighlights = (e) => {
+  const handleSaveHighlights = async (e) => {
     e.preventDefault();
     setSaving(true);
-    setTimeout(() => {
-      updateSkillPageContent({ highlights: highlightsForm });
-      setSaving(false);
+    try {
+      const res = await adminService.updateSkillDevelopmentSection('skills_highlights', { highlights: highlightsForm });
+      const saved = res.content?.highlights || highlightsForm;
+      updateSkillPageContent({ highlights: saved });
       setHighlightsModalOpen(false);
       addToast('Highlights strip updated successfully!', 'success');
-    }, 250);
+    } catch (err) {
+      console.error('Save skill highlights failed:', err);
+      addToast(err.message || 'Failed to update highlights', 'error');
+    } finally {
+      setSaving(false);
+    }
   };
 
   // 3. Save Empowering Skills
-  const handleSaveEmpowering = (e) => {
+  const handleSaveEmpowering = async (e) => {
     e.preventDefault();
     setSaving(true);
-    setTimeout(() => {
-      updateSkillPageContent({ empoweringSkills: empoweringForm });
-      setSaving(false);
+    try {
+      const res = await adminService.updateSkillDevelopmentSection('skills_mission', empoweringForm);
+      const saved = res.content || empoweringForm;
+      updateSkillPageContent({ empoweringSkills: saved });
       setEmpoweringModalOpen(false);
       addToast('Empowering Skills section updated successfully!', 'success');
-    }, 250);
+    } catch (err) {
+      console.error('Save skill mission failed:', err);
+      addToast(err.message || 'Failed to update mission section', 'error');
+    } finally {
+      setSaving(false);
+    }
   };
 
   // 4. Save Training Journey
-  const handleSaveJourney = (e) => {
+  const handleSaveJourney = async (e) => {
     e.preventDefault();
     setSaving(true);
-    setTimeout(() => {
-      updateSkillPageContent({ trainingJourney: journeyForm });
-      setSaving(false);
+    try {
+      const res = await adminService.updateSkillDevelopmentSection('skills_pathway', journeyForm);
+      const saved = res.content || journeyForm;
+      updateSkillPageContent({ trainingJourney: saved });
       setJourneyModalOpen(false);
       addToast('Training Journey section updated successfully!', 'success');
-    }, 250);
+    } catch (err) {
+      console.error('Save skill pathway failed:', err);
+      addToast(err.message || 'Failed to update pathway section', 'error');
+    } finally {
+      setSaving(false);
+    }
   };
 
   // 5. Save Programs We Offer
-  const handleSavePrograms = (e) => {
+  const handleSavePrograms = async (e) => {
     e.preventDefault();
     setSaving(true);
-    setTimeout(() => {
-      updateSkillPageContent({ programsWeOffer: programsForm });
-      setSaving(false);
+    try {
+      const res = await adminService.updateSkillDevelopmentSection('skills_programs', programsForm);
+      const saved = res.content || programsForm;
+      updateSkillPageContent({ programsWeOffer: saved });
       setProgramsModalOpen(false);
       addToast('Programs We Offer section updated successfully!', 'success');
-    }, 250);
+    } catch (err) {
+      console.error('Save skill programs failed:', err);
+      addToast(err.message || 'Failed to update programs section', 'error');
+    } finally {
+      setSaving(false);
+    }
   };
 
   // 6. Save Why Choose
-  const handleSaveWhyChoose = (e) => {
+  const handleSaveWhyChoose = async (e) => {
     e.preventDefault();
     setSaving(true);
-    setTimeout(() => {
-      updateSkillPageContent({ whyChoose: whyChooseForm });
-      setSaving(false);
+    try {
+      const res = await adminService.updateSkillDevelopmentSection('skills_advantages', whyChooseForm);
+      const saved = res.content || whyChooseForm;
+      updateSkillPageContent({ whyChoose: saved });
       setWhyChooseModalOpen(false);
       addToast('Why Choose section updated successfully!', 'success');
-    }, 250);
+    } catch (err) {
+      console.error('Save skill why choose failed:', err);
+      addToast(err.message || 'Failed to update advantages section', 'error');
+    } finally {
+      setSaving(false);
+    }
   };
 
   // Reset All to Defaults
-  const handleConfirmReset = () => {
+  const handleConfirmReset = async () => {
+    try {
+      await adminService.resetAllSkillDevelopmentContent();
+    } catch (err) {
+      console.warn('Backend reset all skills failed:', err);
+    }
     resetSkillPageContent();
     setHeroForm({ ...DEFAULT_SKILL_PAGE_CONTENT.hero });
     setHighlightsForm(DEFAULT_SKILL_PAGE_CONTENT.highlights.map(h => ({ ...h })));

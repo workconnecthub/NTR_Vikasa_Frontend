@@ -218,7 +218,7 @@ export default function HomePage() {
         }
 
         if (pressRes.status === 'fulfilled' || newsHdrRes.status === 'fulfilled') {
-          const arts = pressRes.status === 'fulfilled' && Array.isArray(pressRes.value) && pressRes.value.length > 0
+          const arts = pressRes.status === 'fulfilled' && Array.isArray(pressRes.value)
             ? pressRes.value.map(a => ({
                 id: a.id,
                 newspaper: a.newspaper || a.publication_name,
@@ -233,13 +233,13 @@ export default function HomePage() {
 
           const nhdr = newsHdrRes.status === 'fulfilled' && newsHdrRes.value ? newsHdrRes.value : null;
 
-          if (arts || nhdr) {
+          if (arts !== null || nhdr) {
             setLiveNews({
               badge: nhdr?.badge || newsContent.badge,
               heading1: nhdr?.heading1 || newsContent.heading1,
               heading2: nhdr?.heading2 || newsContent.heading2,
               subtitle: nhdr?.subtitle || newsContent.subtitle,
-              articles: arts || newsContent.articles || [],
+              articles: arts !== null ? arts : (newsContent.articles || []),
             });
           }
         }

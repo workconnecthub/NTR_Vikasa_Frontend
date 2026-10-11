@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Briefcase, Users, Building2, TrendingUp, ShieldCheck,
@@ -10,11 +10,23 @@ import CardCarousel from '../../components/ui/CardCarousel';
 import { Modal } from '../../components/ui/Modal';
 import { MOCK_STATS, WHY_CHOOSE_US } from '../../data/mockData';
 import { useAdmin, DEFAULT_ABOUT_CONTENT } from '../../context/AdminContext';
+import publicService from '../../services/publicService';
 
 export default function AboutPage() {
   const { aboutContent } = useAdmin();
+  const [publishedContent, setPublishedContent] = useState(null);
 
-  const currentContent = aboutContent || DEFAULT_ABOUT_CONTENT;
+  useEffect(() => {
+    let isMounted = true;
+    publicService.getPublishedAboutUsContent().then((res) => {
+      if (isMounted && res) {
+        setPublishedContent(res);
+      }
+    });
+    return () => { isMounted = false; };
+  }, []);
+
+  const currentContent = publishedContent || aboutContent || DEFAULT_ABOUT_CONTENT;
   const hero = currentContent.hero || DEFAULT_ABOUT_CONTENT.hero;
   const stats = currentContent.stats || DEFAULT_ABOUT_CONTENT.stats;
   const whatWeStandFor = currentContent.whatWeStandFor || DEFAULT_ABOUT_CONTENT.whatWeStandFor;

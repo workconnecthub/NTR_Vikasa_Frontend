@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   GraduationCap, BookOpen, Award, CheckCircle2, Clock, MapPin,
@@ -17,18 +17,34 @@ import {
   WHY_CHOOSE_SKILL_PORTAL
 } from '../../data/skillData';
 import { useAdmin, DEFAULT_SKILL_PAGE_CONTENT } from '../../context/AdminContext';
+import publicService from '../../services/publicService';
 
 export default function SkillDevelopmentOverviewPage() {
   const navigate = useNavigate();
   const { skillPageContent } = useAdmin();
+  const [liveContent, setLiveContent] = useState(null);
 
-  const currentContent = skillPageContent || DEFAULT_SKILL_PAGE_CONTENT;
-  const hero = currentContent.hero || DEFAULT_SKILL_PAGE_CONTENT.hero;
-  const highlights = currentContent.highlights?.length ? currentContent.highlights : DEFAULT_SKILL_PAGE_CONTENT.highlights;
-  const empoweringSkills = currentContent.empoweringSkills || DEFAULT_SKILL_PAGE_CONTENT.empoweringSkills;
-  const trainingJourney = currentContent.trainingJourney || DEFAULT_SKILL_PAGE_CONTENT.trainingJourney;
-  const programsWeOffer = currentContent.programsWeOffer || DEFAULT_SKILL_PAGE_CONTENT.programsWeOffer;
-  const whyChoose = currentContent.whyChoose || DEFAULT_SKILL_PAGE_CONTENT.whyChoose;
+  useEffect(() => {
+    let isMounted = true;
+    publicService.getPublishedSkillDevelopmentContent().then(res => {
+      if (isMounted && res) {
+        setLiveContent(res);
+      }
+    }).catch(err => {
+      console.warn('Failed to load published skill content from API:', err);
+    });
+    return () => { isMounted = false; };
+  }, []);
+
+  const currentContent = liveContent || skillPageContent || DEFAULT_SKILL_PAGE_CONTENT;
+  const hero = currentContent.hero || currentContent.skills_hero || DEFAULT_SKILL_PAGE_CONTENT.hero;
+  const highlights = (currentContent.highlights && currentContent.highlights.length)
+    ? currentContent.highlights
+    : (currentContent.skills_highlights?.highlights || DEFAULT_SKILL_PAGE_CONTENT.highlights);
+  const empoweringSkills = currentContent.empoweringSkills || currentContent.skills_mission || DEFAULT_SKILL_PAGE_CONTENT.empoweringSkills;
+  const trainingJourney = currentContent.trainingJourney || currentContent.skills_pathway || DEFAULT_SKILL_PAGE_CONTENT.trainingJourney;
+  const programsWeOffer = currentContent.programsWeOffer || currentContent.skills_programs || DEFAULT_SKILL_PAGE_CONTENT.programsWeOffer;
+  const whyChoose = currentContent.whyChoose || currentContent.skills_advantages || DEFAULT_SKILL_PAGE_CONTENT.whyChoose;
 
   // Helper for dynamic category and feature icons
   const renderSkillIcon = (iconName, size = 24) => {

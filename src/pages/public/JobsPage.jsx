@@ -458,9 +458,47 @@ export default function JobsPage() {
   const { jobsPageContent } = useAdmin();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const currentJobsContent = jobsPageContent || DEFAULT_JOBS_PAGE_CONTENT;
-  const heroConfig = currentJobsContent.hero || DEFAULT_JOBS_PAGE_CONTENT.hero;
-  const searchConfig = currentJobsContent.search || DEFAULT_JOBS_PAGE_CONTENT.search;
+  const [publicContent, setPublicContent] = useState(null);
+  const [activeLocations, setActiveLocations] = useState({
+    states: INDIAN_STATES,
+    union_territories: INDIAN_UNION_TERRITORIES,
+  });
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchPublicJobsConfig = async () => {
+      try {
+        const [contentRes, locsRes] = await Promise.allSettled([
+          publicService.getPublishedJobsPageContent(),
+          publicService.getActiveJobLocations(),
+        ]);
+
+        if (!isMounted) return;
+
+        if (contentRes.status === 'fulfilled' && contentRes.value) {
+          setPublicContent(contentRes.value);
+        }
+
+        if (locsRes.status === 'fulfilled' && locsRes.value) {
+          const lData = locsRes.value;
+          if (lData.states || lData.union_territories) {
+            setActiveLocations({
+              states: lData.states || [],
+              union_territories: lData.union_territories || [],
+            });
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to fetch public jobs page content:', err);
+      }
+    };
+
+    fetchPublicJobsConfig();
+    return () => { isMounted = false; };
+  }, []);
+
+  const heroConfig = publicContent?.hero || jobsPageContent?.hero || DEFAULT_JOBS_PAGE_CONTENT.hero;
+  const searchConfig = publicContent?.search || jobsPageContent?.search || DEFAULT_JOBS_PAGE_CONTENT.search;
 
   // Search & Filter state
   const initialSearch = searchParams.get('company') || searchParams.get('company_name') || searchParams.get('search') || searchParams.get('q') || '';
@@ -768,20 +806,24 @@ export default function JobsPage() {
                 <option value="" style={{ color: 'var(--color-text-muted)' }}>
                   {searchConfig.locationPlaceholder || 'All Locations (All India)'}
                 </option>
-                <optgroup label="States (28)" style={{ fontWeight: 700, color: 'var(--color-primary-700)' }}>
-                  {INDIAN_STATES.map((st) => (
-                    <option key={st} value={st} style={{ color: 'var(--color-text)', fontWeight: 500 }}>
-                      {st}
-                    </option>
-                  ))}
-                </optgroup>
-                <optgroup label="Union Territories (8)" style={{ fontWeight: 700, color: 'var(--color-primary-700)' }}>
-                  {INDIAN_UNION_TERRITORIES.map((ut) => (
-                    <option key={ut} value={ut} style={{ color: 'var(--color-text)', fontWeight: 500 }}>
-                      {ut}
-                    </option>
-                  ))}
-                </optgroup>
+                {activeLocations.states?.length > 0 && (
+                  <optgroup label={`States (${activeLocations.states.length})`} style={{ fontWeight: 700, color: 'var(--color-primary-700)' }}>
+                    {activeLocations.states.map((st) => (
+                      <option key={st} value={st} style={{ color: 'var(--color-text)', fontWeight: 500 }}>
+                        {st}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
+                {activeLocations.union_territories?.length > 0 && (
+                  <optgroup label={`Union Territories (${activeLocations.union_territories.length})`} style={{ fontWeight: 700, color: 'var(--color-primary-700)' }}>
+                    {activeLocations.union_territories.map((ut) => (
+                      <option key={ut} value={ut} style={{ color: 'var(--color-text)', fontWeight: 500 }}>
+                        {ut}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
               </select>
               {location ? (
                 <button
@@ -822,7 +864,10 @@ export default function JobsPage() {
             {popularTags.map((chip) => (
               <button
                 key={chip}
-                onClick={() => setSearch(chip)}
+                onClick={() => {
+                  setSearch(chip);
+                  setPage(1);
+                }}
                 style={{
                   background: 'rgba(255, 255, 255, 0.12)',
                   border: '1px solid rgba(255, 255, 255, 0.25)',

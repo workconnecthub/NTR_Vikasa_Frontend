@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import adminService from '../../services/adminService';
 import {
   LayoutTemplate, Home, Briefcase, GraduationCap, CalendarDays,
   Info, Edit3, ArrowRight, ArrowLeft, ExternalLink, RotateCcw,
@@ -78,7 +79,7 @@ export default function AdminWebsiteContentPage() {
     }
   };
 
-  const handleResetCurrentPage = () => {
+  const handleResetCurrentPage = async () => {
     if (selectedPage === 'home') {
       resetHomeContent();
       addToast('Home Page content reset to default values.', 'info');
@@ -86,12 +87,27 @@ export default function AdminWebsiteContentPage() {
       resetJobsPageContent();
       addToast('Jobs Page content reset to default values.', 'info');
     } else if (selectedPage === 'skills') {
+      try {
+        await adminService.resetAllSkillDevelopmentContent();
+      } catch (err) {
+        console.warn('Backend reset skills failed, falling back to local reset:', err);
+      }
       resetSkillPageContent();
       addToast('Skill Development content reset to default values.', 'info');
     } else if (selectedPage === 'job-melas') {
+      try {
+        await adminService.resetJobMelaHeroContent();
+      } catch (err) {
+        console.warn('Backend reset job melas failed, falling back to local reset:', err);
+      }
       resetJobMelaContent();
       addToast('Job Melas content reset to default values.', 'info');
     } else if (selectedPage === 'about') {
+      try {
+        await adminService.resetAboutUsContent();
+      } catch (err) {
+        console.warn('Backend reset about failed, falling back to local reset:', err);
+      }
       resetAboutContent();
       addToast('About Us content reset to default values.', 'info');
     } else if (selectedPage === 'gallery') {
@@ -408,6 +424,7 @@ export default function AdminWebsiteContentPage() {
   const curJobs = jobsPageContent || DEFAULT_JOBS_PAGE_CONTENT;
   const [jobsHeroModal, setJobsHeroModal] = useState(false);
   const [jobsSearchModal, setJobsSearchModal] = useState(false);
+  const [jobsLocationsModal, setJobsLocationsModal] = useState(false);
   const [jobsHeroForm, setJobsHeroForm] = useState({
     badge: curJobs.hero?.badge || '',
     heading: curJobs.hero?.heading || '',
@@ -421,6 +438,85 @@ export default function AdminWebsiteContentPage() {
   const [newPopularTag, setNewPopularTag] = useState('');
   const [savingJobs, setSavingJobs] = useState(false);
 
+  // Job Locations state
+  const [jobLocationsList, setJobLocationsList] = useState(() => {
+    const defaultLocs = [
+      ...INDIAN_STATES.map((s, idx) => ({
+        id: `loc-${s.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
+        name: s,
+        state_ut_type: 'state',
+        display_order: idx + 1,
+        is_active: true,
+      })),
+      ...INDIAN_UNION_TERRITORIES.map((u, idx) => ({
+        id: `loc-${u.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
+        name: u,
+        state_ut_type: 'union_territory',
+        display_order: INDIAN_STATES.length + idx + 1,
+        is_active: true,
+      })),
+    ];
+    return defaultLocs;
+  });
+  const [locationFilterSearch, setLocationFilterSearch] = useState('');
+  const [locationTab, setLocationTab] = useState('all');
+
+  // Fetch Jobs Page Content and Locations from backend on page load or selection
+  useEffect(() => {
+    let isMounted = true;
+    const loadJobsContent = async () => {
+      try {
+        const [configRes, locsRes] = await Promise.allSettled([
+          adminService.getJobsPageContent(),
+          adminService.getJobLocations(),
+        ]);
+
+        if (!isMounted) return;
+
+        if (configRes.status === 'fulfilled' && configRes.value) {
+          const cfg = configRes.value;
+          updateJobsPageContent({
+            hero: cfg.hero,
+            search: cfg.search,
+          });
+          if (cfg.locations && Array.isArray(cfg.locations) && cfg.locations.length > 0) {
+            setJobLocationsList(cfg.locations);
+          }
+        }
+
+        if (locsRes.status === 'fulfilled' && Array.isArray(locsRes.value) && locsRes.value.length > 0) {
+          setJobLocationsList(locsRes.value);
+        }
+      } catch (err) {
+        console.warn('Error loading backend Jobs page configuration:', err);
+      }
+    };
+
+    if (selectedPage === 'jobs') {
+      loadJobsContent();
+    }
+  }, [selectedPage]);
+
+  // Sync modal forms when context changes
+  useEffect(() => {
+    if (jobsPageContent) {
+      setJobsHeroForm({
+        badge: jobsPageContent.hero?.badge || '',
+        heading: jobsPageContent.hero?.heading || '',
+        subtitle: jobsPageContent.hero?.subtitle || '',
+      });
+      setJobsSearchForm({
+        searchPlaceholder: jobsPageContent.search?.searchPlaceholder || '',
+        locationPlaceholder: jobsPageContent.search?.locationPlaceholder || '',
+        popularSearches: [...(jobsPageContent.search?.popularSearches || [])],
+      });
+    }
+  }, [jobsPageContent]);
+
+  const activeLocationsCount = jobLocationsList.length > 0
+    ? jobLocationsList.filter(l => l.is_active).length
+    : (INDIAN_STATES.length + INDIAN_UNION_TERRITORIES.length);
+
   const handleOpenJobsHero = () => {
     const j = jobsPageContent || DEFAULT_JOBS_PAGE_CONTENT;
     setJobsHeroForm({
@@ -431,17 +527,25 @@ export default function AdminWebsiteContentPage() {
     setJobsHeroModal(true);
   };
 
-  const handleSaveJobsHero = (e) => {
+  const handleSaveJobsHero = async (e) => {
     e.preventDefault();
     setSavingJobs(true);
-    setTimeout(() => {
+    try {
+      await adminService.updateJobsHero({
+        badge: jobsHeroForm.badge,
+        heading: jobsHeroForm.heading,
+        subtitle: jobsHeroForm.subtitle,
+      });
       updateJobsPageContent({
         hero: jobsHeroForm,
       });
-      setSavingJobs(false);
       setJobsHeroModal(false);
       addToast('Jobs Page Hero updated successfully!', 'success');
-    }, 250);
+    } catch (err) {
+      addToast(err?.message || 'Failed to update Jobs Page Hero', 'error');
+    } finally {
+      setSavingJobs(false);
+    }
   };
 
   const handleOpenJobsSearch = () => {
@@ -458,8 +562,16 @@ export default function AdminWebsiteContentPage() {
   const handleAddPopularTag = (e) => {
     if (e) e.preventDefault();
     const tag = newPopularTag.trim();
-    if (!tag) return;
-    if (jobsSearchForm.popularSearches.includes(tag)) {
+    if (!tag) {
+      addToast('Please enter a keyword', 'warning');
+      return;
+    }
+    if (tag.length > 50) {
+      addToast('Keyword must be 50 characters or less', 'warning');
+      return;
+    }
+    // Case-insensitive duplicate check
+    if (jobsSearchForm.popularSearches.some(t => t.trim().toLowerCase() === tag.toLowerCase())) {
       addToast('Tag already exists', 'warning');
       return;
     }
@@ -477,18 +589,82 @@ export default function AdminWebsiteContentPage() {
     }));
   };
 
-  const handleSaveJobsSearch = (e) => {
+  const handleSaveJobsSearch = async (e) => {
     e.preventDefault();
     setSavingJobs(true);
-    setTimeout(() => {
+    try {
+      await adminService.updateJobsSearch({
+        searchPlaceholder: jobsSearchForm.searchPlaceholder,
+        locationPlaceholder: jobsSearchForm.locationPlaceholder,
+        popularSearches: jobsSearchForm.popularSearches,
+      });
       updateJobsPageContent({
         search: jobsSearchForm,
       });
-      setSavingJobs(false);
       setJobsSearchModal(false);
       addToast('Jobs Page search & popular search tags updated!', 'success');
-    }, 250);
+    } catch (err) {
+      addToast(err?.message || 'Failed to update search configuration', 'error');
+    } finally {
+      setSavingJobs(false);
+    }
   };
+
+  const handleOpenJobsLocations = async () => {
+    try {
+      const locs = await adminService.getJobLocations();
+      if (Array.isArray(locs) && locs.length > 0) {
+        setJobLocationsList(locs);
+      }
+    } catch (err) {
+      console.warn('Error fetching latest job locations:', err);
+    }
+    setLocationFilterSearch('');
+    setLocationTab('all');
+    setJobsLocationsModal(true);
+  };
+
+  const handleToggleLocation = (locId) => {
+    setJobLocationsList(prev =>
+      prev.map(l => l.id === locId ? { ...l, is_active: !l.is_active } : l)
+    );
+  };
+
+  const handleSaveJobsLocations = async (e) => {
+    if (e) e.preventDefault();
+    setSavingJobs(true);
+    try {
+      const updates = jobLocationsList.map(l => ({
+        id: l.id,
+        is_active: Boolean(l.is_active),
+        name: l.name,
+      }));
+      const updated = await adminService.batchUpdateJobLocations(updates);
+      if (Array.isArray(updated) && updated.length > 0) {
+        setJobLocationsList(updated);
+      }
+      setJobsLocationsModal(false);
+      addToast('Job locations updated successfully!', 'success');
+    } catch (err) {
+      addToast(err?.message || 'Failed to update job locations', 'error');
+    } finally {
+      setSavingJobs(false);
+    }
+  };
+
+  const handleResetLocationsToDefaults = async () => {
+    setJobLocationsList(prev => prev.map(l => ({ ...l, is_active: true })));
+    addToast('All locations set to active. Click Save Changes to confirm.', 'info');
+  };
+
+  const filteredLocationsForModal = jobLocationsList.filter(loc => {
+    if (locationTab === 'state' && loc.state_ut_type !== 'state') return false;
+    if (locationTab === 'union_territory' && loc.state_ut_type !== 'union_territory') return false;
+    if (locationFilterSearch.trim()) {
+      return loc.name.toLowerCase().includes(locationFilterSearch.trim().toLowerCase());
+    }
+    return true;
+  });
 
   // ═══════════════════════════════════════════════════════════════════════════
   // 3. SKILL DEVELOPMENT CONTENT STATE & HANDLERS
@@ -549,15 +725,21 @@ export default function AdminWebsiteContentPage() {
     setSkillHeroModal(true);
   };
 
-  const handleSaveSkillHero = (e) => {
+  const handleSaveSkillHero = async (e) => {
     e.preventDefault();
     setSavingSkill(true);
-    setTimeout(() => {
-      updateSkillPageContent({ hero: skillHeroForm });
-      setSavingSkill(false);
+    try {
+      const res = await adminService.updateSkillDevelopmentSection('skills_hero', skillHeroForm);
+      const saved = res.content || skillHeroForm;
+      updateSkillPageContent({ hero: saved });
       setSkillHeroModal(false);
       addToast('Skill Development Hero section updated!', 'success');
-    }, 250);
+    } catch (err) {
+      console.error('Save skill hero failed:', err);
+      addToast(err.message || 'Failed to update hero section', 'error');
+    } finally {
+      setSavingSkill(false);
+    }
   };
 
   const handleOpenSkillHighlights = () => {
@@ -566,15 +748,21 @@ export default function AdminWebsiteContentPage() {
     setSkillHighlightsModal(true);
   };
 
-  const handleSaveSkillHighlights = (e) => {
+  const handleSaveSkillHighlights = async (e) => {
     e.preventDefault();
     setSavingSkill(true);
-    setTimeout(() => {
-      updateSkillPageContent({ highlights: skillHighlightsForm });
-      setSavingSkill(false);
+    try {
+      const res = await adminService.updateSkillDevelopmentSection('skills_highlights', { highlights: skillHighlightsForm });
+      const saved = res.content?.highlights || skillHighlightsForm;
+      updateSkillPageContent({ highlights: saved });
       setSkillHighlightsModal(false);
       addToast('Skill Highlights updated!', 'success');
-    }, 250);
+    } catch (err) {
+      console.error('Save skill highlights failed:', err);
+      addToast(err.message || 'Failed to update highlights', 'error');
+    } finally {
+      setSavingSkill(false);
+    }
   };
 
   const handleOpenSkillMission = () => {
@@ -588,15 +776,21 @@ export default function AdminWebsiteContentPage() {
     setSkillMissionModal(true);
   };
 
-  const handleSaveSkillMission = (e) => {
+  const handleSaveSkillMission = async (e) => {
     e.preventDefault();
     setSavingSkill(true);
-    setTimeout(() => {
-      updateSkillPageContent({ empoweringSkills: skillMissionForm });
-      setSavingSkill(false);
+    try {
+      const res = await adminService.updateSkillDevelopmentSection('skills_mission', skillMissionForm);
+      const saved = res.content || skillMissionForm;
+      updateSkillPageContent({ empoweringSkills: saved });
       setSkillMissionModal(false);
       addToast('Skill Institutional Mission section updated!', 'success');
-    }, 250);
+    } catch (err) {
+      console.error('Save skill mission failed:', err);
+      addToast(err.message || 'Failed to update mission section', 'error');
+    } finally {
+      setSavingSkill(false);
+    }
   };
 
   const handleOpenSkillPathway = () => {
@@ -610,15 +804,21 @@ export default function AdminWebsiteContentPage() {
     setSkillPathwayModal(true);
   };
 
-  const handleSaveSkillPathway = (e) => {
+  const handleSaveSkillPathway = async (e) => {
     e.preventDefault();
     setSavingSkill(true);
-    setTimeout(() => {
-      updateSkillPageContent({ trainingJourney: skillPathwayForm });
-      setSavingSkill(false);
+    try {
+      const res = await adminService.updateSkillDevelopmentSection('skills_pathway', skillPathwayForm);
+      const saved = res.content || skillPathwayForm;
+      updateSkillPageContent({ trainingJourney: saved });
       setSkillPathwayModal(false);
       addToast('Candidate Pathway / Training Journey updated!', 'success');
-    }, 250);
+    } catch (err) {
+      console.error('Save skill pathway failed:', err);
+      addToast(err.message || 'Failed to update pathway section', 'error');
+    } finally {
+      setSavingSkill(false);
+    }
   };
 
   const handleOpenSkillPrograms = () => {
@@ -632,15 +832,21 @@ export default function AdminWebsiteContentPage() {
     setSkillProgramsModal(true);
   };
 
-  const handleSaveSkillPrograms = (e) => {
+  const handleSaveSkillPrograms = async (e) => {
     e.preventDefault();
     setSavingSkill(true);
-    setTimeout(() => {
-      updateSkillPageContent({ programsWeOffer: skillProgramsForm });
-      setSavingSkill(false);
+    try {
+      const res = await adminService.updateSkillDevelopmentSection('skills_programs', skillProgramsForm);
+      const saved = res.content || skillProgramsForm;
+      updateSkillPageContent({ programsWeOffer: saved });
       setSkillProgramsModal(false);
       addToast('Programs We Offer section updated!', 'success');
-    }, 250);
+    } catch (err) {
+      console.error('Save skill programs failed:', err);
+      addToast(err.message || 'Failed to update programs section', 'error');
+    } finally {
+      setSavingSkill(false);
+    }
   };
 
   const handleOpenSkillWc = () => {
@@ -654,15 +860,21 @@ export default function AdminWebsiteContentPage() {
     setSkillWhyChooseModal(true);
   };
 
-  const handleSaveSkillWc = (e) => {
+  const handleSaveSkillWc = async (e) => {
     e.preventDefault();
     setSavingSkill(true);
-    setTimeout(() => {
-      updateSkillPageContent({ whyChoose: skillWcForm });
-      setSavingSkill(false);
+    try {
+      const res = await adminService.updateSkillDevelopmentSection('skills_advantages', skillWcForm);
+      const saved = res.content || skillWcForm;
+      updateSkillPageContent({ whyChoose: saved });
       setSkillWhyChooseModal(false);
       addToast('Skill "Why Choose NTR VIKASA" updated!', 'success');
-    }, 250);
+    } catch (err) {
+      console.error('Save skill why choose failed:', err);
+      addToast(err.message || 'Failed to update advantages section', 'error');
+    } finally {
+      setSavingSkill(false);
+    }
   };
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -677,7 +889,21 @@ export default function AdminWebsiteContentPage() {
   });
   const [savingMela, setSavingMela] = useState(false);
 
-  const handleOpenMelaHero = () => {
+  const handleOpenMelaHero = async () => {
+    try {
+      const live = await adminService.getJobMelaHeroContent();
+      if (live) {
+        setMelaHeroForm({
+          badge: live.badge || live.hero?.badge || '',
+          heading: live.heading || live.hero?.heading || '',
+          description: live.description || live.hero?.description || '',
+        });
+        setMelaHeroModal(true);
+        return;
+      }
+    } catch (err) {
+      console.warn('Could not fetch live job melas hero, falling back to state:', err);
+    }
     const m = jobMelaContent || DEFAULT_JOB_MELA_CONTENT;
     setMelaHeroForm({
       badge: m.hero?.badge || '',
@@ -687,15 +913,27 @@ export default function AdminWebsiteContentPage() {
     setMelaHeroModal(true);
   };
 
-  const handleSaveMelaHero = (e) => {
+  const handleSaveMelaHero = async (e) => {
     e.preventDefault();
+    if (savingMela) return;
+    if (!melaHeroForm.badge?.trim() || !melaHeroForm.heading?.trim() || !melaHeroForm.description?.trim()) {
+      addToast('Please fill in all required hero fields.', 'warning');
+      return;
+    }
     setSavingMela(true);
-    setTimeout(() => {
-      updateJobMelaContent({ hero: melaHeroForm });
-      setSavingMela(false);
+    try {
+      const res = await adminService.updateJobMelaHeroContent(melaHeroForm);
+      updateJobMelaContent({ hero: res?.hero || res || melaHeroForm });
       setMelaHeroModal(false);
       addToast('Job Melas Public Page Hero section updated!', 'success');
-    }, 250);
+    } catch (err) {
+      console.error('Error saving job melas hero:', err);
+      updateJobMelaContent({ hero: melaHeroForm });
+      setMelaHeroModal(false);
+      addToast(err.message || 'Updated locally (backend sync failed)', 'warning');
+    } finally {
+      setSavingMela(false);
+    }
   };
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -752,15 +990,28 @@ export default function AdminWebsiteContentPage() {
     setAboutHeroModal(true);
   };
 
-  const handleSaveAboutHero = (e) => {
+  const handleSaveAboutHero = async (e) => {
     e.preventDefault();
+    if (!aboutHeroForm.badge?.trim() || !aboutHeroForm.heading?.trim() || !aboutHeroForm.description?.trim()) {
+      addToast('Please fill in all required fields for Hero / Mission section.', 'error');
+      return;
+    }
     setSavingAbout(true);
-    setTimeout(() => {
-      updateAboutContent({ hero: aboutHeroForm });
-      setSavingAbout(false);
+    try {
+      const res = await adminService.updateAboutUsHero({
+        badge: aboutHeroForm.badge.trim(),
+        heading: aboutHeroForm.heading.trim(),
+        description: aboutHeroForm.description.trim(),
+      });
+      updateAboutContent({ hero: res?.hero || aboutHeroForm });
       setAboutHeroModal(false);
-      addToast('About Us Hero / Mission & Impact updated!', 'success');
-    }, 250);
+      addToast('About Us Hero / Mission & Impact updated successfully!', 'success');
+    } catch (err) {
+      console.error('Failed to update About Us hero:', err);
+      addToast(err.message || 'Failed to update About Us hero section.', 'error');
+    } finally {
+      setSavingAbout(false);
+    }
   };
 
   const handleOpenAboutWwsf = () => {
@@ -773,15 +1024,34 @@ export default function AdminWebsiteContentPage() {
     setAboutWwsfModal(true);
   };
 
-  const handleSaveAboutWwsf = (e) => {
+  const handleSaveAboutWwsf = async (e) => {
     e.preventDefault();
+    if (!aboutWwsfForm.heading?.trim() || !aboutWwsfForm.description?.trim()) {
+      addToast('Please fill in section heading and description.', 'error');
+      return;
+    }
+    for (let i = 0; i < aboutWwsfForm.cards.length; i++) {
+      if (!aboutWwsfForm.cards[i].title?.trim() || !aboutWwsfForm.cards[i].desc?.trim()) {
+        addToast(`Please provide both title and description for Principle #${i + 1}.`, 'error');
+        return;
+      }
+    }
     setSavingAbout(true);
-    setTimeout(() => {
-      updateAboutContent({ whatWeStandFor: aboutWwsfForm });
-      setSavingAbout(false);
+    try {
+      const res = await adminService.updateAboutUsPrinciples({
+        heading: aboutWwsfForm.heading.trim(),
+        description: aboutWwsfForm.description.trim(),
+        cards: aboutWwsfForm.cards,
+      });
+      updateAboutContent({ whatWeStandFor: res?.whatWeStandFor || aboutWwsfForm });
       setAboutWwsfModal(false);
-      addToast('About Us "What We Stand For" section updated!', 'success');
-    }, 250);
+      addToast('About Us "What We Stand For" section updated successfully!', 'success');
+    } catch (err) {
+      console.error('Failed to update core principles:', err);
+      addToast(err.message || 'Failed to update core principles.', 'error');
+    } finally {
+      setSavingAbout(false);
+    }
   };
 
   const handleOpenAboutTeam = () => {
@@ -795,15 +1065,36 @@ export default function AdminWebsiteContentPage() {
     setAboutTeamModal(true);
   };
 
-  const handleSaveAboutTeam = (e) => {
+  const handleSaveAboutTeam = async (e) => {
     e.preventDefault();
+    if (!aboutTeamForm.badge?.trim() || !aboutTeamForm.heading?.trim() || !aboutTeamForm.description?.trim()) {
+      addToast('Please fill in team badge, heading, and description.', 'error');
+      return;
+    }
+    for (let i = 0; i < aboutTeamForm.members.length; i++) {
+      const m = aboutTeamForm.members[i];
+      if (!m.name?.trim() || !m.role?.trim() || !m.organization?.trim() || !m.bio?.trim()) {
+        addToast(`Please fill in all details for Team Member #${i + 1}.`, 'error');
+        return;
+      }
+    }
     setSavingAbout(true);
-    setTimeout(() => {
-      updateAboutContent({ team: aboutTeamForm });
-      setSavingAbout(false);
+    try {
+      const res = await adminService.updateAboutUsTeam({
+        badge: aboutTeamForm.badge.trim(),
+        heading: aboutTeamForm.heading.trim(),
+        description: aboutTeamForm.description.trim(),
+        members: aboutTeamForm.members,
+      });
+      updateAboutContent({ team: res?.team || aboutTeamForm });
       setAboutTeamModal(false);
-      addToast('About Us "Our Team" members updated!', 'success');
-    }, 250);
+      addToast('About Us "Our Team" members updated successfully!', 'success');
+    } catch (err) {
+      console.error('Failed to update team members:', err);
+      addToast(err.message || 'Failed to update team members.', 'error');
+    } finally {
+      setSavingAbout(false);
+    }
   };
 
   const handleOpenAboutMessages = () => {
@@ -812,20 +1103,41 @@ export default function AdminWebsiteContentPage() {
       badge: m.badge || 'LEADERSHIP',
       heading: m.heading || 'Leadership Messages',
       description: m.description || '',
-      messages: (m.messages || []).map(msg => ({ ...msg })),
+      messages: (m.messages || []).map(msg => ({ ...msg, role: msg.role || msg.designation || '' })),
     });
     setAboutMessagesModal(true);
   };
 
-  const handleSaveAboutMessages = (e) => {
+  const handleSaveAboutMessages = async (e) => {
     e.preventDefault();
+    if (!aboutMessagesForm.badge?.trim() || !aboutMessagesForm.heading?.trim()) {
+      addToast('Please fill in leadership section badge and heading.', 'error');
+      return;
+    }
+    for (let i = 0; i < aboutMessagesForm.messages.length; i++) {
+      const msg = aboutMessagesForm.messages[i];
+      if (!msg.name?.trim() || !(msg.role?.trim() || msg.designation?.trim()) || !msg.organization?.trim() || !msg.message?.trim()) {
+        addToast(`Please fill in all details for Statement #${i + 1}.`, 'error');
+        return;
+      }
+    }
     setSavingAbout(true);
-    setTimeout(() => {
-      updateAboutContent({ leadershipMessages: aboutMessagesForm });
-      setSavingAbout(false);
+    try {
+      const res = await adminService.updateAboutUsLeadership({
+        badge: aboutMessagesForm.badge.trim(),
+        heading: aboutMessagesForm.heading.trim(),
+        description: (aboutMessagesForm.description || '').trim(),
+        messages: aboutMessagesForm.messages,
+      });
+      updateAboutContent({ leadershipMessages: res?.leadershipMessages || aboutMessagesForm });
       setAboutMessagesModal(false);
-      addToast('About Us Leadership Messages updated!', 'success');
-    }, 250);
+      addToast('About Us Leadership Messages updated successfully!', 'success');
+    } catch (err) {
+      console.error('Failed to update leadership messages:', err);
+      addToast(err.message || 'Failed to update leadership messages.', 'error');
+    } finally {
+      setSavingAbout(false);
+    }
   };
 
   const handleOpenAboutPartners = () => {
@@ -838,15 +1150,34 @@ export default function AdminWebsiteContentPage() {
     setAboutPartnersModal(true);
   };
 
-  const handleSaveAboutPartners = (e) => {
+  const handleSaveAboutPartners = async (e) => {
     e.preventDefault();
+    if (!aboutPartnersForm.heading?.trim() || !aboutPartnersForm.description?.trim()) {
+      addToast('Please fill in partner section heading and description.', 'error');
+      return;
+    }
+    for (let i = 0; i < aboutPartnersForm.list.length; i++) {
+      if (!aboutPartnersForm.list[i].name?.trim()) {
+        addToast(`Please provide a partner name for Partner #${i + 1}.`, 'error');
+        return;
+      }
+    }
     setSavingAbout(true);
-    setTimeout(() => {
-      updateAboutContent({ partners: aboutPartnersForm });
-      setSavingAbout(false);
+    try {
+      const res = await adminService.updateAboutUsPartners({
+        heading: aboutPartnersForm.heading.trim(),
+        description: aboutPartnersForm.description.trim(),
+        list: aboutPartnersForm.list,
+      });
+      updateAboutContent({ partners: res?.partners || aboutPartnersForm });
       setAboutPartnersModal(false);
-      addToast('About Us Training Partners updated!', 'success');
-    }, 250);
+      addToast('About Us Training Partners updated successfully!', 'success');
+    } catch (err) {
+      console.error('Failed to update training partners:', err);
+      addToast(err.message || 'Failed to update training partners.', 'error');
+    } finally {
+      setSavingAbout(false);
+    }
   };
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -900,7 +1231,7 @@ export default function AdminWebsiteContentPage() {
       title: 'News & Press',
       icon: '📰',
       desc: 'Newspaper Clippings',
-      publicPath: '/#news-articles',
+      publicPath: '/news',
     },
   ];
 
@@ -1235,9 +1566,19 @@ export default function AdminWebsiteContentPage() {
                   Manage/verify supported Indian States and Union Territories (28 States + 8 UTs).
                 </p>
               </div>
-              <span className="cms-dynamic-badge">
-                ✓ {INDIAN_STATES.length + INDIAN_UNION_TERRITORIES.length} Regions Active
-              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
+                <span className="cms-dynamic-badge">
+                  ✓ {activeLocationsCount} Regions Active
+                </span>
+                <button
+                  type="button"
+                  onClick={handleOpenJobsLocations}
+                  className="btn btn-secondary btn-sm"
+                  style={{ gap: '6px', flexShrink: 0 }}
+                >
+                  <Edit3 size={14} /> Edit
+                </button>
+              </div>
             </div>
           </>
         )}
@@ -2276,6 +2617,147 @@ export default function AdminWebsiteContentPage() {
         </form>
       </Modal>
 
+      {/* ── JOBS LOCATIONS MODAL ── */}
+      <Modal
+        isOpen={jobsLocationsModal}
+        onClose={() => setJobsLocationsModal(false)}
+        title="Manage Job Locations (Indian States & Union Territories)"
+        size="lg"
+      >
+        <form onSubmit={handleSaveJobsLocations} className="cms-modal-form">
+          <div className="cms-form-section">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', marginBottom: '12px' }}>
+              <div>
+                <h4 className="cms-form-section-title" style={{ margin: 0 }}>Supported Indian Regions</h4>
+                <p style={{ fontSize: '12px', color: '#64748b', margin: '2px 0 0' }}>
+                  Enable or disable regions appearing in the public Jobs page location filter dropdown.
+                </p>
+              </div>
+              <span className="cms-dynamic-badge">
+                ✓ {jobLocationsList.filter(l => l.is_active).length} of {jobLocationsList.length} Active
+              </span>
+            </div>
+
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap' }}>
+              <Input
+                value={locationFilterSearch}
+                onChange={(e) => setLocationFilterSearch(e.target.value)}
+                placeholder="Search region (e.g. Andhra Pradesh, Delhi, Goa)..."
+                style={{ flex: '1 1 200px' }}
+              />
+              <div style={{ display: 'flex', gap: '4px' }}>
+                <button
+                  type="button"
+                  onClick={() => setLocationTab('all')}
+                  className={`btn btn-sm ${locationTab === 'all' ? 'btn-primary' : 'btn-outline'}`}
+                  style={{ fontSize: '11px', padding: '4px 10px' }}
+                >
+                  All ({jobLocationsList.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLocationTab('state')}
+                  className={`btn btn-sm ${locationTab === 'state' ? 'btn-primary' : 'btn-outline'}`}
+                  style={{ fontSize: '11px', padding: '4px 10px' }}
+                >
+                  States ({jobLocationsList.filter(l => l.state_ut_type === 'state').length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLocationTab('union_territory')}
+                  className={`btn btn-sm ${locationTab === 'union_territory' ? 'btn-primary' : 'btn-outline'}`}
+                  style={{ fontSize: '11px', padding: '4px 10px' }}
+                >
+                  UTs ({jobLocationsList.filter(l => l.state_ut_type === 'union_territory').length})
+                </button>
+              </div>
+            </div>
+
+            <div style={{
+              maxHeight: '340px',
+              overflowY: 'auto',
+              border: '1px solid #e2e8f0',
+              borderRadius: '8px',
+              padding: '6px'
+            }}>
+              {filteredLocationsForModal.map((loc) => (
+                <div
+                  key={loc.id}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '8px 12px',
+                    borderBottom: '1px solid #f1f5f9',
+                    background: loc.is_active ? 'transparent' : '#f8fafc',
+                    borderRadius: '4px',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <input
+                      type="checkbox"
+                      id={`loc-check-${loc.id}`}
+                      checked={loc.is_active}
+                      onChange={() => handleToggleLocation(loc.id)}
+                      style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                    />
+                    <label
+                      htmlFor={`loc-check-${loc.id}`}
+                      style={{
+                        fontSize: '13px',
+                        fontWeight: 600,
+                        color: loc.is_active ? '#0f172a' : '#94a3b8',
+                        cursor: 'pointer',
+                        margin: 0,
+                      }}
+                    >
+                      {loc.name}
+                    </label>
+                    <span style={{
+                      fontSize: '10px',
+                      fontWeight: 600,
+                      padding: '1px 6px',
+                      borderRadius: '10px',
+                      background: loc.state_ut_type === 'state' ? '#eff6ff' : '#fdf2f8',
+                      color: loc.state_ut_type === 'state' ? '#2563eb' : '#db2777'
+                    }}>
+                      {loc.state_ut_type === 'state' ? 'State' : 'UT'}
+                    </span>
+                  </div>
+                  <span style={{
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    color: loc.is_active ? '#16a34a' : '#dc2626'
+                  }}>
+                    {loc.is_active ? 'Active' : 'Inactive'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="cms-modal-footer">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleResetLocationsToDefaults}
+              style={{ gap: '6px', fontSize: '12px' }}
+            >
+              <RotateCcw size={13} /> Reset Defaults (All Active)
+            </Button>
+            <div className="cms-modal-footer-actions">
+              <Button type="button" variant="outline" onClick={() => setJobsLocationsModal(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" variant="primary" disabled={savingJobs}>
+                {savingJobs ? 'Saving...' : 'Save Changes'}
+              </Button>
+            </div>
+          </div>
+        </form>
+      </Modal>
+
       {/* ── 5. SKILL HERO MODAL ── */}
       <Modal
         isOpen={skillHeroModal}
@@ -2346,16 +2828,26 @@ export default function AdminWebsiteContentPage() {
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => {
-                const def = DEFAULT_SKILL_PAGE_CONTENT.hero;
-                setSkillHeroForm({
-                  badge: def.badge,
-                  heading: def.heading,
-                  description: def.description,
-                  exploreBtnText: def.exploreBtnText,
-                  viewCoursesBtnText: def.viewCoursesBtnText,
-                });
-                addToast('Hero banner reset to defaults.', 'info');
+              onClick={async () => {
+                try {
+                  const res = await adminService.resetSkillDevelopmentSection('skills_hero');
+                  const def = res.content || DEFAULT_SKILL_PAGE_CONTENT.hero;
+                  setSkillHeroForm({
+                    badge: def.badge,
+                    heading: def.heading,
+                    description: def.description,
+                    exploreBtnText: def.exploreBtnText || def.primary_button_label || 'Explore Programs',
+                    viewCoursesBtnText: def.viewCoursesBtnText || def.secondary_button_label || 'View Courses',
+                  });
+                  updateSkillPageContent({ hero: def });
+                  addToast('Hero banner reset to defaults.', 'info');
+                } catch (err) {
+                  console.error('Reset skill hero failed:', err);
+                  const def = DEFAULT_SKILL_PAGE_CONTENT.hero;
+                  setSkillHeroForm({ ...def });
+                  updateSkillPageContent({ hero: def });
+                  addToast('Hero banner reset locally.', 'info');
+                }
               }}
               style={{ gap: '6px', fontSize: '12px' }}
             >
@@ -2418,9 +2910,20 @@ export default function AdminWebsiteContentPage() {
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => {
-                setSkillHighlightsForm(DEFAULT_SKILL_PAGE_CONTENT.highlights.map(h => ({ ...h })));
-                addToast('Highlights reset to defaults.', 'info');
+              onClick={async () => {
+                try {
+                  const res = await adminService.resetSkillDevelopmentSection('skills_highlights');
+                  const def = res.content?.highlights || DEFAULT_SKILL_PAGE_CONTENT.highlights;
+                  setSkillHighlightsForm(def.map(h => ({ ...h })));
+                  updateSkillPageContent({ highlights: def });
+                  addToast('Highlights reset to defaults.', 'info');
+                } catch (err) {
+                  console.error('Reset skill highlights failed:', err);
+                  const def = DEFAULT_SKILL_PAGE_CONTENT.highlights;
+                  setSkillHighlightsForm(def.map(h => ({ ...h })));
+                  updateSkillPageContent({ highlights: def });
+                  addToast('Highlights reset locally.', 'info');
+                }
               }}
               style={{ gap: '6px', fontSize: '12px' }}
             >
@@ -2513,15 +3016,30 @@ export default function AdminWebsiteContentPage() {
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => {
-                const def = DEFAULT_SKILL_PAGE_CONTENT.empoweringSkills;
-                setSkillMissionForm({
-                  badge: def.badge,
-                  heading: def.heading,
-                  description: def.description,
-                  cards: def.cards.map(c => ({ ...c })),
-                });
-                addToast('Mission reset to defaults.', 'info');
+              onClick={async () => {
+                try {
+                  const res = await adminService.resetSkillDevelopmentSection('skills_mission');
+                  const def = res.content || DEFAULT_SKILL_PAGE_CONTENT.empoweringSkills;
+                  setSkillMissionForm({
+                    badge: def.badge,
+                    heading: def.heading,
+                    description: def.description,
+                    cards: def.cards.map(c => ({ ...c })),
+                  });
+                  updateSkillPageContent({ empoweringSkills: def });
+                  addToast('Mission reset to defaults.', 'info');
+                } catch (err) {
+                  console.error('Reset skill mission failed:', err);
+                  const def = DEFAULT_SKILL_PAGE_CONTENT.empoweringSkills;
+                  setSkillMissionForm({
+                    badge: def.badge,
+                    heading: def.heading,
+                    description: def.description,
+                    cards: def.cards.map(c => ({ ...c })),
+                  });
+                  updateSkillPageContent({ empoweringSkills: def });
+                  addToast('Mission reset locally.', 'info');
+                }
               }}
               style={{ gap: '6px', fontSize: '12px' }}
             >
@@ -2614,15 +3132,30 @@ export default function AdminWebsiteContentPage() {
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => {
-                const def = DEFAULT_SKILL_PAGE_CONTENT.trainingJourney;
-                setSkillPathwayForm({
-                  badge: def.badge,
-                  heading: def.heading,
-                  description: def.description,
-                  steps: def.steps.map(s => ({ ...s })),
-                });
-                addToast('Pathway reset to defaults.', 'info');
+              onClick={async () => {
+                try {
+                  const res = await adminService.resetSkillDevelopmentSection('skills_pathway');
+                  const def = res.content || DEFAULT_SKILL_PAGE_CONTENT.trainingJourney;
+                  setSkillPathwayForm({
+                    badge: def.badge,
+                    heading: def.heading,
+                    description: def.description,
+                    steps: def.steps.map(s => ({ ...s })),
+                  });
+                  updateSkillPageContent({ trainingJourney: def });
+                  addToast('Pathway reset to defaults.', 'info');
+                } catch (err) {
+                  console.error('Reset skill pathway failed:', err);
+                  const def = DEFAULT_SKILL_PAGE_CONTENT.trainingJourney;
+                  setSkillPathwayForm({
+                    badge: def.badge,
+                    heading: def.heading,
+                    description: def.description,
+                    steps: def.steps.map(s => ({ ...s })),
+                  });
+                  updateSkillPageContent({ trainingJourney: def });
+                  addToast('Pathway reset locally.', 'info');
+                }
               }}
               style={{ gap: '6px', fontSize: '12px' }}
             >
@@ -2714,15 +3247,30 @@ export default function AdminWebsiteContentPage() {
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => {
-                const def = DEFAULT_SKILL_PAGE_CONTENT.programsWeOffer;
-                setSkillProgramsForm({
-                  badge: def.badge,
-                  heading: def.heading,
-                  description: def.description,
-                  categories: def.categories.map(c => ({ ...c })),
-                });
-                addToast('Programs reset to defaults.', 'info');
+              onClick={async () => {
+                try {
+                  const res = await adminService.resetSkillDevelopmentSection('skills_programs');
+                  const def = res.content || DEFAULT_SKILL_PAGE_CONTENT.programsWeOffer;
+                  setSkillProgramsForm({
+                    badge: def.badge,
+                    heading: def.heading,
+                    description: def.description,
+                    categories: def.categories.map(c => ({ ...c })),
+                  });
+                  updateSkillPageContent({ programsWeOffer: def });
+                  addToast('Programs reset to defaults.', 'info');
+                } catch (err) {
+                  console.error('Reset skill programs failed:', err);
+                  const def = DEFAULT_SKILL_PAGE_CONTENT.programsWeOffer;
+                  setSkillProgramsForm({
+                    badge: def.badge,
+                    heading: def.heading,
+                    description: def.description,
+                    categories: def.categories.map(c => ({ ...c })),
+                  });
+                  updateSkillPageContent({ programsWeOffer: def });
+                  addToast('Programs reset locally.', 'info');
+                }
               }}
               style={{ gap: '6px', fontSize: '12px' }}
             >
@@ -2815,15 +3363,30 @@ export default function AdminWebsiteContentPage() {
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => {
-                const def = DEFAULT_SKILL_PAGE_CONTENT.whyChoose;
-                setSkillWcForm({
-                  badge: def.badge,
-                  heading: def.heading,
-                  description: def.description,
-                  cards: def.cards.map(c => ({ ...c })),
-                });
-                addToast('Why choose cards reset to defaults.', 'info');
+              onClick={async () => {
+                try {
+                  const res = await adminService.resetSkillDevelopmentSection('skills_advantages');
+                  const def = res.content || DEFAULT_SKILL_PAGE_CONTENT.whyChoose;
+                  setSkillWcForm({
+                    badge: def.badge,
+                    heading: def.heading,
+                    description: def.description,
+                    cards: def.cards.map(c => ({ ...c })),
+                  });
+                  updateSkillPageContent({ whyChoose: def });
+                  addToast('Why choose cards reset to defaults.', 'info');
+                } catch (err) {
+                  console.error('Reset skill why choose failed:', err);
+                  const def = DEFAULT_SKILL_PAGE_CONTENT.whyChoose;
+                  setSkillWcForm({
+                    badge: def.badge,
+                    heading: def.heading,
+                    description: def.description,
+                    cards: def.cards.map(c => ({ ...c })),
+                  });
+                  updateSkillPageContent({ whyChoose: def });
+                  addToast('Why choose cards reset locally.', 'info');
+                }
               }}
               style={{ gap: '6px', fontSize: '12px' }}
             >
@@ -2895,13 +3458,26 @@ export default function AdminWebsiteContentPage() {
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => {
+              onClick={async () => {
                 const def = DEFAULT_JOB_MELA_CONTENT.hero;
-                setMelaHeroForm({
-                  badge: def.badge,
-                  heading: def.heading,
-                  description: def.description,
-                });
+                try {
+                  const res = await adminService.resetJobMelaHeroContent();
+                  const resetHero = res?.hero || res || def;
+                  setMelaHeroForm({
+                    badge: resetHero.badge,
+                    heading: resetHero.heading,
+                    description: resetHero.description,
+                  });
+                  updateJobMelaContent({ hero: resetHero });
+                } catch (err) {
+                  console.warn('Backend reset failed, using local defaults:', err);
+                  setMelaHeroForm({
+                    badge: def.badge,
+                    heading: def.heading,
+                    description: def.description,
+                  });
+                  updateJobMelaContent({ hero: def });
+                }
                 addToast('Job Melas hero reset to defaults.', 'info');
               }}
               style={{ gap: '6px', fontSize: '12px' }}

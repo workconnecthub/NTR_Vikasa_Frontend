@@ -30,6 +30,7 @@ import SkillDevelopmentOverviewPage from './pages/public/SkillDevelopmentOvervie
 import SkillCoursesPage       from './pages/public/SkillCoursesPage';
 import AboutPage              from './pages/public/AboutPage';
 import GalleryPage            from './pages/public/GalleryPage';
+import NewsPage               from './pages/public/NewsPage';
 import ContactPage            from './pages/public/ContactPage';
 import PrivacyPage            from './pages/public/PrivacyPage';
 import TermsPage              from './pages/public/TermsPage';
@@ -136,6 +137,8 @@ export default function App() {
                       <Route path="/training/courses"          element={<SkillCoursesPage />} />
                       <Route path="/about"                     element={<AboutPage />} />
                       <Route path="/gallery"                   element={<GalleryPage />} />
+                      <Route path="/news"                      element={<NewsPage />} />
+                      <Route path="/news-press"                element={<NewsPage />} />
                       <Route path="/contact"                   element={<ContactPage />} />
                       <Route path="/privacy"                   element={<PrivacyPage />} />
                       <Route path="/terms"                     element={<TermsPage />} />

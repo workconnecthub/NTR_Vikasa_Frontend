@@ -3164,7 +3164,7 @@ export function AdminProvider({ children }) {
     let isMounted = true;
     const fetchLiveModerationData = async () => {
       try {
-        const [jobsRes, internshipsRes, companiesRes, melasRes, requestsRes, recruitersRes, candidatesRes, photosRes, videosRes, pressRes] = await Promise.allSettled([
+        const [jobsRes, internshipsRes, companiesRes, melasRes, requestsRes, recruitersRes, candidatesRes, photosRes, videosRes, pressRes, jobsPageRes, aboutRes, jobMelaHeroRes, skillRes] = await Promise.allSettled([
           adminService.getJobs({ page_size: 100 }),
           adminService.getInternships({ page_size: 100 }),
           adminService.getCompanies(),
@@ -3175,6 +3175,10 @@ export function AdminProvider({ children }) {
           adminService.getGalleryPhotos({ page_size: 100 }),
           adminService.getGalleryVideos({ page_size: 100 }),
           adminService.getPressArticles({ page_size: 100 }),
+          adminService.getJobsPageContent(),
+          adminService.getAboutUsContent(),
+          adminService.getJobMelaHeroContent(),
+          adminService.getSkillDevelopmentContent(),
         ]);
 
         if (!isMounted) return;
@@ -3501,6 +3505,120 @@ export function AdminProvider({ children }) {
               articles: liveArticles,
             },
           }));
+        }
+
+        if (jobsPageRes.status === 'fulfilled' && jobsPageRes.value) {
+          const jp = jobsPageRes.value;
+          setJobsPageContent({
+            hero: {
+              badge: jp.hero?.badge || DEFAULT_JOBS_PAGE_CONTENT.hero.badge,
+              heading: jp.hero?.heading || DEFAULT_JOBS_PAGE_CONTENT.hero.heading,
+              subtitle: jp.hero?.subtitle || DEFAULT_JOBS_PAGE_CONTENT.hero.subtitle,
+            },
+            search: {
+              searchPlaceholder: jp.search?.searchPlaceholder || DEFAULT_JOBS_PAGE_CONTENT.search.searchPlaceholder,
+              locationPlaceholder: jp.search?.locationPlaceholder || DEFAULT_JOBS_PAGE_CONTENT.search.locationPlaceholder,
+              popularSearches: jp.search?.popularSearches?.length ? jp.search.popularSearches : DEFAULT_JOBS_PAGE_CONTENT.search.popularSearches,
+            },
+            locations: jp.locations || [],
+          });
+        }
+
+        if (aboutRes.status === 'fulfilled' && aboutRes.value) {
+          const ab = aboutRes.value;
+          setAboutContent({
+            hero: {
+              badge: ab.hero?.badge || DEFAULT_ABOUT_CONTENT.hero.badge,
+              heading: ab.hero?.heading || DEFAULT_ABOUT_CONTENT.hero.heading,
+              description: ab.hero?.description || DEFAULT_ABOUT_CONTENT.hero.description,
+            },
+            stats: ab.stats?.length ? ab.stats : DEFAULT_ABOUT_CONTENT.stats,
+            whatWeStandFor: {
+              heading: ab.whatWeStandFor?.heading || DEFAULT_ABOUT_CONTENT.whatWeStandFor.heading,
+              description: ab.whatWeStandFor?.description || DEFAULT_ABOUT_CONTENT.whatWeStandFor.description,
+              cards: ab.whatWeStandFor?.cards?.length ? ab.whatWeStandFor.cards : DEFAULT_ABOUT_CONTENT.whatWeStandFor.cards,
+            },
+            team: {
+              badge: ab.team?.badge || DEFAULT_ABOUT_CONTENT.team.badge,
+              heading: ab.team?.heading || DEFAULT_ABOUT_CONTENT.team.heading,
+              description: ab.team?.description || DEFAULT_ABOUT_CONTENT.team.description,
+              members: ab.team?.members?.length ? ab.team.members : DEFAULT_ABOUT_CONTENT.team.members,
+            },
+            leadershipMessages: {
+              badge: ab.leadershipMessages?.badge || DEFAULT_ABOUT_CONTENT.leadershipMessages.badge,
+              heading: ab.leadershipMessages?.heading || DEFAULT_ABOUT_CONTENT.leadershipMessages.heading,
+              description: ab.leadershipMessages?.description || DEFAULT_ABOUT_CONTENT.leadershipMessages.description,
+              messages: ab.leadershipMessages?.messages?.length ? ab.leadershipMessages.messages : DEFAULT_ABOUT_CONTENT.leadershipMessages.messages,
+            },
+            partners: {
+              heading: ab.partners?.heading || DEFAULT_ABOUT_CONTENT.partners.heading,
+              description: ab.partners?.description || DEFAULT_ABOUT_CONTENT.partners.description,
+              list: ab.partners?.list?.length ? ab.partners.list : DEFAULT_ABOUT_CONTENT.partners.list,
+            },
+          });
+        }
+
+        if (jobMelaHeroRes.status === 'fulfilled' && jobMelaHeroRes.value) {
+          const mh = jobMelaHeroRes.value;
+          setJobMelaContent({
+            hero: {
+              badge: mh.hero?.badge || mh.badge || mh.hero_badge || DEFAULT_JOB_MELA_CONTENT.hero.badge,
+              heading: mh.hero?.heading || mh.heading || mh.hero_heading || DEFAULT_JOB_MELA_CONTENT.hero.heading,
+              description: mh.hero?.description || mh.description || mh.hero_description || DEFAULT_JOB_MELA_CONTENT.hero.description,
+            },
+          });
+        }
+
+        if (skillRes.status === 'fulfilled' && skillRes.value) {
+          const sk = skillRes.value;
+          const heroData = sk.hero || sk.skills_hero || {};
+          const hlData = (sk.highlights && Array.isArray(sk.highlights) && sk.highlights.length) ? sk.highlights : (sk.skills_highlights?.highlights || []);
+          const esData = sk.empoweringSkills || sk.skills_mission || {};
+          const tjData = sk.trainingJourney || sk.skills_pathway || {};
+          const prgData = sk.programsWeOffer || sk.skills_programs || {};
+          const wcData = sk.whyChoose || sk.skills_advantages || {};
+
+          const mappedSkill = {
+            hero: {
+              badge: heroData.badge || DEFAULT_SKILL_PAGE_CONTENT.hero.badge,
+              heading: heroData.heading || DEFAULT_SKILL_PAGE_CONTENT.hero.heading,
+              description: heroData.description || DEFAULT_SKILL_PAGE_CONTENT.hero.description,
+              exploreBtnText: heroData.exploreBtnText || heroData.primary_button_label || DEFAULT_SKILL_PAGE_CONTENT.hero.exploreBtnText,
+              viewCoursesBtnText: heroData.viewCoursesBtnText || heroData.secondary_button_label || DEFAULT_SKILL_PAGE_CONTENT.hero.viewCoursesBtnText,
+            },
+            highlights: hlData.length ? hlData : DEFAULT_SKILL_PAGE_CONTENT.highlights,
+            empoweringSkills: {
+              badge: esData.badge || DEFAULT_SKILL_PAGE_CONTENT.empoweringSkills.badge,
+              heading: esData.heading || DEFAULT_SKILL_PAGE_CONTENT.empoweringSkills.heading,
+              description: esData.description || DEFAULT_SKILL_PAGE_CONTENT.empoweringSkills.description,
+              cards: (esData.cards && esData.cards.length) ? esData.cards : DEFAULT_SKILL_PAGE_CONTENT.empoweringSkills.cards,
+            },
+            trainingJourney: {
+              badge: tjData.badge || DEFAULT_SKILL_PAGE_CONTENT.trainingJourney.badge,
+              heading: tjData.heading || DEFAULT_SKILL_PAGE_CONTENT.trainingJourney.heading,
+              description: tjData.description || DEFAULT_SKILL_PAGE_CONTENT.trainingJourney.description,
+              steps: (tjData.steps && tjData.steps.length) ? tjData.steps : DEFAULT_SKILL_PAGE_CONTENT.trainingJourney.steps,
+            },
+            programsWeOffer: {
+              badge: prgData.badge || DEFAULT_SKILL_PAGE_CONTENT.programsWeOffer.badge,
+              heading: prgData.heading || DEFAULT_SKILL_PAGE_CONTENT.programsWeOffer.heading,
+              description: prgData.description || DEFAULT_SKILL_PAGE_CONTENT.programsWeOffer.description,
+              categories: (prgData.categories && prgData.categories.length) ? prgData.categories : DEFAULT_SKILL_PAGE_CONTENT.programsWeOffer.categories,
+            },
+            whyChoose: {
+              badge: wcData.badge || DEFAULT_SKILL_PAGE_CONTENT.whyChoose.badge,
+              heading: wcData.heading || DEFAULT_SKILL_PAGE_CONTENT.whyChoose.heading,
+              description: wcData.description || DEFAULT_SKILL_PAGE_CONTENT.whyChoose.description,
+              cards: (wcData.cards && wcData.cards.length) ? wcData.cards : DEFAULT_SKILL_PAGE_CONTENT.whyChoose.cards,
+            },
+          };
+
+          setSkillPageContent(mappedSkill);
+          try {
+            localStorage.setItem('ntr_admin_skill_page_content_v1', JSON.stringify(mappedSkill));
+          } catch (e) {
+            // ignore
+          }
         }
       } catch (e) {
         console.warn('Error fetching live admin moderation data:', e);
@@ -4781,14 +4899,14 @@ export function AdminProvider({ children }) {
   // News Articles CMS Helper Actions
   const addNewsArticle = (article) => {
     const newArticle = {
-      id: `news-${Date.now()}`,
-      newspaper: article.newspaper || 'Daily News',
+      id: article.id || `news-${Date.now()}`,
+      newspaper: article.newspaper || article.publication_name || 'Daily News',
       title: article.title || 'Untitled Article',
-      date: article.date || new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+      date: article.date || article.publication_date || new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
       edition: article.edition || '',
-      imageUrl: article.imageUrl || '',
-      sourceUrl: article.sourceUrl || '',
-      summary: article.summary || '',
+      imageUrl: article.imageUrl || article.image_url || '',
+      sourceUrl: article.sourceUrl || article.source_url || article.article_url || '',
+      summary: article.summary || article.description || '',
     };
     setHomeContent(prev => ({
       ...prev,
@@ -4836,6 +4954,11 @@ export function AdminProvider({ children }) {
           popularSearches: newContent.search?.popularSearches || prev.search.popularSearches,
         },
       };
+      try {
+        localStorage.setItem('ntr_admin_jobs_page_content_v1', JSON.stringify(updated));
+      } catch (e) {
+        // ignore
+      }
       return updated;
     });
     addAuditLog('Jobs Page Content Updated', 'Public Jobs Page Hero & Search CMS', 'SETTINGS');
@@ -4843,6 +4966,11 @@ export function AdminProvider({ children }) {
 
   const resetJobsPageContent = () => {
     setJobsPageContent(DEFAULT_JOBS_PAGE_CONTENT);
+    try {
+      localStorage.removeItem('ntr_admin_jobs_page_content_v1');
+    } catch (e) {
+      // ignore
+    }
     addAuditLog('Jobs Page Content Reset to Defaults', 'Public Jobs Page Hero & Search CMS', 'SETTINGS');
   };
 
@@ -4893,6 +5021,11 @@ export function AdminProvider({ children }) {
           cards: newContent.whyChoose?.cards || prev.whyChoose.cards,
         },
       };
+      try {
+        localStorage.setItem('ntr_admin_skill_page_content_v1', JSON.stringify(updated));
+      } catch (e) {
+        // ignore
+      }
       return updated;
     });
     addAuditLog('Skill Development Page Content Updated', 'Public Skill Development CMS', 'SETTINGS');
@@ -4900,6 +5033,11 @@ export function AdminProvider({ children }) {
 
   const resetSkillPageContent = () => {
     setSkillPageContent(DEFAULT_SKILL_PAGE_CONTENT);
+    try {
+      localStorage.removeItem('ntr_admin_skill_page_content_v1');
+    } catch (e) {
+      // ignore
+    }
     addAuditLog('Skill Development Page Content Reset to Defaults', 'Public Skill Development CMS', 'SETTINGS');
   };
 

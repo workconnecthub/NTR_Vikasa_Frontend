@@ -1,6 +1,27 @@
 import { useState, useEffect } from 'react';
 import { X, ChevronLeft, ChevronRight, Calendar, ExternalLink, ZoomIn, ZoomOut, Newspaper } from 'lucide-react';
 
+const getSafeExternalUrl = (url) => {
+  if (!url || typeof url !== 'string') return null;
+  const trimmed = url.trim();
+  if (!trimmed) return null;
+  if (/^(https?:\/\/)/i.test(trimmed)) return trimmed;
+  if (trimmed.startsWith('//')) return `https:${trimmed}`;
+  return `https://${trimmed}`;
+};
+
+const formatImageUrl = (url) => {
+  if (!url) return '';
+  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) {
+    return url;
+  }
+  if (url.startsWith('/uploads')) {
+    const backendBase = (import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api/v1').replace(/\/api\/v1\/?$/, '');
+    return `${backendBase}${url}`;
+  }
+  return url;
+};
+
 export default function NewsArticleLightbox({ articles, currentIndex, onClose, onPrev, onNext }) {
   const [zoomLevel, setZoomLevel] = useState(1);
   const currentArticle = articles[currentIndex];
@@ -131,9 +152,9 @@ export default function NewsArticleLightbox({ articles, currentIndex, onClose, o
           </button>
 
           {/* External Source Link */}
-          {currentArticle.sourceUrl && (
+          {currentArticle.sourceUrl && getSafeExternalUrl(currentArticle.sourceUrl) && (
             <a
-              href={currentArticle.sourceUrl}
+              href={getSafeExternalUrl(currentArticle.sourceUrl)}
               target="_blank"
               rel="noopener noreferrer"
               title="Open Official E-Paper Source"
@@ -275,7 +296,7 @@ export default function NewsArticleLightbox({ articles, currentIndex, onClose, o
           onClick={toggleZoom}
         >
           <img
-            src={currentArticle.imageUrl}
+            src={formatImageUrl(currentArticle.imageUrl)}
             alt={currentArticle.title}
             style={{
               maxWidth: zoomLevel > 1 ? '1000px' : '100%',

@@ -3,7 +3,7 @@ import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
   Menu, X, Briefcase, Building2, BookOpen, CalendarDays,
   ChevronDown, User, UserPlus, Info, Sparkles, Globe, Home,
-  ExternalLink, LogOut, LayoutDashboard, Search, FileText, Camera
+  ExternalLink, LogOut, LayoutDashboard, Search, FileText, Camera, Newspaper
 } from 'lucide-react';
 import Button from '../ui/Button';
 import { DropdownMenu } from '../ui/DropdownMenu';
@@ -192,6 +192,20 @@ export default function PublicHeader() {
                     <div>
                       <p className="nav-dropdown-title">Media & Gallery</p>
                       <p className="nav-dropdown-desc">Event photos, job fairs & video highlights</p>
+                    </div>
+                  </Link>
+
+                  <Link
+                    to="/news"
+                    className="nav-dropdown-item"
+                    onClick={() => setAboutDropdownOpen(false)}
+                  >
+                    <div className="nav-dropdown-icon-box">
+                      <Newspaper size={16} />
+                    </div>
+                    <div>
+                      <p className="nav-dropdown-title">News & Press</p>
+                      <p className="nav-dropdown-desc">Official newspaper articles & press coverage</p>
                     </div>
                   </Link>
 
@@ -474,6 +488,15 @@ export default function PublicHeader() {
                     >
                       <Camera size={14} />
                       Media & Gallery
+                    </NavLink>
+                    <NavLink
+                      to="/news"
+                      className={({ isActive }) => `mobile-nav-link ${isActive ? 'active' : ''}`}
+                      onClick={() => setMenuOpen(false)}
+                      style={{ fontSize: 'var(--text-sm)', padding: 'var(--space-2) var(--space-3)' }}
+                    >
+                      <Newspaper size={14} />
+                      News & Press
                     </NavLink>
                     <a
                       href="https://naipunyam.ap.gov.in/"

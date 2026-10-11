@@ -685,6 +685,224 @@ const adminService = {
       throw new Error(parseApiError(err));
     }
   },
+
+  // ── Jobs Page Configuration ──
+  async getJobsPageContent() {
+    try {
+      return await apiClient.get('/admin/website-content/jobs-page');
+    } catch (err) {
+      console.warn('adminService.getJobsPageContent error:', parseApiError(err));
+      return null;
+    }
+  },
+
+  async updateJobsPageContent(contentData) {
+    try {
+      return await apiClient.patch('/admin/website-content/jobs-page', contentData);
+    } catch (err) {
+      throw new Error(parseApiError(err));
+    }
+  },
+
+  async updateJobsHero(heroData) {
+    try {
+      return await apiClient.patch('/admin/website-content/jobs-page/hero', heroData);
+    } catch (err) {
+      throw new Error(parseApiError(err));
+    }
+  },
+
+  async updateJobsSearch(searchData) {
+    try {
+      return await apiClient.patch('/admin/website-content/jobs-page/search', searchData);
+    } catch (err) {
+      throw new Error(parseApiError(err));
+    }
+  },
+
+  async updateJobsPopularSearches(popularSearches) {
+    try {
+      return await apiClient.patch('/admin/website-content/jobs-page/popular-searches', { popularSearches });
+    } catch (err) {
+      throw new Error(parseApiError(err));
+    }
+  },
+
+  async resetJobsPageContent() {
+    try {
+      return await apiClient.post('/admin/website-content/jobs-page/reset');
+    } catch (err) {
+      throw new Error(parseApiError(err));
+    }
+  },
+
+  // ── Job Locations Management ──
+  async getJobLocations(isActive = null) {
+    try {
+      const qs = isActive !== null ? `?is_active=${isActive}` : '';
+      return await apiClient.get(`/admin/website-content/jobs-page/locations${qs}`);
+    } catch (err) {
+      console.warn('adminService.getJobLocations error:', parseApiError(err));
+      return [];
+    }
+  },
+
+  async updateJobLocation(locationId, locationData) {
+    try {
+      return await apiClient.patch(`/admin/website-content/jobs-page/locations/${locationId}`, locationData);
+    } catch (err) {
+      throw new Error(parseApiError(err));
+    }
+  },
+
+  async batchUpdateJobLocations(locations) {
+    try {
+      return await apiClient.put('/admin/website-content/jobs-page/locations', { locations });
+    } catch (err) {
+      throw new Error(parseApiError(err));
+    }
+  },
+
+  async resetJobLocations() {
+    try {
+      return await apiClient.post('/admin/website-content/jobs-page/locations/reset');
+    } catch (err) {
+      throw new Error(parseApiError(err));
+    }
+  },
+
+  // ── About Us Content Management ──
+  async getAboutUsContent() {
+    try {
+      return await apiClient.get('/admin/website-content/about-us');
+    } catch (err) {
+      console.warn('adminService.getAboutUsContent error:', parseApiError(err));
+      return null;
+    }
+  },
+
+  async updateAboutUsFull(payload) {
+    try {
+      return await apiClient.patch('/admin/website-content/about-us', payload);
+    } catch (err) {
+      throw new Error(parseApiError(err));
+    }
+  },
+
+  async updateAboutUsHero(payload) {
+    try {
+      return await apiClient.patch('/admin/website-content/about-us/hero', payload);
+    } catch (err) {
+      throw new Error(parseApiError(err));
+    }
+  },
+
+  async updateAboutUsPrinciples(payload) {
+    try {
+      return await apiClient.patch('/admin/website-content/about-us/principles', payload);
+    } catch (err) {
+      throw new Error(parseApiError(err));
+    }
+  },
+
+  async updateAboutUsTeam(payload) {
+    try {
+      return await apiClient.put('/admin/website-content/about-us/team', payload);
+    } catch (err) {
+      throw new Error(parseApiError(err));
+    }
+  },
+
+  async updateAboutUsLeadership(payload) {
+    try {
+      return await apiClient.put('/admin/website-content/about-us/leadership', payload);
+    } catch (err) {
+      throw new Error(parseApiError(err));
+    }
+  },
+
+  async updateAboutUsPartners(payload) {
+    try {
+      return await apiClient.put('/admin/website-content/about-us/partners', payload);
+    } catch (err) {
+      throw new Error(parseApiError(err));
+    }
+  },
+
+  async resetAboutUsContent() {
+    try {
+      return await apiClient.post('/admin/website-content/about-us/reset-defaults');
+    } catch (err) {
+      throw new Error(parseApiError(err));
+    }
+  },
+
+  // ── Job Melas Page Website Content ──
+  async getJobMelaHeroContent() {
+    try {
+      return await apiClient.get('/admin/website-content/job-melas/hero');
+    } catch (err) {
+      throw new Error(parseApiError(err));
+    }
+  },
+
+  async updateJobMelaHeroContent(payload) {
+    try {
+      return await apiClient.patch('/admin/website-content/job-melas/hero', payload);
+    } catch (err) {
+      throw new Error(parseApiError(err));
+    }
+  },
+
+  async resetJobMelaHeroContent() {
+    try {
+      return await apiClient.post('/admin/website-content/job-melas/hero/reset-defaults');
+    } catch (err) {
+      throw new Error(parseApiError(err));
+    }
+  },
+
+  // ── Skill Development Page Website Content ──
+  async getSkillDevelopmentContent() {
+    try {
+      return await apiClient.get('/admin/cms/skills');
+    } catch (err) {
+      throw new Error(parseApiError(err));
+    }
+  },
+
+  async getSkillDevelopmentSection(sectionKey) {
+    try {
+      return await apiClient.get(`/admin/cms/skills/${sectionKey}`);
+    } catch (err) {
+      throw new Error(parseApiError(err));
+    }
+  },
+
+  async updateSkillDevelopmentSection(sectionKey, payload) {
+    try {
+      return await apiClient.put(`/admin/cms/skills/${sectionKey}`, payload);
+    } catch (err) {
+      throw new Error(parseApiError(err));
+    }
+  },
+
+  async resetSkillDevelopmentSection(sectionKey) {
+    try {
+      return await apiClient.post(`/admin/cms/skills/${sectionKey}/reset`);
+    } catch (err) {
+      throw new Error(parseApiError(err));
+    }
+  },
+
+  async resetAllSkillDevelopmentContent() {
+    try {
+      return await apiClient.post('/admin/cms/skills/reset');
+    } catch (err) {
+      throw new Error(parseApiError(err));
+    }
+  },
 };
 
 export default adminService;
+

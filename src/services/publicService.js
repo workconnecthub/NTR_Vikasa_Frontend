@@ -216,6 +216,86 @@ const publicService = {
       return null;
     }
   },
+
+  /**
+   * Fetch public Jobs page configuration (Hero, Search placeholders, Popular searches, Active locations).
+   * @returns {Promise<Object>}
+   */
+  async getPublishedJobsPageContent() {
+    try {
+      return await apiClient.get('/public/website-content/jobs-page');
+    } catch (err) {
+      console.warn('publicService.getPublishedJobsPageContent error:', parseApiError(err));
+      return null;
+    }
+  },
+
+  /**
+   * Fetch active job filter locations (States and UTs).
+   * @returns {Promise<Object>}
+   */
+  async getActiveJobLocations() {
+    try {
+      return await apiClient.get('/public/job-locations');
+    } catch (err) {
+      console.warn('publicService.getActiveJobLocations error:', parseApiError(err));
+      return null;
+    }
+  },
+
+  /**
+   * Fetch published About Us page configuration (Hero, 3 Principles, Team, Leadership, and Active Partners).
+   * @returns {Promise<Object>}
+   */
+  async getPublishedAboutUsContent() {
+    try {
+      return await apiClient.get('/public/website-content/about-us');
+    } catch (err) {
+      console.warn('publicService.getPublishedAboutUsContent error:', parseApiError(err));
+      return null;
+    }
+  },
+
+  /**
+   * Fetch published Job Melas public page hero content.
+   * @returns {Promise<Object>}
+   */
+  async getPublishedJobMelaHeroContent() {
+    try {
+      return await apiClient.get('/public/website-content/job-melas/hero');
+    } catch (err) {
+      console.warn('publicService.getPublishedJobMelaHeroContent error:', parseApiError(err));
+      return null;
+    }
+  },
+
+  /**
+   * Fetch published Skill Development page configuration (Hero, Highlights, Mission, Pathway, Advantages, Programs).
+   * @returns {Promise<Object>}
+   */
+  async getPublishedSkillDevelopmentContent() {
+    try {
+      return await apiClient.get('/cms/skills');
+    } catch (err) {
+      console.warn('publicService.getPublishedSkillDevelopmentContent error:', parseApiError(err));
+      return null;
+    }
+  },
+
+  /**
+   * Fetch single published Skill Development section.
+   * @param {string} sectionKey
+   * @returns {Promise<Object>}
+   */
+  async getPublishedSkillDevelopmentSection(sectionKey) {
+    try {
+      return await apiClient.get(`/cms/skills/${sectionKey}`);
+    } catch (err) {
+      console.warn(`publicService.getPublishedSkillDevelopmentSection(${sectionKey}) error:`, parseApiError(err));
+      return null;
+    }
+  },
 };
 
 export default publicService;
+

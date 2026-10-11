@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import {
   Newspaper, ChevronLeft, ChevronRight, Pause, Play,
   Sparkles, ExternalLink, ArrowRight
@@ -227,6 +228,37 @@ export default function NewsArticlesSection({ newsContent }) {
             >
               <ChevronRight size={18} />
             </button>
+
+            {/* View All dedicated page link */}
+            <Link
+              to="/news"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 5,
+                padding: '8px 14px',
+                borderRadius: 'var(--radius-full)',
+                background: 'var(--color-surface)',
+                border: '1px solid var(--color-border)',
+                color: 'var(--color-primary-600)',
+                fontSize: '12px',
+                fontWeight: 600,
+                textDecoration: 'none',
+                boxShadow: 'var(--shadow-xs)',
+                transition: 'all 150ms ease',
+              }}
+              onMouseOver={(e) => {
+                e.currentTarget.style.background = 'var(--color-primary-50)';
+                e.currentTarget.style.borderColor = 'var(--color-primary-300)';
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.background = 'var(--color-surface)';
+                e.currentTarget.style.borderColor = 'var(--color-border)';
+              }}
+            >
+              <span>View All</span>
+              <ArrowRight size={13} />
+            </Link>
           </div>
         </div>
 

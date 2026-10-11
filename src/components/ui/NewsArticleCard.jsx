@@ -1,6 +1,27 @@
 import { useState } from 'react';
 import { Calendar, ExternalLink, Newspaper, Maximize2, BookOpen } from 'lucide-react';
 
+const getSafeExternalUrl = (url) => {
+  if (!url || typeof url !== 'string') return null;
+  const trimmed = url.trim();
+  if (!trimmed) return null;
+  if (/^(https?:\/\/)/i.test(trimmed)) return trimmed;
+  if (trimmed.startsWith('//')) return `https:${trimmed}`;
+  return `https://${trimmed}`;
+};
+
+const formatImageUrl = (url) => {
+  if (!url) return '';
+  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) {
+    return url;
+  }
+  if (url.startsWith('/uploads')) {
+    const backendBase = (import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api/v1').replace(/\/api\/v1\/?$/, '');
+    return `${backendBase}${url}`;
+  }
+  return url;
+};
+
 export default function NewsArticleCard({ article, onClick }) {
   const [isHovered, setIsHovered] = useState(false);
 
@@ -76,7 +97,7 @@ export default function NewsArticleCard({ article, onClick }) {
         }}
       >
         <img
-          src={article.imageUrl}
+          src={formatImageUrl(article.imageUrl)}
           alt={article.title}
           loading="lazy"
           style={{
@@ -158,9 +179,9 @@ export default function NewsArticleCard({ article, onClick }) {
             </span>
           )}
 
-          {article.sourceUrl && (
+          {article.sourceUrl && getSafeExternalUrl(article.sourceUrl) && (
             <a
-              href={article.sourceUrl}
+              href={getSafeExternalUrl(article.sourceUrl)}
               target="_blank"
               rel="noopener noreferrer"
               onClick={(e) => e.stopPropagation()}
